@@ -1,5 +1,5 @@
 ---
-stepsCompleted: ["step-01-init", "step-02-discovery", "step-03-success", "step-04-journeys", "step-05-domain", "step-06-innovation", "step-07-project-type", "step-08-scoping", "step-09-functional", "step-10-nonfunctional", "step-11-polish"]
+stepsCompleted: ["step-01-init", "step-02-discovery", "step-03-success", "step-04-journeys", "step-05-domain", "step-06-innovation", "step-07-project-type", "step-08-scoping", "step-09-functional", "step-10-nonfunctional", "step-11-polish", "step-e-01-discovery", "step-e-02-review", "step-e-03-edit"]
 inputDocuments: ["_bmad-output/planning-artifacts/product-brief-tailor_project-2026-02-17.md", "_bmad-output/planning-artifacts/research/technical-semantic-to-geometric-translation-architecture-2026-02-17.md", "_bmad-output/analysis/brainstorming-session-2026-02-16.md"]
 workflowType: "prd"
 documentCounts: {briefCount: 1, researchCount: 1, brainstormingCount: 1, projectDocsCount: 0}
@@ -8,12 +8,16 @@ classification:
   domain: "Fashion & Manufacturing (Heritage Customization)"
   complexity: "High"
   projectContext: "greenfield"
+lastEdited: "Saturday, February 21, 2026"
 ---
 
 # Product Requirements Document - tailor_project
 
 **Author:** Lem
 **Date:** Wednesday, February 18, 2026
+
+## Executive Summary
+Dự án **tailor_project** là một hệ thống thiết kế may đo thông minh nhằm xóa bỏ "khoảng cách ngôn ngữ" giữa mong muốn cảm tính của khách hàng và thông số kỹ thuật của thợ may. Thông qua trình biên dịch **Physical-Emotional Compiler**, hệ thống chuyển đổi các tính từ trừu tượng thành các trị số hình học chính xác (**Geometric Delta**), đảm bảo sự vừa vặn tuyệt đối cả về vật lý lẫn thẩm mỹ, đồng thời số hóa và bảo tồn tri thức di sản của các nghệ nhân may đo lâu đời.
 
 ## Success Criteria
 
@@ -46,15 +50,15 @@ classification:
 ## Product Scope
 
 ### MVP - Minimum Viable Product (Phase 1)
-**Trọng tâm: "Lõi Thực thi Chính xác"**
+**Trọng tâm: "Lõi Thực thi Chính xác & Quản lý Vận hành"**
 - **Sản phẩm:** Một loại trang phục duy nhất (Áo dài truyền thống & cách tân).
 - **Cấu trúc:** Hệ thống Local-First cho một tiệm may di sản duy nhất.
 - **Lõi Kỹ thuật:** 
     - Physical-Emotional Compiler dịch thuật Adjective -> Delta.
     - Master Geometry JSON làm Nguồn sự thật duy nhất (SSOT).
-    - Hard-coded Golden Rules (Mã hóa trực tiếp bí kíp nghệ nhân).
-    - Sanity Check Dashboard cho thợ cắt rập.
     - Deterministic Guardrails (Pydantic) chặn đứng lỗi vật lý.
+- **Module Bổ sung:** 
+    - **Rental Management (CRUD):** "Cửa sổ trưng bày số" giúp quản lý kho đồ thuê, tra cứu trạng thái và lịch hẹn trả đồ nhanh chóng.
 
 ### Growth Features (Phase 2)
 **Trọng tâm: "Số hóa Quy trình & Kế thừa"**
@@ -72,8 +76,9 @@ classification:
 
 ### Journey 1: Linh - "Hiện đại hóa niềm tin truyền thống" (Khách hàng)
 - **Mở đầu:** Linh (Nhà thiết kế số) tìm đến tiệm may di sản vì tin vào tay nghề nghệ nhân, nhưng lo lắng chú thợ không hiểu phong cách "Minimalist" (Tối giản) của cô.
-- **Tương tác:** Linh và thợ may cùng sử dụng **Adaptive Canvas**. Linh điều chỉnh cường độ phong cách qua Sliders và thấy tà áo suông hơn theo ý mình.
-- **Cao trào:** Linh thấy lớp phủ **Comparison Overlay** so sánh rập chuẩn và rập tùy chỉnh, cô thốt lên: "Dạ đúng rồi chú, con muốn tà áo suông thế này!".
+- **Tương tác:** 
+    - **May đo:** Linh và thợ may cùng sử dụng **Adaptive Canvas** để điều chỉnh phong cách. Linh thấy lớp phủ **Comparison Overlay** so sánh rập chuẩn và rập tùy chỉnh.
+    - **Thuê đồ:** Linh truy cập danh mục "Áo dài sẵn có", xem hình ảnh, size và trạng thái thực tế của bộ đồ cô thích. Cô thấy dòng chữ "Dự kiến sẵn sàng vào: 25/02/2026" và quyết định đặt lịch hẹn.
 - **Kết thúc:** Linh nhận được bộ đồ vừa vặn cả về số đo lẫn tâm hồn. Sự mơ hồ biến mất hoàn toàn nhờ dữ liệu hình học trực quan.
 
 ### Journey 2: Minh (F2) - "Số hóa đôi tay cha ông" (Người thợ kế thừa)
@@ -84,9 +89,10 @@ classification:
 
 ### Journey 3: Cô Lan - "Bảo hiểm bí kíp gia truyền" (Chủ tiệm/Founder)
 - **Mở đầu:** Cô Lan muốn nghỉ hưu nhưng trăn trở vì khách quen sẽ rời đi nếu không ai may "ra đúng cái chất" riêng biệt của cô.
-- **Diễn biến:** Cô Lan trực tiếp tham gia quá trình mã hóa các "mẹo" nghề vào hệ thống (ví dụ: "Dáng lưng tôm thì hạ ben ngực thấp hơn 1cm").
-- **Cao trào:** Cô thấy Minh thực hiện đúng quy tắc này và khách hàng khen ngợi "vẫn đúng tay nghề cô Lan". Cô hiểu tri thức của mình đã được "bảo hiểm" vĩnh viễn trong hệ thống.
-- **Kết thúc:** Cô Lan yên tâm nghỉ hưu, giá trị của tiệm giờ đây nằm ở hệ thống tri thức đã được số hóa trọn vẹn.
+- **Diễn biến:** 
+    - **Quản trị tri thức:** Cô Lan trực tiếp tham gia quá trình mã hóa các "mẹo" nghề vào hệ thống.
+    - **Quản lý vận hành:** Cô sử dụng Dashboard cho thuê trên điện thoại, chỉ với 2 lần chạm để cập nhật trạng thái "Đang giặt ủi" cho bộ áo dài Linh vừa trả, hệ thống tự động tính ngày sẵn sàng cho khách tiếp theo.
+- **Kết thúc:** Cô Lan yên tâm nghỉ hưu, giá trị của tiệm giờ đây nằm ở hệ thống tri thức đã được số hóa trọn vẹn và quy trình vận hành trơn tru.
 
 ## Domain-Specific Requirements
 
@@ -102,11 +108,12 @@ classification:
 - **SVG/DXF Export:** Xuất bản vẽ vector chuẩn xác cho việc in ấn rập hoặc chiếu lên vải.
 - **Manual Override:** Thợ may có quyền ghi đè gợi ý của AI dựa trên cảm nhận thực tế về bề mặt và lỗi vải tự nhiên.
 
-## Innovation & Novel Patterns
+### Innovation & Novel Patterns
 
-### Detected Innovation Areas
+#### Detected Innovation Areas
 - **Physical-Emotional Compiler:** Định lượng hóa các khái niệm trừu tượng thành trị số hình học (Geometric Delta).
-- **Atelier Academy:** Chuyển đổi tri thức ngầm (Tacit Knowledge) thành hệ thống AI có khả năng kế thừa.
+- **Atelier Academy:** Chuyển đổi tri thức ngầm (Tacit Knowledge) thành hệ thống AI. 
+    - **Learning Loop:** AI hấp thụ tri thức thông qua phản hồi trực tiếp của nghệ nhân (Human-in-the-loop). Mỗi lần nghệ nhân thực hiện **Override** (Ghi đè) đề xuất của AI, hệ thống sẽ phân tích lý do (chất liệu, lỗi vải, gu riêng) để tinh chỉnh các Golden Rules cho lần sau.
 - **Adaptive Canvas:** Giao diện hợp tác trực quan dựa trên dữ liệu hình học thời gian thực.
 
 ### Market Context & Competitive Landscape
@@ -119,8 +126,24 @@ classification:
 ## Technical & Project-Type Requirements
 
 ### Technical Architecture
-- **Single Source of Truth (SSOT):** Sử dụng Master Geometry JSON (PostgreSQL JSONB) làm cầu nối duy nhất giữa số đo, vải và tham số biến đổi.
-- **Logic Hình học lõi:** Áp dụng công thức $P_{final} = P_{base} + \alpha \cdot \Delta_{preset}$ để thực hiện tham số hóa thiết kế.
+- **Single Source of Truth (SSOT):** Sử dụng Master Geometry JSON (PostgreSQL JSONB) làm cầu nối duy nhất.
+- **Master Geometry JSON Example:**
+```json
+{
+  "pattern_id": "AD-001",
+  "base_measurements": {"neck": 32, "bust": 84, "waist": 66},
+  "emotional_deltas": {
+    "style": "Minimalist",
+    "ease_factor": 1.2,
+    "nodes": [
+      {"id": "shoulder_L", "delta_x": 0.5, "delta_y": -0.2},
+      {"id": "waist_line", "offset": 1.5}
+    ]
+  },
+  "physical_constraints": {"material": "Silk", "safety_margin": 0.3}
+}
+```
+- **Logic Hình học lõi:** Áp dụng công thức $P_{final} = P_{base} + \alpha \cdot \Delta_{preset}$.
 
 ### API Endpoint Specifications (FastAPI)
 - **/v1/inference/translate:** Dịch thuật từ Cảm xúc (Adjective + Intensity) sang Ease Profile.
@@ -160,6 +183,12 @@ classification:
 ### 5. Measurement & Profile Management
 - **FR17:** Thợ may có thể nhập và lưu trữ bộ số đo chi tiết cho từng khách hàng.
 - **FR18:** Hệ thống liên kết số đo khách hàng với các phiên bản rập tùy chỉnh tương ứng.
+
+### 6. Rental Catalog & Status (Digital Showroom)
+- **FR22 (Digital Catalog):** Hệ thống hiển thị danh sách áo dài cho thuê với đầy đủ hình ảnh, mô tả và kích thước cơ bản.
+- **FR23 (Availability Status):** Hiển thị trạng thái thực tế của từng bộ đồ: Available (Sẵn sàng), Rented (Đang thuê), Maintenance (Giặt ủi/Sửa chữa).
+- **FR24 (Return Timeline):** Hiển thị ngày dự kiến bộ đồ sẽ quay lại kho để khách hàng theo dõi.
+- **FR25 (Inventory Admin):** Chủ tiệm có quyền thêm/xóa/sửa thông tin bộ đồ và cập nhật trạng thái nhanh chóng (2-3 lần chạm).
 
 ## Non-Functional Requirements (NFRs)
 
