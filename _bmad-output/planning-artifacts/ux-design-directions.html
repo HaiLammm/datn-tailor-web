@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Directions Showcase - tailor_project</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --indigo-depth: #1A2B4C;
+            --silk-ivory: #F9F7F2;
+            --heritage-gold: #D4AF37;
+        }
+        .font-serif { font-family: 'Cormorant Garamond', serif; }
+        .font-sans { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .direction-card { transition: all 0.3s ease; border: 1px solid transparent; }
+        .direction-card:hover { border-color: var(--heritage-gold); transform: translateY(-5px); }
+        
+        .slider-heritage { -webkit-appearance: none; height: 2px; background: #ddd; outline: none; }
+        .slider-heritage::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--heritage-gold); border-radius: 50%; cursor: pointer; }
+    </style>
+</head>
+<body class="bg-[#F0F0F0] text-gray-900 font-sans p-8">
+    <header class="max-w-6xl mx-auto mb-12 text-center">
+        <h1 class="font-serif text-5xl mb-4 text-[#1A2B4C]">Design Directions Showcase</h1>
+        <p class="text-lg text-gray-600">tailor_project: Sự sang trọng của Dữ liệu & Di sản May đo</p>
+    </header>
+
+    <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        <!-- Direction 1: Heritage Atelier -->
+        <div class="direction-card bg-[#1A2B4C] text-white p-8 rounded-lg shadow-xl">
+            <span class="text-xs font-mono mb-2 block text-[#D4AF37]">DIRECTION 01</span>
+            <h2 class="font-serif text-3xl mb-4">The Heritage Atelier</h2>
+            <p class="text-sm opacity-80 mb-8">Ưu tiên di sản và cảm xúc. Không gian đậm chất truyền thống, sang trọng và tĩnh lặng.</p>
+            
+            <div class="space-y-6">
+                <div class="bg-[#F9F7F2]/10 p-4 rounded border border-white/10">
+                    <p class="font-serif italic text-xl mb-2">"Thanh tao & Tĩnh lặng"</p>
+                    <input type="range" class="w-full slider-heritage">
+                </div>
+                <div class="flex justify-between items-center text-[10px] font-mono opacity-60">
+                    <span>ΔG: 0.0mm</span>
+                    <span>BASE PATTERN</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 2: Precision Lab -->
+        <div class="direction-card bg-[#F9F7F2] text-[#1A2B4C] p-8 rounded-lg shadow-xl border border-gray-200">
+            <span class="text-xs font-mono mb-2 block text-[#D4AF37]">DIRECTION 02</span>
+            <h2 class="font-serif text-3xl mb-4">The Precision Lab</h2>
+            <p class="text-sm text-gray-600 mb-8">Ưu tiên kỹ thuật và dữ liệu. Không gian sạch sẽ, hiện đại và tập trung tối đa.</p>
+            
+            <div class="space-y-6">
+                <div class="bg-white p-4 rounded border border-gray-300 shadow-sm">
+                    <p class="font-mono text-xs uppercase mb-2">Style Intensity: 85%</p>
+                    <input type="range" class="w-full slider-heritage" value="85">
+                </div>
+                <div class="bg-[#1A2B4C] text-white p-3 rounded font-mono text-[10px]">
+                    <p>JSON: { "delta_x": 1.2, "unit": "mm" }</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 3: Balanced Masterpiece -->
+        <div class="direction-card bg-white text-[#1A2B4C] p-8 rounded-lg shadow-xl border-t-4 border-[#D4AF37]">
+            <span class="text-xs font-mono mb-2 block text-[#D4AF37]">DIRECTION 03</span>
+            <h2 class="font-serif text-3xl mb-4">Balanced Masterpiece</h2>
+            <p class="text-sm text-gray-600 mb-8">Sự cân bằng hoàn hảo. Linh hoạt theo chế độ (Mode) để phục vụ cả khách và thợ.</p>
+            
+            <div class="space-y-6">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-full bg-[#1A2B4C] flex items-center justify-center text-white font-serif">L</div>
+                    <div>
+                        <p class="font-semibold text-sm">Linh (Customer)</p>
+                        <p class="text-xs text-gray-500">Mode: Boutique</p>
+                    </div>
+                </div>
+                <div class="p-4 bg-[#F9F7F2] rounded border-l-2 border-[#D4AF37]">
+                    <p class="text-xs font-mono text-[#D4AF37] mb-1">INSIGHT</p>
+                    <p class="text-sm italic">"Tà áo đang được nới rộng 2cm để phù hợp với vải Lụa."</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <section class="max-w-6xl mx-auto mt-16 p-8 bg-white rounded-lg shadow-inner">
+        <h3 class="font-serif text-2xl mb-6">Tiêu chí Đánh giá (Evaluation Framework)</h3>
+        <ul class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <li class="flex items-start"><span class="text-[#D4AF37] mr-2">✓</span> <strong>Tính Trực quan:</strong> Phân cấp thông tin có rõ ràng không?</li>
+            <li class="flex items-start"><span class="text-[#D4AF37] mr-2">✓</span> <strong>Sự Tin cậy:</strong> Các con số Delta hiển thị có tạo cảm giác an tâm?</li>
+            <li class="flex items-start"><span class="text-[#D4AF37] mr-2">✓</span> <strong>Tính Thương hiệu:</strong> Có toát lên vẻ sang trọng của tà Áo dài?</li>
+            <li class="flex items-start"><span class="text-[#D4AF37] mr-2">✓</span> <strong>Hiệu năng:</strong> Bố cục có tối ưu cho PWA và kết nối chậm?</li>
+        </ul>
+    </section>
+</body>
+</html>
