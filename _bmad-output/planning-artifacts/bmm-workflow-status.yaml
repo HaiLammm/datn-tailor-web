@@ -27,7 +27,7 @@ workflow_status:
   product-brief: "_bmad-output/planning-artifacts/product-brief-tailor_project-2026-02-17.md" # Completed: Tuesday, February 17, 2026
   prd: "_bmad-output/planning-artifacts/prd.md"
   create-ux-design: "_bmad-output/planning-artifacts/ux-design-specification.md"
-  create-architecture: required
+  create-architecture: "_bmad-output/planning-artifacts/architecture.md"
   create-epics-and-stories: required
   test-design: optional
   implementation-readiness: required
