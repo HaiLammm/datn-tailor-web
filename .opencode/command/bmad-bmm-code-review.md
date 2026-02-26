@@ -1,6 +1,6 @@
 ---
 name: 'code-review'
-description: 'Perform adversarial code review finding specific issues. Use when the user says 'run code review' or 'review this code''
+description: 'Perform adversarial code review finding specific issues. Use when the user says ""run code review"" or ""review this code""'
 ---
 
 Execute the BMAD 'code-review' workflow.

@@ -1,6 +1,6 @@
 ---
 name: 'correct-course'
-description: 'Manage significant changes during sprint execution. Use when the user says 'correct course' or 'propose sprint change''
+description: 'Manage significant changes during sprint execution. Use when the user says ""correct course"" or ""propose sprint change""'
 ---
 
 Execute the BMAD 'correct-course' workflow.
