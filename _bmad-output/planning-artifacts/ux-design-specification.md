@@ -52,6 +52,7 @@ Xây dựng niềm tin thông qua sự minh bạch kép:
 ### 2.3 Success Criteria & Performance Strategy
 - **Fluidity (< 200ms):** Sử dụng `requestAnimationFrame` và tác động trực tiếp lên thuộc tính `path` của SVG (không trigger React state liên tục) để đảm bảo sự mượt mà tối đa (NFR10).
 - **Non-intrusive Guardrails:** Cảnh báo dưới dạng **Inline Hint** hoặc **Contextual Tooltip** sử dụng thuật ngữ nghề may, tuyệt đối không dùng Modal để không phá vỡ dòng chảy (flow) sáng tạo.
+- **Perceived Latency Strategy (The Weaving of Vision):** Chuyển đổi 15 giây chờ đợi suy luận AI (NFR1) thành trải nghiệm "kể chuyện hình học" (Storytelling Geometry), mô phỏng quá trình dệt vải và vẽ rập tay để duy trì sự gắn kết cảm xúc.
 
 ### 2.4 Novel UX Patterns: "Digital Pottery"
 Ẩn dụ "Nặn gốm số" được giữ tinh tế dưới bề mặt, ưu tiên tính "vừa vặn" hơn là tính "giải trí". Sử dụng **Comparison Overlay** làm Baseline đối chiếu không đổi.
@@ -195,6 +196,7 @@ Tận dụng **Radix UI** và **Headless UI** cho các thành phần nền tản
 3. **Sanity Check Dashboard:** Bảng đối soát 3 cột minh bạch cho thợ Minh.
 4. **Fabric Experience Card:** Hiển thị lý tính vải qua Texture và Animation độ rủ.
 5. **2-Touch Status Badge:** Cập nhật trạng thái đồ thuê nhanh chóng cho Cô Lan.
+6. **The Weaving of Vision (Loading Engine):** Hệ thống hiển thị tiến trình AI dưới dạng hoạt họa vẽ rập tay và dệt vải chàm.
 
 ## UX Consistency Patterns
 
@@ -233,5 +235,22 @@ Tận dụng **Radix UI** và **Headless UI** cho các thành phần nền tản
 - Kiểm thử thực tế trên iPad và Smartphone đa dạng.
 - Stress test hiệu năng mạng và SVG morphing.
 - Tự động kiểm tra A11y bằng Lighthouse và axe-core.
+
+## Micro-Experience: The Weaving of Vision
+
+Đây là chiến lược xử lý độ trễ (Latency) 15 giây, biến quá trình suy luận của AI thành một trải nghiệm thương hiệu đậm chất di sản.
+
+### 1. Phân rã giai đoạn (The Sequence)
+
+| Thời gian | Giai đoạn | Hiệu ứng thị giác (Visual) | Micro-copy & Proverb |
+| :--- | :--- | :--- | :--- |
+| **0s - 3s** | Lắng nghe | Các tính từ chùm (Indigo silk threads) bay vào tâm Canvas. | "Đang cảm thụ phong cách của bạn..." <br> *“Người thợ giỏi lắng nghe bằng cả trái tim.”* |
+| **3s - 10s** | Điêu khắc | Đường rập SVG mờ hiện ra, các node di chuyển theo hiệu ứng "vẽ tay" (sketching). | "Đang điêu khắc hình học dựa trên số đo..." <br> *“Cầm kéo vững tay, đo lòng khách thấu.”* |
+| **10s - 15s** | Bảo chứng | Dấu ấn Heritage Gold Seal quét qua bản vẽ để kiểm tra Guardrails. | "Nghệ nhân đang thẩm định bản vẽ..." <br> *“Đường kim đi trước, niềm tin theo sau.”* |
+
+### 2. Nguyên tắc Tương tác
+- **Smooth Transition:** Sử dụng `framer-motion` để chuyển cảnh mượt mà giữa các câu châm ngôn.
+- **Visual Continuity:** Bản vẽ Blueprint hiện ra dần dần từ những nét vẽ phác thảo của giai đoạn 2, tạo sự nhất quán tuyệt đối.
+- **Soft Audio:** Tiếng lướt lụa (silk rustle) nhẹ nhàng tăng dần sự tò mò của khách hàng.
 
 <!-- UX design content will be appended sequentially through collaborative workflow steps -->
