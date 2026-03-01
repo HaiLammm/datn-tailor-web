@@ -1,14 +1,13 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 /**
- * Login Page: Unified authentication with Google OAuth or Email/Password.
- * Story 1.1: AC1, AC2, AC5
+ * Login Form Component: Separated to be wrapped in Suspense.
  */
-export default function LoginPage() {
+function LoginForm() {
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get("callbackUrl") || "/";
 
@@ -149,5 +148,21 @@ export default function LoginPage() {
                 </a>
             </p>
         </div>
+    );
+}
+
+/**
+ * Login Page: Unified authentication with Google OAuth or Email/Password.
+ * Wrapped in Suspense to prevent Next.js prerender error.
+ */
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+        }>
+            <LoginForm />
+        </Suspense>
     );
 }

@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 /**
- * OTP Verification Page: Verify email with 6-digit OTP code.
- * Story 1.2: AC5, AC6, AC7, AC8, AC9
+ * OTP Verification Form Component: Separated to be wrapped in Suspense.
  */
-export default function VerifyOTPPage() {
+function VerifyOTPForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const emailFromUrl = searchParams.get("email") || "";
@@ -214,5 +213,21 @@ export default function VerifyOTPPage() {
                 </a>
             </p>
         </div>
+    );
+}
+
+/**
+ * OTP Verification Page: Verify email with 6-digit OTP code.
+ * Wrapped in Suspense to prevent Next.js prerender error.
+ */
+export default function VerifyOTPPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+        }>
+            <VerifyOTPForm />
+        </Suspense>
     );
 }
