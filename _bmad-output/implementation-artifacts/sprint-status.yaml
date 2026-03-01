@@ -1,4 +1,4 @@
-# generated: 2026-02-26
+# generated: 2026-03-01
 # project: tailor_project
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-26
+generated: 2026-03-01
 project: tailor_project
 project_key: NOKEY
 tracking_system: file-system
@@ -41,12 +41,13 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   epic-1: in-progress
-  1-0-thiet-lap-du-an-tu-starter-template: review
-  1-1-dang-nhap-he-thong-da-phuong-thuc: backlog
+  1-0-thiet-lap-du-an-tu-starter-template: done
+  1-1-dang-nhap-he-thong-da-phuong-thuc: done
   1-2-dang-ky-tai-khoan-khach-hang-xac-thuc-otp: backlog
   1-3-quan-ly-ho-so-so-do: backlog
   1-4-quan-ly-tao-tai-khoan-nhan-vien: backlog
   1-5-khoi-tao-tai-khoan-chu-tiem: backlog
+  1-6-thiet-lap-ha-tang-multi-tenant-local-first: backlog
   epic-1-retrospective: optional
 
   epic-2: backlog
@@ -54,6 +55,7 @@ development_status:
   2-2-tinh-chinh-cuong-do-phong-cach: backlog
   2-3-goi-y-chat-lieu-vai-dua-tren-phong-cach: backlog
   2-4-dich-thuat-cam-xuc-sang-ease-delta: backlog
+  2-5-phac-thao-giao-dien-rule-editor: backlog
   epic-2-retrospective: optional
 
   epic-3: backlog
@@ -64,7 +66,8 @@ development_status:
   epic-3-retrospective: optional
 
   epic-4: backlog
-  4-1-kiem-tra-rang-buoc-vat-ly-tu-dong: backlog
+  4-1a-loi-kiem-tra-rang-buoc-vat-ly: backlog
+  4-1b-hien-thi-canh-bao-ky-thuat-truc-tiep: backlog
   4-2-bang-doi-soat-ky-thuat-cho-tho-may: backlog
   4-3-ghi-de-phan-hoi-tu-nghe-nhan: backlog
   4-4-xuat-ban-ve-san-xuat: backlog

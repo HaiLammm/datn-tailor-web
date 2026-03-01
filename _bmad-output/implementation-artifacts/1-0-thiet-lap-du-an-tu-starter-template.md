@@ -1,6 +1,6 @@
 # Story 1.0: Thiết lập dự án từ Starter Template
 
-Status: review
+Status: Done
 
 ## Story
 

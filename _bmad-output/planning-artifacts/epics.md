@@ -37,6 +37,9 @@ FR15: Hệ thống xuất thông số gia giảm (+/- cm) chi tiết cho từng 
 FR16: Hệ thống quản lý và bảo vệ bí kíp Golden Rules nội bộ.
 FR17: Thợ may có thể nhập và lưu trữ bộ số đo chi tiết cho từng khách hàng.
 FR18: Hệ thống liên kết số đo khách hàng với các phiên bản rập tùy chỉnh tương ứng.
+FR19: Hệ thống Local-First cho một tiệm may di sản duy nhất (MVP).
+FR20: Tenant Model (SaaS Core): Kiến trúc tách biệt dữ liệu giữa các tiệm (Isolation).
+FR21: Rule Editor UI: Giao diện cho nghệ nhân tự điều chỉnh các Smart Rules (Phase 2).
 FR22: Hệ thống hiển thị danh sách áo dài cho thuê với đầy đủ hình ảnh, mô tả và kích thước cơ bản.
 FR23: Hiển thị trạng thái thực tế của từng bộ đồ: Available (Sẵn sàng), Rented (Đang thuê), Maintenance (Giặt ủi/Sửa chữa).
 FR24: Hiển thị ngày dự kiến bộ đồ sẽ quay lại kho để khách hàng theo dõi.
@@ -94,6 +97,9 @@ FR15: Epic 4 - Manufacturing Blueprint
 FR16: Epic 1 - The Vault Security
 FR17: Epic 1 - Profile Management
 FR18: Epic 1 - Measurement-Profile Link
+FR19: Epic 1 - Local-First Setup
+FR20: Epic 1 - Tenant Isolation
+FR21: Epic 2 - Rule Editor UI
 FR22: Epic 5 - Digital Catalog
 FR23: Epic 5 - Availability Status
 FR24: Epic 5 - Return Timeline
@@ -103,7 +109,7 @@ FR25: Epic 5 - Inventory Admin
 
 ### Epic 1: Nền tảng Xác thực & Quản lý Hồ sơ (Core Foundation)
 Thiết lập hệ thống bảo mật, phân quyền RBAC và quản lý số đo khách hàng. Hỗ trợ đăng nhập qua Google OAuth, đăng ký khách hàng qua website với xác thực OTP, và quản trị tài khoản nhân viên.
-**FRs covered:** FR16, FR17, FR18, NFR6, NFR7, NFR8
+**FRs covered:** FR16, FR17, FR18, FR19, FR20, NFR6, NFR7, NFR8
 
 ## Epic 1: Nền tảng Xác thực & Quản lý Hồ sơ (Core Foundation)
 
@@ -188,6 +194,20 @@ So that **hệ thống luôn có một tài khoản quản trị tối cao (Owne
 **When** Hệ thống khởi động (Backend Start)
 **Then** Hệ thống đảm bảo Email này luôn có vai trò `Owner` (Quyền quản trị tri thức cao nhất)
 
+### Story 1.6: Thiết lập hạ tầng Multi-tenant & Local-first (Infrastructure Foundation)
+
+As a **Kiến trúc sư hệ thống**,
+I want **thiết lập cấu trúc Database hỗ trợ đa tiệm (Multi-tenant) và cơ chế Local-first**,
+So that **hệ thống có thể vận hành ổn định tại một tiệm di sản và sẵn sàng mở rộng trong tương lai**.
+
+**Acceptance Criteria:**
+
+**Given** Database PostgreSQL 17 đã được khởi tạo
+**When** Thực hiện thiết kế Schema cho các bảng `customers`, `measurements`, `designs`
+**Then** Mọi bảng dữ liệu phải chứa cột `tenant_id` để thực hiện cách biệt dữ liệu (Isolation) (FR20)
+**And** Hệ thống hỗ trợ cơ chế SQLite Local Sync hoặc caching tầng Edge để đảm bảo trải nghiệm Local-first (FR19)
+**And** Các chính sách Row-Level Security (RLS) được thiết lập để đảm bảo thợ tiệm này không thể xem dữ liệu tiệm khác
+
 ## Epic 2: Trình biên dịch Cảm xúc & Cấu hình Phong cách (Style & Semantic Engine)
 
 Xây dựng "não bộ" cho hệ thống, nơi khách hàng có thể chọn phong cách và AI dịch chúng thành các bộ chỉ số hình học (Ease Delta).
@@ -244,6 +264,20 @@ So that **có dữ liệu chính xác để biến đổi bản vẽ rập**.
 **Then** Backend (FastAPI + LangGraph) tra cứu Smart Rules của nghệ nhân
 **And** Trả về Master Geometry JSON chứa các bộ Delta (ví dụ: `waist_ease: +2.0cm`)
 **And** Thời gian phản hồi suy luận trung bình Lavg < 15 giây (NFR1)
+
+### Story 2.5: Phác thảo Giao diện Rule Editor (Phase 2 Placeholder)
+
+As a **Nghệ nhân (Cô Lan)**,
+I want **có một giao diện cơ bản để xem và điều chỉnh các quy tắc (Smart Rules)**,
+So that **tôi có thể trực tiếp số hóa bí kíp gia truyền mà không cần hỗ trợ từ lập trình viên**.
+
+**Acceptance Criteria:**
+
+**Given** Cô Lan đang ở trang Admin quản trị tri thức
+**When** Cô truy cập vào mục "Smart Rules Editor"
+**Then** Hệ thống hiển thị danh sách các quy tắc hiện có (Style Pillars, Ease Deltas) (FR21)
+**And** Cho phép xem chi tiết logic của từng quy tắc (dưới dạng bảng hoặc JSON thô)
+**And** Có nút "Lưu thay đổi" để cập nhật dữ liệu vào Local Knowledge Base (LKB)
 
 ## Epic 3: Bộ máy Biến đổi Hình học & Bản vẽ Blueprint (Geometry & Visualization)
 
@@ -306,7 +340,7 @@ So that **dữ liệu được truyền tải và lưu trữ đồng nhất (Sin
 
 Tích hợp các ràng buộc toán học để ngăn chặn lỗi vật lý và cho phép thợ may ghi đè (Override) thủ công trước khi xuất bản vẽ sản xuất.
 
-### Story 4.1: Kiểm tra Ràng buộc Vật lý Tự động (Deterministic Guardrails)
+### Story 4.1a: Lõi kiểm tra Ràng buộc Vật lý (Deterministic Guardrails Logic)
 
 As a **Hệ thống (Backend)**,
 I want **tự động kiểm tra các ràng buộc vật lý (vd: vòng nách vs bắp tay)**,
@@ -314,11 +348,23 @@ So that **ngăn chặn các thiết kế vi phạm quy luật cơ học và khô
 
 **Acceptance Criteria:**
 
-**Given** Người dùng đang thay đổi thiết kế
-**When** Các giá trị Delta được gửi về Backend
-**Then** Hệ thống (Pydantic v2) chạy bộ lọc "Hard Constraints" để kiểm tra tính khả thi
-**And** Nếu vi phạm nghiêm trọng (Reject Snapshot), hệ thống sẽ từ chối lưu và yêu cầu snap-back về trạng thái an toàn gần nhất
-**And** Nếu vi phạm nhẹ (Soft Constraints), hệ thống trả về cảnh báo kỹ thuật (Inline Hints)
+**Given** Backend nhận được các giá trị Delta mới
+**When** API `/v1/guardrails/check` được gọi
+**Then** Hệ thống (Pydantic v2) chạy bộ lọc "Hard Constraints" (vd: chu vi nách rập ≥ chu vi bắp tay khách) (FR9)
+**And** Nếu vi phạm nghiêm trọng, trả về mã lỗi kèm lý do chi tiết để chặn xuất bản vẽ (FR10)
+
+### Story 4.1b: Hiển thị Cảnh báo Kỹ thuật Trực tiếp (Inline Guardrails UI)
+
+As a **Khách hàng hoặc Thợ may**,
+I want **thấy các cảnh báo kỹ thuật ngay khi đang điều chỉnh thiết kế**,
+So that **tôi hiểu được lý do tại sao một số tùy chỉnh bị hạn chế**.
+
+**Acceptance Criteria:**
+
+**Given** Người dùng đang thay đổi thiết kế trên Adaptive Canvas
+**When** Backend trả về kết quả Guardrail Check
+**Then** Hệ thống hiển thị các cảnh báo nhẹ (Soft Constraints) dưới dạng Tooltip hoặc Inline Hint (vd: "Hạ nách hơi cao, có thể gây cấn tay") (FR11)
+**And** Nếu vi phạm nặng, thanh trượt Sliders tự động snap-back về vị trí an toàn gần nhất
 
 ### Story 4.2: Bảng đối soát Kỹ thuật cho Thợ may (Artisan Sanity Check Dashboard)
 
