@@ -83,6 +83,7 @@ Full-stack AI-Driven Manufacturing (Next.js Frontend + FastAPI/LangGraph Backend
 
 **Database Choice:**
 - **Technology:** PostgreSQL 17
+- **Name:** `tailor_db`
 - **Extension:** `pgvector` 0.8.x
 - **Rationale:** Giải pháp duy nhất cho phép quản lý cả dữ liệu quan hệ (SSOT) và tìm kiếm ngữ nghĩa (Smart Rules) trong cùng một môi trường ACID-compliant.
 
@@ -97,8 +98,9 @@ Full-stack AI-Driven Manufacturing (Next.js Frontend + FastAPI/LangGraph Backend
 - **Rationale:** Tận dụng hệ sinh thái Next.js 16, hỗ trợ tốt cho cả Node.js và Edge runtime.
 
 **Authorization Patterns:**
-- **Pattern:** Role-based Access Control (RBAC) thông qua Next.js Middleware.
+- **Pattern:** Role-based Access Control (RBAC) thông qua `proxy.ts` (Next.js 16 Proxy pattern).
 - **Roles:** `Owner` (Quản trị tri thức), `Tailor` (Thợ may kế thừa), `Customer` (Khách hàng).
+- **CRITICAL:** Trong Next.js 16, `proxy.ts` thay thế hoàn toàn cho `middleware.ts`. Tuyệt đối KHÔNG tạo file `middleware.ts` vì sẽ gây xung đột runtime.
 
 ### API & Communication Patterns
 
@@ -193,7 +195,7 @@ frontend/src/
 │   │   ├── tailor/           # Minh's Workspace
 │   │   └── owner/            # Cô Lan's Dashboard
 │   ├── layout.tsx            # Root layout
-│   └── middleware.ts         # Role-based Redirection (Edge/Server)
+│   └── proxy.ts              # Next.js 16 Proxy - Role-based Redirection (Node.js Runtime)
 ├── components/
 │   ├── server/               # Pure Server Components (Table, Info)
 │   └── client/               # Interactive Components (Canvas, Sliders)

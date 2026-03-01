@@ -33,3 +33,8 @@
 - **FR23 (Availability Status):** Hiển thị trạng thái thời gian thực: Available, Rented, Maintenance.
 - **FR24 (Return Timeline):** Hiển thị lịch hẹn trả đồ dự kiến cho từng bộ trang phục.
 - **FR25 (Inventory Admin):** Chủ tiệm cập nhật trạng thái kho đồ nhanh chóng (tối đa 3 thao tác chạm).
+
+## 7. Authentication & Security
+- **FR26 (Forgot Password):** Hệ thống cho phép yêu cầu khôi phục mật khẩu bằng cách tái sử dụng hạ tầng OTP của quy trình Đăng ký.
+- **FR27 (Specific Recovery Email):** Sử dụng mẫu email OTP dành riêng cho việc khôi phục mật khẩu (`otp_password_recovery.html`), các tài nguyên logic khác được dùng chung với hệ thống Đăng ký.
+- **FR28 (Password Reset Flow):** Hệ thống chỉ cho phép cập nhật mật khẩu mới sau khi xác thực OTP thành công.

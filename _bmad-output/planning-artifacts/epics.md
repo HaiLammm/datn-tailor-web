@@ -208,6 +208,28 @@ So that **hệ thống có thể vận hành ổn định tại một tiệm di 
 **And** Hệ thống hỗ trợ cơ chế SQLite Local Sync hoặc caching tầng Edge để đảm bảo trải nghiệm Local-first (FR19)
 **And** Các chính sách Row-Level Security (RLS) được thiết lập để đảm bảo thợ tiệm này không thể xem dữ liệu tiệm khác
 
+### Story 1.7: Khôi phục mật khẩu (Tái sử dụng hạ tầng OTP)
+
+As a **Người dùng quên mật khẩu**,
+I want **khôi phục mật khẩu bằng mã OTP gửi về Gmail**,
+so that **tôi có thể đặt lại mật khẩu an toàn bằng cách tận dụng quy trình xác thực đã có**.
+
+**Acceptance Criteria:**
+
+1. **Forgot Password Request:** Người dùng nhập Email → Hệ thống kiểm tra tồn tại và gọi logic tạo OTP (tương tự Story 1.2).
+2. **Dedicated Recovery Template:** Hệ thống sử dụng template email riêng (`otp_password_recovery.html`) cho việc khôi phục mật khẩu, thay vì dùng template đăng ký.
+3. **Logic Reuse:** Sử dụng chung bảng `otp_codes` và `otp_service.py` để xác thực mã 6 chữ số.
+4. **Password Reset Flow:** Sau khi xác thực OTP thành công thông qua `/verify-otp`, người dùng được phép thực hiện hành động cập nhật mật khẩu mới.
+
+**Tasks / Subtasks:**
+
+- [ ] **Backend: Recovery Integration**
+  - [ ] Thêm logic chọn template email trong `email_service.py` dựa trên mục đích (Register vs Forgot Password).
+  - [ ] Thiết kế `otp_password_recovery.html` (Nội dung: "Mã khôi phục mật khẩu của bạn là...").
+  - [ ] Tận dụng endpoint `/api/v1/auth/verify-otp` có sẵn để xác thực.
+- [ ] **Frontend: Minimalist UI**
+  - [ ] Xây dựng trang `forgot-password/page.tsx` và `reset-password/page.tsx`.
+
 ## Epic 2: Trình biên dịch Cảm xúc & Cấu hình Phong cách (Style & Semantic Engine)
 
 Xây dựng "não bộ" cho hệ thống, nơi khách hàng có thể chọn phong cách và AI dịch chúng thành các bộ chỉ số hình học (Ease Delta).

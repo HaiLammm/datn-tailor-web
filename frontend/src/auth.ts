@@ -36,36 +36,62 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 if (!credentials?.email || !credentials?.password) return null;
 
                 try {
-                    const res = await fetch(`${process.env.BACKEND_URL}/api/v1/auth/login`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: credentials.email,
-                            password: credentials.password,
-                        })
-                    });
+                    // Detect if password is a JWT token (starts with "eyJ")
+                    const password = credentials.password as string;
+                    const isJWT = password.startsWith("eyJ");
+                    
+                    if (isJWT) {
+                        // Auto-login flow: Verify JWT token directly (Story 1.2 Critical Fix)
+                        const res = await fetch(`${process.env.BACKEND_URL}/api/v1/auth/verify-token`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token: credentials.password })
+                        });
 
-                    if (!res.ok) {
-                        return null;
-                    }
+                        if (!res.ok) {
+                            return null;
+                        }
 
-                    const data = await res.json();
-                    const token = data.access_token;
-
-                    if (token) {
-                        // Decode JWT to extract user info (avoid redundant /me call)
-                        // JWT format: header.payload.signature
-                        const payload = JSON.parse(
-                            Buffer.from(token.split('.')[1], 'base64').toString()
-                        );
+                        const user = await res.json();
                         
                         return {
-                            id: payload.sub, // email is the subject
-                            email: payload.sub,
-                            role: payload.role,
+                            id: user.email,
+                            email: user.email,
+                            role: user.role,
                         };
+                    } else {
+                        // Normal login flow: Authenticate with email/password
+                        const res = await fetch(`${process.env.BACKEND_URL}/api/v1/auth/login`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                email: credentials.email,
+                                password: credentials.password,
+                            })
+                        });
+
+                        if (!res.ok) {
+                            return null;
+                        }
+
+                        const data = await res.json();
+                        const token = data.access_token;
+
+                        if (token) {
+                            // Decode JWT to extract user info (avoid redundant /me call)
+                            // JWT format: header.payload.signature
+                            const payload = JSON.parse(
+                                Buffer.from(token.split('.')[1], 'base64').toString()
+                            );
+                            
+                            return {
+                                id: payload.sub, // email is the subject
+                                email: payload.sub,
+                                role: payload.role,
+                            };
+                        }
+                        return null;
                     }
-                    return null;
                 } catch (e) {
                     console.error("Auth error:", e);
                     return null;

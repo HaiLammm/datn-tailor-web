@@ -15,7 +15,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 - **Frontend:** Next.js 16 (App Router), TypeScript, Tailwind CSS, Auth.js v5 (Beta), Zustand (State), TanStack Query (Data Fetching).
 - **Backend:** Python 3.11+, FastAPI, LangGraph, Pydantic v2.
-- **Database:** PostgreSQL 17, pgvector 0.8.x.
+- **Database:** PostgreSQL 17, pgvector 0.8.x (Tên DB: `tailor_db`).
 - **Format:** Master Geometry JSON (Single Source of Truth).
 
 ---
@@ -75,7 +75,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
   - Backend phải thiết lập cờ `HttpOnly` và `Secure` (trong production) cho Header `Set-Cookie`.
 - **RULE (CSRF):** Triển khai cơ chế bảo vệ CSRF khi sử dụng xác thực dựa trên Cookie.
 - **RULE:** Phân quyền RBAC chặt chẽ cho `Owner`, `Tailor`, và `Customer`.
-- **RULE (Next.js 16):** Sử dụng `proxy.ts` thay vì `middleware.ts` để quản lý xác thực tại tầng Node.js runtime.
+- **RULE (Next.js 16):** Sử dụng `proxy.ts` thay thế hoàn toàn cho `middleware.ts` để quản lý xác thực và điều hướng tại tầng Node.js runtime. Tuyệt đối KHÔNG tạo file `middleware.ts`.
 
 ### 5. Language-Specific Rules
 

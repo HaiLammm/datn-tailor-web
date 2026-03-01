@@ -10,7 +10,7 @@ This file provides critical context, architectural rules, and development guidel
 
 - **Frontend:** Next.js 16 (App Router), TypeScript (Strict Mode), Tailwind CSS v4, Auth.js v5 (Beta), Zustand (State), TanStack Query (Data Fetching).
 - **Backend:** Python 3.11+, FastAPI, LangGraph (AI Orchestration), Pydantic v2 (Validation).
-- **Database:** PostgreSQL 17 + pgvector 0.8.x (for semantic search).
+- **Database:** PostgreSQL 17 + pgvector 0.8.x (Tên DB: `tailor_db`).
 - **Geometry Core:** Master Geometry JSON as the Single Source of Truth (SSOT).
 
 ---
@@ -66,12 +66,14 @@ This file provides critical context, architectural rules, and development guidel
 - **RULE:** Use **JWT** stored in **HttpOnly, Secure, SameSite Cookie**.
 - **DO NOT** store tokens in `localStorage` or `sessionStorage`.
 - Implementation via Auth.js v5.
+- **Next.js 16 Strategy:** Use `proxy.ts` ONLY for auth/redirection logic. DO NOT use `middleware.ts`.
 
 ---
 
 ## Project Structure
 
 - `/frontend/src/app`: Server Components (Layouts, Pages).
+- `/frontend/src/app/proxy.ts`: Next.js 16 Proxy logic (Redirection).
 - `/frontend/src/components`: Client Components (`"use client"`).
 - `/backend/src/agents`: LangGraph coordination logic.
 - `/backend/src/geometry`: Core geometry and pattern-making logic.
