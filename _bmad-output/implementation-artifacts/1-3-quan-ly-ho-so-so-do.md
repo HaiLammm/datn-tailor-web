@@ -1,6 +1,6 @@
 # Story 1.3: Quản lý Hồ sơ & Số đo
 
-Status: ready-for-review
+Status: done
 
 ## Story
 
