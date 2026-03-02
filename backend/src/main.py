@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.v1.auth import router as auth_router
+from src.api.v1.customers import router as customers_router
 from src.core.seed import seed_owner_account
 
 
@@ -38,6 +39,7 @@ app.add_middleware(
 
 # Register routers
 app.include_router(auth_router)
+app.include_router(customers_router)
 
 
 @app.get("/health")

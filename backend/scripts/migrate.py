@@ -19,8 +19,28 @@ load_dotenv(dotenv_path=env_path)
 from src.core.config import settings
 
 def split_sql_statements(sql):
-    statements = re.split(r';(?=(?:[^\'"]*[\'"][^\'"]*[\'"])*[^\'"]*$)', sql)
-    return [s.strip() for s in statements if s.strip()]
+    """Split SQL while preserving dollar-quoted functions and triggers."""
+    # First, protect dollar-quoted blocks by replacing them temporarily
+    dollar_blocks = []
+    def protect_dollar_quotes(match):
+        dollar_blocks.append(match.group(0))
+        return f"__DOLLAR_BLOCK_{len(dollar_blocks) - 1}__"
+    
+    # Match dollar-quoted strings ($$...$$)
+    protected_sql = re.sub(r'\$\$.*?\$\$', protect_dollar_quotes, sql, flags=re.DOTALL)
+    
+    # Now split on semicolons outside quotes
+    statements = re.split(r';(?=(?:[^\'"]*[\'"][^\'"]*[\'"])*[^\'"]*$)', protected_sql)
+    
+    # Restore dollar-quoted blocks
+    result = []
+    for stmt in statements:
+        for i, block in enumerate(dollar_blocks):
+            stmt = stmt.replace(f"__DOLLAR_BLOCK_{i}__", block)
+        if stmt.strip():
+            result.append(stmt.strip())
+    
+    return result
 
 async def run_migrations():
     # Use settings.DATABASE_URL which now should have the .env value

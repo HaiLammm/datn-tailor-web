@@ -173,3 +173,131 @@ Tailor Project - Hệ thống May Đo Thông Minh
     except Exception as e:
         logger.error(f"Failed to send OTP email to {email}: {e}")
         return False
+
+
+async def send_account_invitation_email(email: str, customer_name: str) -> bool:
+    """Send account invitation email to customer.
+
+    Args:
+        email: Customer email address
+        customer_name: Customer's full name
+
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        # Create message
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Lời mời kích hoạt tài khoản Tailor Project"
+        message["From"] = settings.FROM_EMAIL
+        message["To"] = email
+
+        # Plain text fallback
+        text_content = f"""
+Xin chào {customer_name},
+
+Chúng tôi đã tạo một tài khoản cho bạn tại Tailor Project.
+
+Để kích hoạt tài khoản và đăng nhập, vui lòng truy cập:
+{settings.NEXTAUTH_URL}/activate-account
+
+Bạn sẽ cần sử dụng email này ({email}) và thiết lập mật khẩu mới.
+
+Trân trọng,
+Tailor Project Team
+        """.strip()
+
+        # HTML content
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lời mời kích hoạt tài khoản</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Georgia', serif; background-color: #f5f5f5;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="padding: 40px 40px 30px 40px; background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); border-radius: 8px 8px 0 0;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; text-align: center;">
+                                Tailor Project
+                            </h1>
+                            <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px; text-align: center;">
+                                Lời mời kích hoạt tài khoản
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 40px;">
+                            <p style="margin: 0 0 20px 0; color: #312e81; font-size: 16px;">
+                                Xin chào <strong>{customer_name}</strong>,
+                            </p>
+                            <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                                Chúng tôi đã tạo một tài khoản cho bạn tại <strong>Tailor Project</strong>. 
+                                Bạn có thể kích hoạt tài khoản để:
+                            </p>
+                            <ul style="margin: 0 0 20px 20px; padding: 0; color: #4b5563; font-size: 14px; line-height: 1.8;">
+                                <li>Xem lịch sử đơn hàng và thiết kế của bạn</li>
+                                <li>Quản lý thông tin cá nhân và số đo</li>
+                                <li>Theo dõi tiến độ đơn hàng trực tuyến</li>
+                            </ul>
+                            <table role="presentation" style="width: 100%; margin: 30px 0;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{settings.NEXTAUTH_URL}/activate-account" 
+                                           style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                                            Kích hoạt tài khoản
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
+                                Email đăng nhập: <strong>{email}</strong>
+                            </p>
+                            <p style="margin: 0 0 20px 0; color: #6b7280; font-size: 13px;">
+                                Bạn sẽ cần thiết lập mật khẩu mới khi kích hoạt.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #f9fafb; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 13px; text-align: center;">
+                                © 2026 Tailor Project - Hệ thống May Đo Thông Minh
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+        """.strip()
+
+        # Attach both parts
+        part1 = MIMEText(text_content, "plain", "utf-8")
+        part2 = MIMEText(html_content, "html", "utf-8")
+        message.attach(part1)
+        message.attach(part2)
+
+        # Send email
+        await aiosmtplib.send(
+            message,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+
+        logger.info(f"Account invitation email sent successfully to {email}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send invitation email to {email}: {e}")
+        return False
+

@@ -11,10 +11,13 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@tanstack/react-query": "^5.90.21",
     "next": "16.1.6",
     "next-auth": "5.0.0-beta.30",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-hook-form": "^7.71.2"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.29.0",

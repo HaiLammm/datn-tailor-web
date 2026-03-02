@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
+import ReactQueryProvider from "@/components/providers/ReactQueryProvider";
 
 const cormorant = Cormorant_Garamond({
   weight: ['300', '400', '500', '600', '700'],
@@ -24,7 +25,9 @@ export default function RootLayout({
       <body
         className={`${cormorant.variable} antialiased`}
       >
-        {children}
+        <ReactQueryProvider>
+          {children}
+        </ReactQueryProvider>
       </body>
     </html>
   );
