@@ -28,7 +28,7 @@ class Settings:
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USER: str = os.getenv("SMTP_USER", "")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    FROM_EMAIL: str = os.getenv("FROM_EMAIL", "noreply@tailorproject.com")
+    FROM_EMAIL: str = os.getenv("FROM_EMAIL", "noreply.thanhloc.tailor@gmail.com")
     OTP_EXPIRY_MINUTES: int = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
 
     def __post_init__(self) -> None:
