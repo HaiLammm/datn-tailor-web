@@ -1,6 +1,6 @@
 # Story 1.4: Quản lý & Tạo tài khoản Nhân viên
 
-Status: review
+Status: done
 
 ## Story
 

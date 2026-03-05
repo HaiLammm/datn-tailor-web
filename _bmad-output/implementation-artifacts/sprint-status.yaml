@@ -45,16 +45,16 @@ development_status:
   1-1-dang-nhap-he-thong-da-phuong-thuc: done
   1-2-dang-ky-tai-khoan-khach-hang-xac-thuc-otp: done
   1-3-quan-ly-ho-so-so-do: done
-  1-4-quan-ly-tao-tai-khoan-nhan-vien: review
-  1-5-khoi-tao-tai-khoan-chu-tiem: backlog
-  1-6-thiet-lap-ha-tang-multi-tenant-local-first: backlog
+  1-4-quan-ly-tao-tai-khoan-nhan-vien: done
+  1-5-khoi-tao-tai-khoan-chu-tiem: done
+  1-6-thiet-lap-ha-tang-multi-tenant-local-first: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-lua-chon-tru-cot-phong-cach: backlog
-  2-2-tinh-chinh-cuong-do-phong-cach: backlog
-  2-3-goi-y-chat-lieu-vai-dua-tren-phong-cach: backlog
-  2-4-dich-thuat-cam-xuc-sang-ease-delta: backlog
+  epic-2: in-progress
+  2-1-lua-chon-tru-cot-phong-cach: done
+  2-2-tinh-chinh-cuong-do-phong-cach: done
+  2-3-goi-y-chat-lieu-vai-dua-tren-phong-cach: done
+  2-4-dich-thuat-cam-xuc-sang-ease-delta: done
   2-5-phac-thao-giao-dien-rule-editor: backlog
   epic-2-retrospective: optional
 
@@ -67,7 +67,7 @@ development_status:
 
   epic-4: backlog
   4-1a-loi-kiem-tra-rang-buoc-vat-ly: backlog
-  4-1b-hien-thi-canh-bao-ky-thuat-truc-tiep: backlog
+  4-1b-hien-thi-can find-bao-ky-thuat-truc-tiep: backlog
   4-2-bang-doi-soat-ky-thuat-cho-tho-may: backlog
   4-3-ghi-de-phan-hoi-tu-nghe-nhan: backlog
   4-4-xuat-ban-ve-san-xuat: backlog
