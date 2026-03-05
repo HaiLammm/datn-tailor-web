@@ -102,18 +102,34 @@ OwnerOrTailor = Annotated[UserDB, Depends(require_roles("Owner", "Tailor"))]
 async def get_tenant_id_from_user(user: UserDB = Depends(get_current_user_from_token)) -> uuid.UUID:
     """Get tenant_id from current user.
 
-    For MVP with single tenant, this returns a hardcoded UUID.
-    Story 1.6 will implement proper multi-tenant infrastructure.
+    Story 1.6: Multi-tenant infrastructure - extract tenant from user.
+    For Owner role (system-wide), uses default tenant.
+    For other roles, uses user's assigned tenant.
 
     Args:
         user: Current authenticated user
 
     Returns:
-        UUID of tenant (hardcoded for MVP)
+        UUID of tenant
+
+    Raises:
+        HTTPException 403: If user has no tenant assigned and is not Owner
     """
-    # MVP: Single tenant hardcoded
-    # TODO Story 1.6: Implement proper tenant resolution from user or organization
-    return uuid.UUID("00000000-0000-0000-0000-000000000001")
+    # Default tenant for backward compatibility and Owner role
+    DEFAULT_TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+    # Owner can operate on default tenant (system-wide access)
+    if user.role == "Owner":
+        return user.tenant_id if user.tenant_id else DEFAULT_TENANT_ID
+
+    # Other roles must have tenant assigned
+    if user.tenant_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tài khoản chưa được gán vào tiệm nào. Vui lòng liên hệ quản trị viên.",
+        )
+
+    return user.tenant_id
 
 
 TenantId = Annotated[uuid.UUID, Depends(get_tenant_id_from_user)]

@@ -16,8 +16,10 @@ async def seed_owner_account() -> None:
     """Ensure the Owner account exists in the database on startup.
 
     Uses OWNER_EMAIL from config. Creates the user with role 'Owner'
-    if not already present. Also creates a default password for dev
-    (should be changed in production).
+    if not already present. If user exists but role is not 'Owner' or
+    is_active is False, elevate role and activate account.
+
+    Story 1.5 AC3: Role Elevation - ensure Owner role and active status.
     """
     try:
         async with async_session_factory() as session:
@@ -27,6 +29,7 @@ async def seed_owner_account() -> None:
             existing = result.scalar_one_or_none()
 
             if existing is None:
+                # AC3: Create new Owner account
                 owner = UserDB(
                     email=settings.OWNER_EMAIL,
                     hashed_password=hash_password("owner-default-password"),
@@ -37,6 +40,26 @@ async def seed_owner_account() -> None:
                 await session.commit()
                 logger.info("✅ Owner account seeded: %s", settings.OWNER_EMAIL)
             else:
-                logger.info("Owner account already exists: %s", settings.OWNER_EMAIL)
+                # AC3: Role Elevation - ensure existing user has Owner role and is active
+                needs_update = False
+                if existing.role != "Owner":
+                    logger.info(
+                        "⬆️ Elevating %s from %s to Owner",
+                        settings.OWNER_EMAIL,
+                        existing.role,
+                    )
+                    existing.role = "Owner"
+                    needs_update = True
+
+                if not existing.is_active:
+                    logger.info("🔓 Activating Owner account: %s", settings.OWNER_EMAIL)
+                    existing.is_active = True
+                    needs_update = True
+
+                if needs_update:
+                    await session.commit()
+                    logger.info("✅ Owner account updated: %s", settings.OWNER_EMAIL)
+                else:
+                    logger.info("Owner account already configured: %s", settings.OWNER_EMAIL)
     except Exception as e:
         logger.warning("⚠️ Could not seed Owner account (DB not ready?): %s", e)

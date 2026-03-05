@@ -14,6 +14,30 @@ class Base(DeclarativeBase):
     pass
 
 
+class TenantDB(Base):
+    """ORM model for the `tenants` table (Story 1.6).
+
+    Multi-tenant infrastructure - each tenant represents a tailor shop.
+    """
+
+    __tablename__ = "tenants"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
 class UserDB(Base):
     """ORM model for the `users` table."""
 
@@ -26,6 +50,11 @@ class UserDB(Base):
     hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="Customer")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    
+    # Multi-tenant support (Story 1.6)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     
     # Profile fields (Story 1.2)
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -84,7 +113,9 @@ class CustomerProfileDB(Base):
     __tablename__ = "customer_profiles"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    tenant_id: Mapped[uuid.UUID] = mapped_column(nullable=False, index=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -95,7 +126,11 @@ class CustomerProfileDB(Base):
     gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    # Local-first sync fields (Story 1.6 AC3)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -118,7 +153,9 @@ class MeasurementDB(Base):
     customer_profile_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("customer_profiles.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    tenant_id: Mapped[uuid.UUID] = mapped_column(nullable=False, index=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     neck: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     shoulder_width: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     bust: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
@@ -135,6 +172,10 @@ class MeasurementDB(Base):
     measured_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    
+    # Local-first sync fields (Story 1.6 AC3)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )

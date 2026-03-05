@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from src.core.database import get_db
 from src.core.security import create_access_token, hash_password
 from src.main import app
-from src.models.db_models import Base, CustomerProfileDB, MeasurementDB, UserDB
+from src.models.db_models import Base, CustomerProfileDB, MeasurementDB, TenantDB, UserDB
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -62,12 +62,23 @@ async def client(override_get_db):
 @pytest_asyncio.fixture
 async def seed_test_users(test_db_session: AsyncSession) -> dict:
     """Seed test database with users for different roles."""
+    # Create default tenant first (required for multi-tenant support)
+    default_tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    tenant = TenantDB(
+        id=default_tenant_id,
+        name="Test Tailor Shop",
+        slug="test-tailor-shop",
+    )
+    test_db_session.add(tenant)
+    await test_db_session.flush()  # Ensure tenant exists before creating users with FK
+
     owner = UserDB(
         email="owner@test.com",
         hashed_password=hash_password("password"),
         role="Owner",
         is_active=True,
         full_name="Owner User",
+        tenant_id=default_tenant_id,  # Assign tenant for multi-tenant support
     )
     tailor = UserDB(
         email="tailor@test.com",
@@ -75,6 +86,7 @@ async def seed_test_users(test_db_session: AsyncSession) -> dict:
         role="Tailor",
         is_active=True,
         full_name="Tailor User",
+        tenant_id=default_tenant_id,  # Assign tenant for multi-tenant support
     )
     customer = UserDB(
         email="customer@test.com",
