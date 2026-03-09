@@ -277,6 +277,12 @@ class GarmentDB(Base):
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="available", index=True)
     expected_return_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    renter_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("customer_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+    renter_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    renter_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )

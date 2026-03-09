@@ -31,6 +31,11 @@ const mockGarment = {
     expected_return_date: null,
     days_until_available: null,
     is_overdue: false,
+    renter_id: null,
+    renter_name: null,
+    renter_email: null,
+    reminder_sent_at: null,
+    reminder_sent: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
 };
@@ -61,7 +66,7 @@ describe("StatusUpdatePanel", () => {
         fireEvent.click(maintenanceBtn);
 
         await waitFor(() => {
-            expect(actions.updateGarmentStatus).toHaveBeenCalledWith("1", "maintenance", undefined);
+            expect(actions.updateGarmentStatus).toHaveBeenCalledWith("1", "maintenance", undefined, undefined, undefined);
             expect(onSuccess).toHaveBeenCalled();
         });
     });
@@ -76,11 +81,39 @@ describe("StatusUpdatePanel", () => {
         expect(screen.getByText("Xác nhận")).toBeInTheDocument();
     });
 
-    it("calls updateGarmentStatus with date when 'Xác nhận' is clicked for rented status", async () => {
+    it("shows renter name and email inputs when 'Đang thuê' is clicked", async () => {
+        render(<StatusUpdatePanel garment={mockGarment} />);
+
+        fireEvent.click(screen.getByText("Đang thuê"));
+
+        expect(screen.getByLabelText(/Tên khách thuê/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Email khách thuê/i)).toBeInTheDocument();
+    });
+
+    it("disables confirm button when renter name or email is missing for rented status", async () => {
+        render(<StatusUpdatePanel garment={mockGarment} />);
+
+        fireEvent.click(screen.getByText("Đang thuê"));
+
+        // Only set date, leave renter fields empty
+        const dateInput = screen.getByLabelText(/Ngày dự kiến khách trả đồ/i);
+        fireEvent.change(dateInput, { target: { value: "2026-12-31" } });
+
+        const confirmBtn = screen.getByText("Xác nhận");
+        expect(confirmBtn).toBeDisabled();
+    });
+
+    it("calls updateGarmentStatus with renter fields when 'Xác nhận' is clicked for rented status", async () => {
         const onSuccess = jest.fn();
         (actions.updateGarmentStatus as jest.Mock).mockResolvedValue({
             success: true,
-            data: { ...mockGarment, status: GarmentStatus.RENTED, expected_return_date: "2026-12-31" }
+            data: {
+                ...mockGarment,
+                status: GarmentStatus.RENTED,
+                expected_return_date: "2026-12-31",
+                renter_name: "Nguyen Van A",
+                renter_email: "a@example.com",
+            }
         });
 
         render(<StatusUpdatePanel garment={mockGarment} onSuccess={onSuccess} />);
@@ -88,17 +121,49 @@ describe("StatusUpdatePanel", () => {
         // Step 1: Click "Đang thuê"
         fireEvent.click(screen.getByText("Đang thuê"));
 
-        // Step 2: Set date and click "Xác nhận"
+        // Step 2: Fill in all required fields
         const dateInput = screen.getByLabelText(/Ngày dự kiến khách trả đồ/i);
         fireEvent.change(dateInput, { target: { value: "2026-12-31" } });
+
+        const nameInput = screen.getByLabelText(/Tên khách thuê/i);
+        fireEvent.change(nameInput, { target: { value: "Nguyen Van A" } });
+
+        const emailInput = screen.getByLabelText(/Email khách thuê/i);
+        fireEvent.change(emailInput, { target: { value: "a@example.com" } });
 
         const confirmBtn = screen.getByText("Xác nhận");
         fireEvent.click(confirmBtn);
 
         await waitFor(() => {
-            expect(actions.updateGarmentStatus).toHaveBeenCalledWith("1", "rented", "2026-12-31");
+            expect(actions.updateGarmentStatus).toHaveBeenCalledWith(
+                "1", "rented", "2026-12-31", "Nguyen Van A", "a@example.com"
+            );
             expect(onSuccess).toHaveBeenCalled();
         });
+    });
+
+    it("shows email validation error for invalid email format", async () => {
+        render(<StatusUpdatePanel garment={mockGarment} />);
+
+        fireEvent.click(screen.getByText("Đang thuê"));
+
+        const dateInput = screen.getByLabelText(/Ngày dự kiến khách trả đồ/i);
+        fireEvent.change(dateInput, { target: { value: "2026-12-31" } });
+
+        const nameInput = screen.getByLabelText(/Tên khách thuê/i);
+        fireEvent.change(nameInput, { target: { value: "Nguyen Van A" } });
+
+        const emailInput = screen.getByLabelText(/Email khách thuê/i);
+        fireEvent.change(emailInput, { target: { value: "invalid-email" } });
+
+        const confirmBtn = screen.getByText("Xác nhận");
+        fireEvent.click(confirmBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText("Email không hợp lệ")).toBeInTheDocument();
+        });
+
+        expect(actions.updateGarmentStatus).not.toHaveBeenCalled();
     });
 
     it("disables the current status button", () => {

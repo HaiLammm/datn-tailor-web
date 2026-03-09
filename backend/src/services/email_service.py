@@ -1,10 +1,12 @@
-"""Email service for sending OTP verification emails.
+"""Email service for sending verification and notification emails.
 
 Story 1.2: Đăng ký Tài khoản Khách hàng & Xác thực OTP
+Story 5.4: Thong bao nhac nho tra do tu dong (Automatic Return Reminders)
 Uses aiosmtplib for async SMTP email sending with Heritage branding.
 """
 
 import logging
+from datetime import date
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -299,5 +301,211 @@ Tailor Project Team
 
     except Exception as e:
         logger.error(f"Failed to send invitation email to {email}: {e}")
+        return False
+
+
+def create_return_reminder_email_html(
+    renter_name: str,
+    garment_name: str,
+    return_date: date,
+    shop_address: str,
+) -> str:
+    """Create HTML email template for return reminder with Heritage branding.
+
+    Story 5.4: Automatic Return Reminders (AC #1).
+
+    Args:
+        renter_name: Renter's full name
+        garment_name: Name of the rented garment
+        return_date: Expected return date
+        shop_address: Shop address for return
+
+    Returns:
+        str: HTML email content
+    """
+    formatted_date = return_date.strftime("%d/%m/%Y")
+    shop_address_display = shop_address if shop_address else "Vui lòng liên hệ tiệm để biết địa chỉ"
+
+    return f"""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhắc nhở trả đồ - Tailor Project</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Georgia', serif; background-color: #f5f5f5;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- Header with Heritage Indigo background -->
+                    <tr>
+                        <td style="padding: 40px 40px 30px 40px; background: linear-gradient(135deg, #1A2B4C 0%, #2d3f65 100%); border-radius: 8px 8px 0 0;">
+                            <h1 style="margin: 0; color: #F9F7F2; font-size: 28px; font-weight: 600; text-align: center; font-family: 'Cormorant Garamond', Georgia, serif;">
+                                Tailor Project
+                            </h1>
+                            <p style="margin: 10px 0 0 0; color: #D4AF37; font-size: 14px; text-align: center;">
+                                Nhắc nhở trả đồ thuê
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <p style="margin: 0 0 20px 0; color: #1A2B4C; font-size: 16px;">
+                                Xin chào <strong>{renter_name}</strong>,
+                            </p>
+
+                            <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                                Đây là thư nhắc nhở rằng thời hạn trả đồ thuê của bạn sắp đến.
+                                Vui lòng trả đồ đúng hạn để tránh phát sinh phí trễ hạn.
+                            </p>
+
+                            <!-- Garment Info Box with Heritage Gold accent -->
+                            <table role="presentation" style="width: 100%; margin: 30px 0; border-collapse: collapse;">
+                                <tr>
+                                    <td style="background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); padding: 20px 30px; border-radius: 8px; border: 2px solid #D4AF37;">
+                                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                            <tr>
+                                                <td style="padding: 8px 0;">
+                                                    <p style="margin: 0; color: #78350f; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                                        Tên bộ đồ
+                                                    </p>
+                                                    <p style="margin: 4px 0 0 0; color: #1A2B4C; font-size: 18px; font-weight: 700; font-family: 'Cormorant Garamond', Georgia, serif;">
+                                                        {garment_name}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-top: 1px solid #D4AF37;">
+                                                    <p style="margin: 0; color: #78350f; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                                        Thời hạn trả đồ
+                                                    </p>
+                                                    <p style="margin: 4px 0 0 0; color: #1A2B4C; font-size: 18px; font-weight: 700;">
+                                                        {formatted_date}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-top: 1px solid #D4AF37;">
+                                                    <p style="margin: 0; color: #78350f; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                                        Địa chỉ trả đồ
+                                                    </p>
+                                                    <p style="margin: 4px 0 0 0; color: #1A2B4C; font-size: 16px; font-weight: 600;">
+                                                        {shop_address_display}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                                Nếu bạn đã trả đồ, vui lòng bỏ qua email này.
+                                Mọi thắc mắc xin liên hệ tiệm để được hỗ trợ.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #F9F7F2; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 13px; text-align: center;">
+                                &copy; 2026 Tailor Project - Hệ thống May Đo Thông Minh
+                            </p>
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
+                                Email tự động - Vui lòng không trả lời email này
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    """.strip()
+
+
+async def send_return_reminder_email(
+    email: str,
+    renter_name: str,
+    garment_name: str,
+    return_date: date,
+    shop_address: str,
+) -> bool:
+    """Send return reminder email to renter.
+
+    Story 5.4: AC #1 - Automatic return reminder email.
+    Reuses existing SMTP sending pattern from send_otp_email.
+
+    Args:
+        email: Renter's email address
+        renter_name: Renter's full name
+        garment_name: Name of the rented garment
+        return_date: Expected return date
+        shop_address: Shop address for return
+
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        formatted_date = return_date.strftime("%d/%m/%Y")
+
+        # Create message
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"Nhắc nhở trả đồ: {garment_name} - Hạn {formatted_date}"
+        message["From"] = settings.FROM_EMAIL
+        message["To"] = email
+
+        # Plain text fallback
+        shop_addr_text = shop_address if shop_address else "Vui lòng liên hệ tiệm"
+        text_content = f"""
+Xin chào {renter_name},
+
+Đây là thư nhắc nhở rằng thời hạn trả đồ thuê của bạn sắp đến.
+
+Tên bộ đồ: {garment_name}
+Thời hạn trả đồ: {formatted_date}
+Địa chỉ trả đồ: {shop_addr_text}
+
+Vui lòng trả đồ đúng hạn để tránh phát sinh phí trễ hạn.
+
+Nếu bạn đã trả đồ, vui lòng bỏ qua email này.
+
+---
+Tailor Project - Hệ thống May Đo Thông Minh
+© 2026
+        """.strip()
+
+        # HTML content with Heritage branding
+        html_content = create_return_reminder_email_html(
+            renter_name, garment_name, return_date, shop_address
+        )
+
+        # Attach both parts
+        part1 = MIMEText(text_content, "plain", "utf-8")
+        part2 = MIMEText(html_content, "html", "utf-8")
+        message.attach(part1)
+        message.attach(part2)
+
+        # Send email via SMTP
+        await aiosmtplib.send(
+            message,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+
+        logger.info(f"Return reminder email sent successfully to {email}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to send return reminder email to {email}: {e}")
         return False
 

@@ -2,6 +2,7 @@
 
 import os
 
+from datetime import timedelta, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,6 +10,9 @@ load_dotenv()
 
 class Settings:
     """Central configuration for the Tailor Project Backend."""
+
+    # Timezone (Vietnam UTC+7)
+    VIETNAM_TZ_OFFSET: timezone = timezone(timedelta(hours=7))
 
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/tailor_project"
@@ -30,6 +34,10 @@ class Settings:
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     FROM_EMAIL: str = os.getenv("FROM_EMAIL", "noreply.thanhloc.tailor@gmail.com")
     OTP_EXPIRY_MINUTES: int = int(os.getenv("OTP_EXPIRY_MINUTES", "10"))
+
+    # Reminder Scheduler Settings (Story 5.4)
+    REMINDER_HOUR: int = int(os.getenv("REMINDER_HOUR", "8"))
+    SHOP_ADDRESS: str = os.getenv("SHOP_ADDRESS", "")
 
     def __post_init__(self) -> None:
         """Validate critical settings after initialization."""

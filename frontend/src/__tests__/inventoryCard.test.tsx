@@ -30,6 +30,11 @@ const mockGarment = {
     expected_return_date: null,
     days_until_available: null,
     is_overdue: false,
+    renter_id: null,
+    renter_name: null,
+    renter_email: null,
+    reminder_sent_at: null,
+    reminder_sent: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
 };
@@ -92,5 +97,52 @@ describe("InventoryCard", () => {
         render(<InventoryCard garment={overdueGarment} />);
 
         expect(screen.getByText(/QUÁ HẠN 5 NGÀY/i)).toBeInTheDocument();
+    });
+
+    it("displays renter name on rented garments", () => {
+        const rentedGarment = {
+            ...mockGarment,
+            status: GarmentStatus.RENTED,
+            expected_return_date: "2026-03-20",
+            renter_name: "Nguyen Van A",
+            renter_email: "a@example.com",
+        };
+
+        render(<InventoryCard garment={rentedGarment} />);
+
+        expect(screen.getByText(/Khách: Nguyen Van A/i)).toBeInTheDocument();
+    });
+
+    it("displays 'Đã nhắc nhở' badge when reminder_sent is true", () => {
+        const remindedGarment = {
+            ...mockGarment,
+            status: GarmentStatus.RENTED,
+            expected_return_date: "2026-03-20",
+            renter_name: "Nguyen Van A",
+            renter_email: "a@example.com",
+            reminder_sent_at: "2026-03-19T08:00:00Z",
+            reminder_sent: true,
+        };
+
+        render(<InventoryCard garment={remindedGarment} />);
+
+        const badge = screen.getByTestId("reminder-badge");
+        expect(badge).toBeInTheDocument();
+        expect(badge).toHaveTextContent(/Đã nhắc nhở/i);
+    });
+
+    it("does not display reminder badge when reminder_sent is false", () => {
+        const rentedGarment = {
+            ...mockGarment,
+            status: GarmentStatus.RENTED,
+            expected_return_date: "2026-03-20",
+            renter_name: "Nguyen Van A",
+            renter_email: "a@example.com",
+            reminder_sent: false,
+        };
+
+        render(<InventoryCard garment={rentedGarment} />);
+
+        expect(screen.queryByTestId("reminder-badge")).not.toBeInTheDocument();
     });
 });

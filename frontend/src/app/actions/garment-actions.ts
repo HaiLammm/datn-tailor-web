@@ -50,7 +50,7 @@ export async function fetchGarments(
         "Content-Type": "application/json",
       },
       signal: controller.signal,
-      cache: "no-store", // ISR: revalidate on each request for fresh data
+      next: { revalidate: 60 }, // ISR: revalidate every 60s
     });
 
     clearTimeout(timeoutId);
@@ -337,11 +337,14 @@ export async function deleteGarment(
 
 /**
  * Update garment status (Owner only) - Story 5.3 '2-Touch' Update.
+ * Story 5.4: Extended with renter_name and renter_email for "rented" status.
  */
 export async function updateGarmentStatus(
   id: string,
   status: string,
-  expectedReturnDate?: string
+  expectedReturnDate?: string,
+  renterName?: string,
+  renterEmail?: string
 ): Promise<{ success: boolean; data?: Garment; error?: string }> {
   const session = await auth();
   const token = session?.accessToken;
@@ -358,6 +361,12 @@ export async function updateGarmentStatus(
     if (expectedReturnDate) {
       body.expected_return_date = expectedReturnDate;
     }
+    if (renterName) {
+      body.renter_name = renterName;
+    }
+    if (renterEmail) {
+      body.renter_email = renterEmail;
+    }
 
     const response = await fetch(`${BACKEND_URL}/api/v1/garments/${id}/status`, {
       method: "PATCH",
@@ -367,7 +376,6 @@ export async function updateGarmentStatus(
       },
       body: JSON.stringify(body),
       signal: controller.signal,
-      cache: "no-store",
     });
 
     clearTimeout(timeoutId);
@@ -442,6 +450,72 @@ export async function fetchInventoryList(
   } catch (error) {
     console.error("fetchInventoryList error:", error);
     return { data: [], total: 0, error: error instanceof Error ? error.message : "Unknown error" };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Send return reminders manually (Owner only) - Story 5.4.
+ * Triggers POST /api/v1/notifications/send-return-reminders.
+ */
+export async function sendReturnReminders(): Promise<{
+  success: boolean;
+  data?: { sent: number; failed: number; skipped: number };
+  error?: string;
+}> {
+  const session = await auth();
+  const token = session?.accessToken;
+
+  if (!token) {
+    console.error("sendReturnReminders: No auth token - user not authenticated");
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/v1/notifications/send-return-reminders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    const json = await response.json();
+
+    if (response.status === 401) {
+      console.error("sendReturnReminders: 401 Unauthorized");
+      return { success: false, error: "Unauthorized" };
+    }
+
+    if (response.status === 403) {
+      console.error("sendReturnReminders: 403 Forbidden");
+      return { success: false, error: "Forbidden" };
+    }
+
+    if (!response.ok) {
+      return { success: false, error: json.detail || `HTTP ${response.status}` };
+    }
+
+    revalidatePath("/(workplace)/owner/inventory");
+
+    return { success: true, data: json.data };
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        console.error("sendReturnReminders: Request timeout");
+        return { success: false, error: "Timeout" };
+      }
+      console.error("sendReturnReminders error:", error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Unknown error" };
   } finally {
     clearTimeout(timeoutId);
   }

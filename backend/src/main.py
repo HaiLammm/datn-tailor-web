@@ -1,5 +1,6 @@
 """Tailor Project Backend - FastAPI Application Entry Point."""
 
+import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -17,17 +18,35 @@ from src.api.v1.fabrics import router as fabrics_router
 from src.api.v1.garments import router as garments_router
 from src.api.v1.geometry import router as geometry_router
 from src.api.v1.inference import router as inference_router
+from src.api.v1.notifications import router as notifications_router
 from src.api.v1.rules import router as rules_router
 from src.api.v1.staff import router as staff_router
 from src.api.v1.styles import router as styles_router
 from src.core.seed import seed_owner_account
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan: run startup tasks."""
+    """Application lifespan: run startup tasks and background scheduler."""
     await seed_owner_account()
+
+    # Start reminder scheduler (Story 5.4)
+    scheduler_task = None
+    try:
+        from src.services.scheduler_service import start_reminder_scheduler
+        scheduler_task = await start_reminder_scheduler()
+        logger.info("Reminder scheduler started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start reminder scheduler: {e}")
+
     yield
+
+    # Shutdown: cancel scheduler
+    if scheduler_task and not scheduler_task.done():
+        scheduler_task.cancel()
+        logger.info("Reminder scheduler cancelled")
 
 
 app = FastAPI(
@@ -59,6 +78,7 @@ app.include_router(garments_router)
 app.include_router(geometry_router)
 app.include_router(guardrails_router)
 app.include_router(inference_router)
+app.include_router(notifications_router)
 app.include_router(rules_router)
 app.include_router(staff_router)
 app.include_router(styles_router)

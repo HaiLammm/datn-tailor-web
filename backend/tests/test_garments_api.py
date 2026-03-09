@@ -4,7 +4,7 @@ Tests CRUD operations, RBAC, tenant isolation, filtering, and computed timeline 
 """
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -13,6 +13,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+from src.core.config import settings
 from src.core.database import get_db
 from src.core.security import create_access_token, hash_password
 from src.main import app
@@ -124,6 +125,8 @@ async def seed_garments(test_db_session: AsyncSession, seed_test_users: dict) ->
         rental_price=Decimal("400000"),
         status="rented",
         expected_return_date=date.today() + timedelta(days=6),
+        renter_name="Nguyễn Văn A",
+        renter_email="nguyen.a@example.com",
     )
     
     test_db_session.add_all([garment1, garment2])
@@ -591,6 +594,8 @@ async def test_computed_fields_overdue_garment(
         rental_price=Decimal("300000"),
         status="rented",
         expected_return_date=yesterday,
+        renter_name="Trần Văn B",
+        renter_email="tran.b@example.com",
     )
     test_db_session.add(overdue_garment)
     await test_db_session.commit()
@@ -623,6 +628,8 @@ async def test_computed_fields_return_today(
         rental_price=Decimal("400000"),
         status="rented",
         expected_return_date=today,
+        renter_name="Lê Thị C",
+        renter_email="le.c@example.com",
     )
     test_db_session.add(today_garment)
     await test_db_session.commit()
@@ -668,7 +675,7 @@ async def test_update_garment_status_available_to_rented_success(
     response = await client.patch(
         f"/api/v1/garments/{garment_id}/status",
         headers={"Authorization": f"Bearer {owner_token}"},
-        json={"status": "rented", "expected_return_date": future_date},
+        json={"status": "rented", "expected_return_date": future_date, "renter_name": "Khách Test", "renter_email": "khach@example.com"},
     )
 
     assert response.status_code == 200
@@ -918,3 +925,514 @@ async def test_update_garment_status_tenant_isolation(
     )
 
     assert response.status_code == 404
+
+
+# --- STORY 5.4: AUTOMATIC RETURN REMINDERS TESTS ---
+
+
+@pytest.mark.asyncio
+async def test_find_garments_due_tomorrow_returns_correct(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+):
+    """6.1: find_garments_due_tomorrow returns only rented garments due tomorrow with reminder_sent_at IS NULL."""
+    from src.services.notification_service import find_garments_due_tomorrow
+
+    tenant_id = seed_test_users["tenant_id"]
+    tomorrow = datetime.now(settings.VIETNAM_TZ_OFFSET).date() + timedelta(days=1)
+
+    # Create a garment due tomorrow, not yet reminded
+    garment_due = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Due Tomorrow",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=tomorrow,
+        renter_name="Test Renter",
+        renter_email="renter@test.com",
+        reminder_sent_at=None,
+    )
+    test_db_session.add(garment_due)
+    await test_db_session.commit()
+
+    results = await find_garments_due_tomorrow(test_db_session, tenant_id)
+    assert len(results) >= 1
+    ids = [g.id for g in results]
+    assert garment_due.id in ids
+
+
+@pytest.mark.asyncio
+async def test_find_garments_due_tomorrow_excludes_already_reminded(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+):
+    """6.2: find_garments_due_tomorrow excludes garments already reminded (reminder_sent_at not null)."""
+    from datetime import datetime as dt, timezone
+    from src.services.notification_service import find_garments_due_tomorrow
+
+    tenant_id = seed_test_users["tenant_id"]
+    tomorrow = datetime.now(settings.VIETNAM_TZ_OFFSET).date() + timedelta(days=1)
+
+    garment_reminded = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Already Reminded",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=tomorrow,
+        renter_name="Reminded Renter",
+        renter_email="reminded@test.com",
+        reminder_sent_at=dt.now(timezone.utc),
+    )
+    test_db_session.add(garment_reminded)
+    await test_db_session.commit()
+
+    results = await find_garments_due_tomorrow(test_db_session, tenant_id)
+    ids = [g.id for g in results]
+    assert garment_reminded.id not in ids
+
+
+@pytest.mark.asyncio
+async def test_find_garments_due_tomorrow_excludes_wrong_dates(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+):
+    """6.3: find_garments_due_tomorrow excludes garments due today or in 2+ days."""
+    from src.services.notification_service import find_garments_due_tomorrow
+
+    tenant_id = seed_test_users["tenant_id"]
+
+    garment_today = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Due Today",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=date.today(),
+        renter_name="Today Renter",
+        renter_email="today@test.com",
+    )
+    garment_later = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Due In 3 Days",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=date.today() + timedelta(days=3),
+        renter_name="Later Renter",
+        renter_email="later@test.com",
+    )
+    test_db_session.add_all([garment_today, garment_later])
+    await test_db_session.commit()
+
+    results = await find_garments_due_tomorrow(test_db_session, tenant_id)
+    ids = [g.id for g in results]
+    assert garment_today.id not in ids
+    assert garment_later.id not in ids
+
+
+@pytest.mark.asyncio
+async def test_process_return_reminders_sends_and_marks(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+    monkeypatch,
+):
+    """6.4: process_return_reminders sends emails and marks reminder_sent_at."""
+    from src.services.notification_service import process_return_reminders
+
+    tenant_id = seed_test_users["tenant_id"]
+    tomorrow = datetime.now(settings.VIETNAM_TZ_OFFSET).date() + timedelta(days=1)
+
+    garment = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Send Reminder Test",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=tomorrow,
+        renter_name="Send Test Renter",
+        renter_email="send@test.com",
+    )
+    test_db_session.add(garment)
+    await test_db_session.commit()
+
+    # Mock the email sending to succeed
+    async def mock_send_email(**kwargs):
+        return True
+
+    monkeypatch.setattr(
+        "src.services.notification_service.send_return_reminder_email",
+        mock_send_email,
+    )
+
+    summary = await process_return_reminders(test_db_session, tenant_id)
+    assert summary["sent"] >= 1
+    assert summary["failed"] == 0
+
+    # Verify reminder_sent_at was set
+    await test_db_session.refresh(garment)
+    assert garment.reminder_sent_at is not None
+
+
+@pytest.mark.asyncio
+async def test_process_return_reminders_handles_email_failure(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+    monkeypatch,
+):
+    """6.5: process_return_reminders handles email failure gracefully (continues with others)."""
+    from src.services.notification_service import process_return_reminders
+
+    tenant_id = seed_test_users["tenant_id"]
+    tomorrow = datetime.now(settings.VIETNAM_TZ_OFFSET).date() + timedelta(days=1)
+
+    garment_fail = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Fail Email Test",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=tomorrow,
+        renter_name="Fail Renter",
+        renter_email="fail@test.com",
+    )
+    garment_ok = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="OK Email Test",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=tomorrow,
+        renter_name="OK Renter",
+        renter_email="ok@test.com",
+    )
+    test_db_session.add_all([garment_fail, garment_ok])
+    await test_db_session.commit()
+
+    call_count = 0
+
+    async def mock_send_email(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        # First call fails, second succeeds
+        return call_count > 1
+
+    monkeypatch.setattr(
+        "src.services.notification_service.send_return_reminder_email",
+        mock_send_email,
+    )
+
+    summary = await process_return_reminders(test_db_session, tenant_id)
+    # At least one should have failed and one succeeded (order may vary)
+    assert summary["sent"] + summary["failed"] >= 2
+    assert summary["failed"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_process_return_reminders_skips_no_email(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+    monkeypatch,
+):
+    """6.6: process_return_reminders skips garments without valid renter email."""
+    from src.services.notification_service import process_return_reminders
+
+    tenant_id = seed_test_users["tenant_id"]
+    tomorrow = date.today() + timedelta(days=1)
+
+    # Garment with no email (edge case: created directly in DB)
+    garment_no_email = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="No Email Garment",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=tomorrow,
+        renter_name="No Email Renter",
+        renter_email=None,
+    )
+    test_db_session.add(garment_no_email)
+    await test_db_session.commit()
+
+    async def mock_send_email(**kwargs):
+        return True
+
+    monkeypatch.setattr(
+        "src.services.notification_service.send_return_reminder_email",
+        mock_send_email,
+    )
+
+    # Should not send to this garment (renter_email is NULL, filtered by query)
+    summary = await process_return_reminders(test_db_session, tenant_id)
+    await test_db_session.refresh(garment_no_email)
+    assert garment_no_email.reminder_sent_at is None
+
+
+@pytest.mark.asyncio
+async def test_notification_endpoint_owner_success(
+    seed_test_users: dict,
+    owner_token: str,
+    client: AsyncClient,
+    monkeypatch,
+):
+    """6.7: POST /api/v1/notifications/send-return-reminders: Owner gets 200 with summary."""
+    async def mock_process(db, tenant_id):
+        return {"sent": 2, "failed": 0, "skipped": 1}
+
+    monkeypatch.setattr(
+        "src.api.v1.notifications.process_return_reminders",
+        mock_process,
+    )
+
+    response = await client.post(
+        "/api/v1/notifications/send-return-reminders",
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "data" in data
+    assert data["data"]["sent"] == 2
+    assert data["data"]["failed"] == 0
+    assert data["data"]["skipped"] == 1
+    assert "meta" in data
+
+
+@pytest.mark.asyncio
+async def test_notification_endpoint_customer_forbidden(
+    seed_test_users: dict,
+    customer_token: str,
+    client: AsyncClient,
+):
+    """6.8: POST /api/v1/notifications/send-return-reminders: Customer gets 403."""
+    response = await client.post(
+        "/api/v1/notifications/send-return-reminders",
+        headers={"Authorization": f"Bearer {customer_token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_status_update_rented_to_available_clears_renter_fields(
+    seed_test_users: dict,
+    seed_garments: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """6.9: PATCH status rented->available clears renter_* and reminder_sent_at."""
+    garment_id = seed_garments["garment2"].id  # rented with renter info
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment_id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "available"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["status"] == "available"
+    assert data["expected_return_date"] is None
+    assert data["renter_name"] is None
+    assert data["renter_email"] is None
+    assert data["renter_id"] is None
+    assert data["reminder_sent_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_status_update_rented_to_maintenance_clears_renter_fields(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """6.10: PATCH status rented->maintenance clears renter_* and reminder_sent_at."""
+    from datetime import datetime as dt, timezone
+
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+    garment = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Rented With Reminder",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=date.today() + timedelta(days=3),
+        renter_name="Reminder Renter",
+        renter_email="reminder@test.com",
+        reminder_sent_at=dt.now(timezone.utc),
+    )
+    test_db_session.add(garment)
+    await test_db_session.commit()
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment.id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "maintenance"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["status"] == "maintenance"
+    assert data["renter_name"] is None
+    assert data["renter_email"] is None
+    assert data["reminder_sent_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_status_update_to_rented_requires_renter_info(
+    seed_test_users: dict,
+    seed_garments: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """6.11: PATCH status update to rented requires renter_name and renter_email."""
+    garment_id = seed_garments["garment1"].id  # available
+    future_date = (date.today() + timedelta(days=5)).isoformat()
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment_id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={
+            "status": "rented",
+            "expected_return_date": future_date,
+            "renter_name": "New Renter",
+            "renter_email": "new@test.com",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["status"] == "rented"
+    assert data["renter_name"] == "New Renter"
+    assert data["renter_email"] == "new@test.com"
+
+
+@pytest.mark.asyncio
+async def test_status_update_to_rented_without_renter_info_fails(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """6.12: PATCH status update to rented without renter info -> 422."""
+    tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+    garment = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Available For Renter Test",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="available",
+    )
+    test_db_session.add(garment)
+    await test_db_session.commit()
+
+    future_date = (date.today() + timedelta(days=5)).isoformat()
+
+    # Missing renter_name and renter_email
+    response = await client.patch(
+        f"/api/v1/garments/{garment.id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "rented", "expected_return_date": future_date},
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_notification_endpoint_tenant_isolation(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+    client: AsyncClient,
+    monkeypatch,
+):
+    """6.13: Notification endpoint respects tenant isolation."""
+    # Create second tenant and owner
+    other_tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000088")
+    other_tenant = TenantDB(
+        id=other_tenant_id,
+        name="Other Shop",
+        slug="other-shop",
+    )
+    test_db_session.add(other_tenant)
+    await test_db_session.flush()
+
+    other_owner = UserDB(
+        email="notif-other-owner@test.com",
+        hashed_password=hash_password("password"),
+        role="Owner",
+        is_active=True,
+        full_name="Other Notif Owner",
+        tenant_id=other_tenant_id,
+    )
+    test_db_session.add(other_owner)
+    await test_db_session.commit()
+
+    other_token = create_access_token(data={"sub": "notif-other-owner@test.com", "role": "Owner"})
+
+    # Track which tenant_id was used
+    captured_tenant_ids = []
+
+    async def mock_process(db, tenant_id):
+        captured_tenant_ids.append(tenant_id)
+        return {"sent": 0, "failed": 0, "skipped": 0}
+
+    monkeypatch.setattr(
+        "src.api.v1.notifications.process_return_reminders",
+        mock_process,
+    )
+
+    response = await client.post(
+        "/api/v1/notifications/send-return-reminders",
+        headers={"Authorization": f"Bearer {other_token}"},
+    )
+
+    assert response.status_code == 200
+    # Verify it used the correct tenant_id
+    assert len(captured_tenant_ids) == 1
+    assert captured_tenant_ids[0] == other_tenant_id
+
+
+@pytest.mark.asyncio
+async def test_all_existing_garment_tests_pass(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """6.14: Verify existing garment endpoints still work (zero regressions)."""
+    # Quick smoke test - list garments still works
+    response = await client.get("/api/v1/garments")
+    assert response.status_code == 200
+    data = response.json()
+    assert "data" in data
+    assert data["data"]["total"] >= 2
+
+    # Detail endpoint still works
+    garment_id = seed_garments["garment1"].id
+    response = await client.get(f"/api/v1/garments/{garment_id}")
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "reminder_sent" in data  # New field present
+    assert data["reminder_sent"] is False  # Available garment not reminded

@@ -23,6 +23,9 @@ export default function StatusUpdatePanel({
     const [pendingStatus, setPendingStatus] = useState<GarmentStatus | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [selectedDate, setSelectedDate] = useState<string>("");
+    const [renterName, setRenterName] = useState<string>("");
+    const [renterEmail, setRenterEmail] = useState<string>("");
+    const [emailError, setEmailError] = useState<string>("");
 
     // Map backend status to Vietnamese labels and Heritage colors
     const statusOptions = [
@@ -52,6 +55,8 @@ export default function StatusUpdatePanel({
         },
     ];
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     const handleStatusClick = (newStatus: GarmentStatus) => {
         if (newStatus === garment.status && !showDatePicker) return;
 
@@ -61,7 +66,20 @@ export default function StatusUpdatePanel({
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             setSelectedDate(tomorrow.toISOString().split("T")[0]);
+            setRenterName("");
+            setRenterEmail("");
+            setEmailError("");
             return;
+        }
+
+        // For rented status, validate renter fields before submitting
+        if (newStatus === GarmentStatus.RENTED) {
+            if (!renterName.trim() || !renterEmail.trim()) return;
+            if (!emailRegex.test(renterEmail.trim())) {
+                setEmailError("Email không hợp lệ");
+                return;
+            }
+            setEmailError("");
         }
 
         setPendingStatus(newStatus);
@@ -69,12 +87,17 @@ export default function StatusUpdatePanel({
             const result = await updateGarmentStatus(
                 garment.id,
                 newStatus,
-                newStatus === GarmentStatus.RENTED ? selectedDate : undefined
+                newStatus === GarmentStatus.RENTED ? selectedDate : undefined,
+                newStatus === GarmentStatus.RENTED ? renterName.trim() : undefined,
+                newStatus === GarmentStatus.RENTED ? renterEmail.trim() : undefined
             );
 
             setPendingStatus(null);
             if (result.success && result.data) {
                 setShowDatePicker(false);
+                setRenterName("");
+                setRenterEmail("");
+                setEmailError("");
                 onSuccess?.(result.data);
             } else {
                 onError?.(result.error || "Cập nhật thất bại. Vui lòng thử lại");
@@ -117,19 +140,50 @@ export default function StatusUpdatePanel({
                     <label htmlFor="return-date" className="block text-sm font-medium text-stone-700 mb-2">
                         Ngày dự kiến khách trả đồ:
                     </label>
-                    <div className="flex gap-2">
-                        <input
-                            id="return-date"
-                            type="date"
-                            min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="flex-1 h-12 px-3 rounded-md border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
-                        />
+                    <input
+                        id="return-date"
+                        type="date"
+                        min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="w-full h-12 px-3 rounded-md border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+                    />
+
+                    <label htmlFor="renter-name" className="block text-sm font-medium text-stone-700 mb-2 mt-3">
+                        Tên khách thuê:
+                    </label>
+                    <input
+                        id="renter-name"
+                        type="text"
+                        placeholder="Nhập tên khách thuê"
+                        value={renterName}
+                        onChange={(e) => setRenterName(e.target.value)}
+                        className="w-full h-12 px-3 rounded-md border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+                    />
+
+                    <label htmlFor="renter-email" className="block text-sm font-medium text-stone-700 mb-2 mt-3">
+                        Email khách thuê:
+                    </label>
+                    <input
+                        id="renter-email"
+                        type="email"
+                        placeholder="Nhập email khách thuê"
+                        value={renterEmail}
+                        onChange={(e) => {
+                            setRenterEmail(e.target.value);
+                            if (emailError) setEmailError("");
+                        }}
+                        className={`w-full h-12 px-3 rounded-md border outline-none transition-all focus:ring-2 focus:ring-amber-500 focus:border-amber-500 ${emailError ? "border-red-400" : "border-stone-300"}`}
+                    />
+                    {emailError && (
+                        <p className="text-xs text-red-500 mt-1">{emailError}</p>
+                    )}
+
+                    <div className="flex gap-2 mt-4">
                         <button
                             onClick={() => handleStatusClick(GarmentStatus.RENTED)}
-                            disabled={isPending || !selectedDate}
-                            className="h-12 bg-amber-600 text-white px-6 rounded-md font-bold hover:bg-amber-700 active:scale-95 transition-all flex items-center"
+                            disabled={isPending || !selectedDate || !renterName.trim() || !renterEmail.trim()}
+                            className="flex-1 h-12 bg-amber-600 text-white px-6 rounded-md font-bold hover:bg-amber-700 active:scale-95 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isPending ? (
                                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
@@ -138,7 +192,12 @@ export default function StatusUpdatePanel({
                         </button>
                     </div>
                     <button
-                        onClick={() => setShowDatePicker(false)}
+                        onClick={() => {
+                            setShowDatePicker(false);
+                            setRenterName("");
+                            setRenterEmail("");
+                            setEmailError("");
+                        }}
                         className="mt-2 text-xs text-stone-500 hover:text-stone-800 transition-colors"
                     >
                         Hủy bỏ

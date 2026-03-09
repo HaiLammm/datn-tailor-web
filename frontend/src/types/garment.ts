@@ -43,6 +43,16 @@ export interface Garment {
   days_until_available: number | null;
   /** Computed by backend: true if rented and expected_return_date is in the past. */
   is_overdue: boolean;
+  /** Story 5.4: FK to customer who rented this garment */
+  renter_id: string | null;
+  /** Story 5.4: Cached renter name for display */
+  renter_name: string | null;
+  /** Story 5.4: Cached renter email for notifications */
+  renter_email: string | null;
+  /** Story 5.4: When return reminder was sent (ISO timestamp, null = not sent) */
+  reminder_sent_at: string | null;
+  /** Story 5.4: Computed by backend - true if reminder_sent_at is not null */
+  reminder_sent: boolean;
   created_at: string;
   updated_at: string;
 }

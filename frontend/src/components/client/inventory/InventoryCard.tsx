@@ -43,6 +43,13 @@ export default function InventoryCard({ garment, onUpdate }: InventoryCardProps)
         })
         : null;
 
+    const formattedReminderDate = garment.reminder_sent_at
+        ? new Date(garment.reminder_sent_at).toLocaleDateString("vi-VN", {
+            day: "2-digit",
+            month: "2-digit",
+        })
+        : null;
+
     return (
         <div
             className={`
@@ -85,10 +92,26 @@ export default function InventoryCard({ garment, onUpdate }: InventoryCardProps)
                     </p>
 
                     <div className="space-y-1">
+                        {garment.status === GarmentStatus.RENTED && garment.renter_name && (
+                            <p className="text-[11px] font-medium text-stone-600 truncate">
+                                Khách: {garment.renter_name}
+                            </p>
+                        )}
+
                         {garment.status === GarmentStatus.RENTED && formattedDate && (
                             <p className="text-[11px] font-medium text-amber-800 flex items-center bg-amber-50 px-2 py-0.5 rounded-full w-fit">
                                 <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5 animate-pulse" />
                                 Trả đồ: {formattedDate}
+                            </p>
+                        )}
+
+                        {garment.status === GarmentStatus.RENTED && garment.reminder_sent && (
+                            <p className="text-[11px] font-medium text-amber-900 flex items-center bg-[#FEF3C7] px-2 py-0.5 rounded-full w-fit" data-testid="reminder-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1 text-[#D4AF37]">
+                                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                                </svg>
+                                Đã nhắc nhở {formattedReminderDate && `(${formattedReminderDate})`}
                             </p>
                         )}
 

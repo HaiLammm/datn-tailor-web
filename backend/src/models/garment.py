@@ -111,8 +111,18 @@ class GarmentResponse(BaseModel):
     image_url: str | None
     status: str
     expected_return_date: date | None
+    renter_id: uuid.UUID | None = None
+    renter_name: str | None = None
+    renter_email: str | None = None
+    reminder_sent_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def reminder_sent(self) -> bool:
+        """True if a return reminder has been sent for this garment."""
+        return self.reminder_sent_at is not None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -144,10 +154,13 @@ class GarmentResponse(BaseModel):
 
 
 class GarmentStatusUpdate(BaseModel):
-    """Schema for updating garment status - Story 5.3 '2-Touch' Update."""
+    """Schema for updating garment status - Story 5.3 '2-Touch' Update, Story 5.4 renter tracking."""
 
     status: GarmentStatus
     expected_return_date: date | None = None
+    renter_id: uuid.UUID | None = None
+    renter_name: str | None = None
+    renter_email: str | None = None
 
     @field_validator("expected_return_date")
     @classmethod
@@ -157,14 +170,33 @@ class GarmentStatusUpdate(BaseModel):
             raise ValueError("Ngày dự kiến trả đồ phải ở tương lai")
         return v
 
+    @field_validator("renter_email")
+    @classmethod
+    def validate_renter_email(cls, v: str | None) -> str | None:
+        """Basic email format validation."""
+        if v is not None and v.strip():
+            import re
+            if not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", v.strip()):
+                raise ValueError("Email khách thuê không hợp lệ")
+            return v.strip()
+        return v
+
     @model_validator(mode="after")
     def validate_rented_date(self) -> "GarmentStatusUpdate":
         """Cross-field validation for rented status."""
-        if self.status == GarmentStatus.RENTED and self.expected_return_date is None:
-            raise ValueError("Phải nhập ngày dự kiến trả đồ khi trạng thái là 'rented'")
+        if self.status == GarmentStatus.RENTED:
+            if self.expected_return_date is None:
+                raise ValueError("Phải nhập ngày dự kiến trả đồ khi trạng thái là 'rented'")
+            if not self.renter_name or not self.renter_name.strip():
+                raise ValueError("Phải nhập tên khách thuê khi trạng thái là 'rented'")
+            if not self.renter_email or not self.renter_email.strip():
+                raise ValueError("Phải nhập email khách thuê khi trạng thái là 'rented'")
         if self.status != GarmentStatus.RENTED:
-            # Auto-clear date for non-rented statuses (AC #5)
+            # Auto-clear date and renter fields for non-rented statuses (AC #5, AC #7)
             self.expected_return_date = None
+            self.renter_id = None
+            self.renter_name = None
+            self.renter_email = None
         return self
 
 

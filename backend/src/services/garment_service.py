@@ -202,13 +202,25 @@ async def update_garment_status(
     garment_id: uuid.UUID,
     status_update: GarmentStatusUpdate,
 ) -> GarmentDB | None:
-    """Efficiently update garment status and return date (Story 5.3)."""
+    """Efficiently update garment status, return date, and renter info (Story 5.3 + 5.4).
+
+    When status changes TO 'rented': sets renter_name, renter_email, renter_id.
+    When status changes FROM 'rented': auto-clears renter fields + reminder_sent_at (AC #7).
+    """
     garment = await get_garment(db, tenant_id, garment_id)
     if not garment:
         return None
 
     garment.status = status_update.status.value
     garment.expected_return_date = status_update.expected_return_date
+    garment.renter_id = status_update.renter_id
+    garment.renter_name = status_update.renter_name
+    garment.renter_email = status_update.renter_email
+
+    # Auto-clear reminder_sent_at when status is not rented (AC #7)
+    if status_update.status.value != "rented":
+        garment.reminder_sent_at = None
+
     garment.updated_at = datetime.now(timezone.utc)
 
     await db.flush()

@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { fetchInventoryList } from "@/app/actions/garment-actions";
-import { InventoryList } from "@/components/client/inventory";
+import { InventoryList, SendRemindersButton } from "@/components/client/inventory";
 
 /**
  * Inventory Management Page - Story 5.3: '2-Touch' Update.
@@ -56,6 +56,11 @@ export default async function InventoryPage() {
                         </div>
                     </div>
                 </header>
+
+                {/* Story 5.4: Manual Reminder Trigger */}
+                <div className="mb-6 flex justify-end">
+                    <SendRemindersButton />
+                </div>
 
                 {/* Inventory Content */}
                 {error ? (
