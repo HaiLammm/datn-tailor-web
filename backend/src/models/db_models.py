@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -186,5 +186,30 @@ class MeasurementDB(Base):
     # Relationships
     customer_profile: Mapped["CustomerProfileDB"] = relationship(
         "CustomerProfileDB", back_populates="measurements"
+    )
+
+
+class DesignDB(Base):
+    """ORM model for the `designs` table (Story 3.4).
+
+    Stores locked designs with Master Geometry JSON (SSOT).
+    """
+
+    __tablename__ = "designs"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    master_geometry: Mapped[dict] = mapped_column(JSON, nullable=False)
+    geometry_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="locked"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 

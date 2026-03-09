@@ -9,10 +9,12 @@ declare module "next-auth" {
             id: string;
             role?: string;
         } & DefaultSession["user"];
+        accessToken?: string;
     }
 
     interface User {
         role?: string;
+        accessToken?: string;
     }
 }
 
@@ -53,11 +55,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         }
 
                         const user = await res.json();
-                        
+
                         return {
                             id: user.email,
                             email: user.email,
                             role: user.role,
+                            accessToken: password, // Backend JWT for Server Actions
                         };
                     } else {
                         // Normal login flow: Authenticate with email/password
@@ -83,11 +86,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                             const payload = JSON.parse(
                                 Buffer.from(token.split('.')[1], 'base64').toString()
                             );
-                            
+
                             return {
                                 id: payload.sub, // email is the subject
                                 email: payload.sub,
                                 role: payload.role,
+                                accessToken: token, // Backend JWT for Server Actions
                             };
                         }
                         return null;
@@ -110,6 +114,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (user) {
                 token.id = user.id;
                 token.role = user.role; // Attach role from user object
+                token.accessToken = user.accessToken; // Backend JWT for Server Actions
             }
             return token;
         },
@@ -119,6 +124,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
             if (token?.role) {
                 session.user.role = token.role as string;
+            }
+            if (token?.accessToken) {
+                session.accessToken = token.accessToken as string;
             }
             return session;
         },

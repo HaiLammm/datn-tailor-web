@@ -9,8 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.v1.auth import router as auth_router
 from src.api.v1.customers import router as customers_router
+from src.api.v1.designs import router as designs_router
+from src.api.v1.guardrails import router as guardrails_router
 from src.api.v1.fabrics import router as fabrics_router
+from src.api.v1.geometry import router as geometry_router
 from src.api.v1.inference import router as inference_router
+from src.api.v1.rules import router as rules_router
 from src.api.v1.staff import router as staff_router
 from src.api.v1.styles import router as styles_router
 from src.core.seed import seed_owner_account
@@ -44,8 +48,12 @@ app.add_middleware(
 # Register routers
 app.include_router(auth_router)
 app.include_router(customers_router)
+app.include_router(designs_router)
 app.include_router(fabrics_router)
+app.include_router(geometry_router)
+app.include_router(guardrails_router)
 app.include_router(inference_router)
+app.include_router(rules_router)
 app.include_router(staff_router)
 app.include_router(styles_router)
 

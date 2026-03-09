@@ -4,6 +4,12 @@ Manages style pillars from Local Knowledge Base (LKB).
 Backend is authoritative source (SSOT) for style configurations including golden_points.
 """
 
+from src.constraints.registry import ConstraintRegistry
+from src.constraints.soft_constraints import (
+    AsymmetryWarning,
+    HighBodyHugWarning,
+    NarrowShoulderWarning,
+)
 from src.models.style import (
     IntensitySlider,
     IntensitySubmitRequest,
@@ -12,30 +18,11 @@ from src.models.style import (
     StylePillarResponse,
 )
 
-# Soft constraint thresholds — Vietnamese tailoring expertise encoded in LKB
-_SOFT_CONSTRAINTS: list[dict] = [
-    {
-        "slider_key": "do_om_than",
-        "condition": "gt",
-        "threshold": 85.0,
-        "message": "Độ ôm thân quá cao có thể gây hạn chế vận động khi mặc",
-        "severity": "soft",
-    },
-    {
-        "slider_key": "do_rong_vai",
-        "condition": "lt",
-        "threshold": 30.0,
-        "message": "Vai quá hẹp so với tỷ lệ cơ thể — có thể gây cấn ở vùng nách",
-        "severity": "soft",
-    },
-    {
-        "slider_key": "do_bat_doi_xung",
-        "condition": "gt",
-        "threshold": 70.0,
-        "message": "Độ bất đối xứng cao — yêu cầu thợ may nhiều kinh nghiệm để thực hiện",
-        "severity": "soft",
-    },
-]
+# Soft constraint registry (Story 4.1a migration)
+_soft_registry = ConstraintRegistry()
+_soft_registry.register(HighBodyHugWarning())
+_soft_registry.register(NarrowShoulderWarning())
+_soft_registry.register(AsymmetryWarning())
 
 # In-memory per-pillar sequence tracking (race condition protection, Story 2.2 AC5).
 # MVP limitation: Lost on server restart, not shared across workers in multi-process
@@ -320,30 +307,23 @@ class StyleService:
                     422,
                 )
 
-        # Build a value map for soft constraint checks
+        # Build a value map for soft constraint checks (delegate to Registry)
         submitted_values = {item.key: item.value for item in request.intensities}
 
-        # Check soft constraints
-        warnings: list[IntensityWarning] = []
-        for constraint in _SOFT_CONSTRAINTS:
-            key = constraint["slider_key"]
-            if key not in submitted_values:
-                continue
-            val = submitted_values[key]
-            triggered = False
-            if constraint["condition"] == "gt" and val > constraint["threshold"]:
-                triggered = True
-            elif constraint["condition"] == "lt" and val < constraint["threshold"]:
-                triggered = True
+        # Run soft constraints via Registry (Story 4.1a migration)
+        registry_result = _soft_registry.run_all({}, submitted_values)
 
-            if triggered:
-                warnings.append(
-                    IntensityWarning(
-                        slider_key=key,
-                        message=constraint["message"],
-                        severity=constraint["severity"],
-                    )
+        warnings: list[IntensityWarning] = []
+        for w in registry_result["warnings"]:
+            # Map ConstraintResult to IntensityWarning (preserve existing response format)
+            slider_key = next(iter(w.violated_values), "unknown")
+            warnings.append(
+                IntensityWarning(
+                    slider_key=slider_key,
+                    message=w.message_vi,
+                    severity="soft",
                 )
+            )
 
         return (
             IntensitySubmitResponse(

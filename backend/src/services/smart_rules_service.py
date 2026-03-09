@@ -1,16 +1,25 @@
-"""Smart Rules Service - Story 2.4: Delta Mapping from Artisan Knowledge.
+"""Smart Rules Service - Story 2.4 & 2.5: Delta Mapping from Artisan Knowledge.
 
 Manages the Local Knowledge Base (LKB) of artisan Smart Rules that map
 style intensities to geometric Deltas. This is the core "knowledge engine"
 that encodes traditional Vietnamese tailoring expertise.
 
+Story 2.5 additions: CRUD operations for Rule Editor UI.
 Uses 100% Vietnamese terminology per NFR11.
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable
 
 from src.models.inference import DeltaValue
+from src.models.rule import (
+    DeltaMappingDetail,
+    DeltaMappingUpdateItem,
+    RulePillarDetail,
+    RulePillarSummary,
+    RuleUpdateResponse,
+)
 
 
 @dataclass
@@ -26,6 +35,7 @@ class DeltaMapping:
     delta_label_vi: str  # Vietnamese label, e.g., "Độ cử eo"
     delta_unit: str  # Usually "cm"
     formula: Callable[[float], float]  # slider_value -> delta_value
+    golden_point: float = 50.0  # Optimal slider position (Điểm Vàng), [0, 100]
 
 
 @dataclass
@@ -49,9 +59,19 @@ class SmartRulesService:
     Future: Can be loaded from database or The Vault.
     """
 
+    # Vietnamese display names for pillars (NFR11)
+    PILLAR_NAMES_VI: dict[str, str] = {
+        "traditional": "Truyền thống",
+        "minimalist": "Tối giản hiện đại",
+        "avant_garde": "Tiên phong nghệ thuật",
+    }
+
     def __init__(self) -> None:
         """Initialize SmartRulesService with LKB data."""
         self._rules = self._load_lkb_rules()
+        self._last_modified: dict[str, datetime] = {
+            pid: datetime.now(timezone.utc) for pid in self._rules
+        }
 
     def _load_lkb_rules(self) -> dict[str, list[SmartRule]]:
         """Load Smart Rules from Local Knowledge Base.
@@ -414,3 +434,157 @@ class SmartRulesService:
             List of pillar ID strings.
         """
         return list(self._rules.keys())
+
+    # ===== Story 2.5: Rule Editor CRUD Methods =====
+
+    def _extract_formula_params(
+        self, formula: Callable[[float], float], slider_range: tuple[float, float]
+    ) -> tuple[float, float]:
+        """Extract scale_factor and offset from a formula by sampling.
+
+        Approximates formula as: f(v) = offset + scale_factor * v
+        by evaluating at two points.
+
+        Returns:
+            (scale_factor, offset) tuple.
+        """
+        v0 = slider_range[0]
+        v1 = slider_range[1]
+        f0 = formula(v0)
+        f1 = formula(v1)
+        # Linear approximation: f(v) = offset + scale * v
+        scale = (f1 - f0) / (v1 - v0) if v1 != v0 else 0.0
+        offset = f0
+        return (round(scale, 6), round(offset, 2))
+
+    def get_all_pillar_summaries(self) -> list[RulePillarSummary]:
+        """Get summary of all pillars for Rule Editor list view (AC1).
+
+        Returns:
+            List of RulePillarSummary for each pillar.
+        """
+        summaries: list[RulePillarSummary] = []
+        for pillar_id, rules in self._rules.items():
+            total_mappings = sum(len(r.mappings) for r in rules)
+            summaries.append(
+                RulePillarSummary(
+                    pillar_id=pillar_id,
+                    pillar_name_vi=self.PILLAR_NAMES_VI.get(pillar_id, pillar_id),
+                    delta_mapping_count=total_mappings,
+                    slider_count=len(rules),
+                    last_modified=self._last_modified.get(
+                        pillar_id, datetime.now(timezone.utc)
+                    ),
+                )
+            )
+        return summaries
+
+    def get_pillar_detail(self, pillar_id: str) -> RulePillarDetail | None:
+        """Get full detail of a pillar's Smart Rules (AC2).
+
+        Args:
+            pillar_id: The style pillar identifier.
+
+        Returns:
+            RulePillarDetail or None if pillar not found.
+        """
+        rules = self._rules.get(pillar_id)
+        if rules is None:
+            return None
+
+        mappings: list[DeltaMappingDetail] = []
+        for rule in rules:
+            for mapping in rule.mappings:
+                scale, offset = self._extract_formula_params(
+                    mapping.formula, mapping.slider_range
+                )
+                golden = mapping.golden_point
+                mappings.append(
+                    DeltaMappingDetail(
+                        slider_key=rule.slider_key,
+                        delta_key=mapping.delta_key,
+                        delta_label_vi=mapping.delta_label_vi,
+                        delta_unit=mapping.delta_unit,
+                        slider_range_min=mapping.slider_range[0],
+                        slider_range_max=mapping.slider_range[1],
+                        scale_factor=scale,
+                        offset=offset,
+                        golden_point=golden,
+                    )
+                )
+
+        return RulePillarDetail(
+            pillar_id=pillar_id,
+            pillar_name_vi=self.PILLAR_NAMES_VI.get(pillar_id, pillar_id),
+            mappings=mappings,
+            last_modified=self._last_modified.get(
+                pillar_id, datetime.now(timezone.utc)
+            ),
+        )
+
+    def update_pillar_rules(
+        self, pillar_id: str, update_items: list[DeltaMappingUpdateItem]
+    ) -> RuleUpdateResponse | None:
+        """Update a pillar's Smart Rules from Rule Editor (AC3).
+
+        Replaces all rules for the pillar with the provided mappings.
+        Groups mappings by slider_key to reconstruct SmartRule objects.
+
+        Args:
+            pillar_id: The style pillar identifier.
+            update_items: New delta mapping definitions.
+
+        Returns:
+            RuleUpdateResponse or None if pillar not found.
+        """
+        if pillar_id not in self._rules:
+            return None
+
+        # Group update items by slider_key
+        slider_groups: dict[str, list[DeltaMappingUpdateItem]] = {}
+        for item in update_items:
+            slider_groups.setdefault(item.slider_key, []).append(item)
+
+        # Build new SmartRule list
+        new_rules: list[SmartRule] = []
+        for slider_key, items in slider_groups.items():
+            new_mappings: list[DeltaMapping] = []
+            for item in items:
+                # Reconstruct formula from scale_factor and offset
+                # Capture values in closure properly
+                scale = item.scale_factor
+                offset = item.offset
+                new_mappings.append(
+                    DeltaMapping(
+                        slider_range=(item.slider_range_min, item.slider_range_max),
+                        delta_key=item.delta_key,
+                        delta_label_vi=item.delta_label_vi,
+                        delta_unit=item.delta_unit,
+                        formula=lambda v, s=scale, o=offset: o + s * v,
+                        golden_point=item.golden_point,
+                    )
+                )
+            new_rules.append(
+                SmartRule(
+                    pillar_id=pillar_id,
+                    slider_key=slider_key,
+                    mappings=new_mappings,
+                )
+            )
+
+        # Replace rules and update timestamp
+        self._rules[pillar_id] = new_rules
+        now = datetime.now(timezone.utc)
+        self._last_modified[pillar_id] = now
+
+        total_mappings = sum(len(r.mappings) for r in new_rules)
+        pillar_name = self.PILLAR_NAMES_VI.get(pillar_id, pillar_id)
+
+        return RuleUpdateResponse(
+            success=True,
+            pillar_id=pillar_id,
+            pillar_name_vi=pillar_name,
+            mapping_count=total_mappings,
+            last_modified=now,
+            message=f"Đã cập nhật thành công quy tắc cho '{pillar_name}' với {total_mappings} ánh xạ delta.",
+        )

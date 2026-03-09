@@ -1,4 +1,4 @@
-"""Hashing utilities for geometry integrity verification - Story 2.4.
+"""Hashing utilities for geometry integrity verification - Story 2.4, 3.4.
 
 Provides deterministic hashing for Master Geometry Snapshots.
 Ensures geometry_hash is consistent for same delta inputs.
@@ -6,9 +6,10 @@ Ensures geometry_hash is consistent for same delta inputs.
 
 import hashlib
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from src.models.geometry import MasterGeometry
     from src.models.inference import DeltaValue
 
 
@@ -61,3 +62,41 @@ def compute_base_hash(measurement_id: str | None) -> str:
         content = f"base:{measurement_id}:v1.0.0"
 
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+# --- Story 3.4: SSOT hashing ---
+
+
+def compute_master_geometry_hash(data: dict[str, Any]) -> str:
+    """Compute deterministic SHA-256 of a LockedDesign dict, excluding geometry_hash.
+
+    Uses canonical JSON representation (sorted keys, no whitespace)
+    to guarantee deterministic output regardless of key insertion order.
+
+    Args:
+        data: Dict representation of LockedDesign (or any dict).
+
+    Returns:
+        Hexadecimal SHA-256 hash string (64 characters).
+    """
+    # Exclude geometry_hash from the payload
+    filtered = {k: v for k, v in data.items() if k != "geometry_hash"}
+    json_str = json.dumps(filtered, separators=(",", ":"), sort_keys=True)
+    return hashlib.sha256(json_str.encode("utf-8")).hexdigest()
+
+
+def compute_base_pattern_hash(geometry: "MasterGeometry") -> str:
+    """Compute SHA-256 hash of a MasterGeometry object.
+
+    Serializes the geometry to canonical JSON and hashes it.
+
+    Args:
+        geometry: The base pattern MasterGeometry.
+
+    Returns:
+        Hexadecimal SHA-256 hash string (64 characters).
+    """
+    json_str = json.dumps(
+        geometry.model_dump(), separators=(",", ":"), sort_keys=True
+    )
+    return hashlib.sha256(json_str.encode("utf-8")).hexdigest()

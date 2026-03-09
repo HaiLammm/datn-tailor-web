@@ -35,6 +35,11 @@
   --primary-foreground: #ffffff;
   --accent: var(--amber-500);
   --accent-foreground: #78350f;
+
+  /* Heritage Palette */
+  --heritage-gold: #D4AF37;
+  --silk-ivory: #FDFCF5;
+  --indigo-depth: #4f46e5;
 }
 
 @theme inline {
@@ -43,6 +48,11 @@
   --color-primary: var(--primary);
   --color-accent: var(--accent);
   --font-sans: var(--font-cormorant);
+  
+  /* Heritage Palette */
+  --color-heritage-gold: var(--heritage-gold);
+  --color-silk-ivory: var(--silk-ivory);
+  --color-indigo-depth: var(--indigo-depth);
 }
 
 @media (prefers-color-scheme: dark) {

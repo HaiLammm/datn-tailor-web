@@ -93,3 +93,6 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **RULE (Optimization):** Luôn ưu tiên tối ưu hóa mã nguồn bằng cách sử dụng các hàm dùng chung tại `utils/` và các component nguyên tử tại `components/common/`.
 - **RULE (Library Config):** Mọi cấu hình khởi tạo thư viện phải nằm trong thư mục `lib/`.
 - **RULE (Server Actions):** Sử dụng Server Actions cho các mutation dữ liệu từ Client lên Backend.
+- **RULE (Server Action Auth):** Mọi Server Action gọi authenticated backend endpoint PHẢI forward auth token: `const session = await auth(); headers: { Authorization: \`Bearer ${session?.accessToken}\` }`.
+- **RULE (DB Commit):** Sau `db.flush()` PHẢI gọi `await db.commit()` để persist data. Không commit = data bị rollback.
+- **RULE (DRY Utilities):** KHÔNG tái tạo utility functions đã có trong `core/`, `utils/`, `services/`. Luôn import từ canonical source.
