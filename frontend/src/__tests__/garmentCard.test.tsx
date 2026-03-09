@@ -1,5 +1,5 @@
 /**
- * GarmentCard Component Tests - Story 5.1
+ * GarmentCard Component Tests - Story 5.1 & 5.2
  *
  * Tests:
  * - GarmentCard renders with correct data
@@ -8,6 +8,8 @@
  * - Price formatting
  * - Size options display
  * - Color and occasion tags
+ * - Story 5.2: expected_return_date display
+ * - Story 5.2: "Xem" navigates to detail page via Link
  */
 
 import { describe, it, expect } from "@jest/globals";
@@ -30,11 +32,13 @@ const mockGarment: Garment = {
   image_url: "https://example.com/ao-dai-do.jpg",
   status: "available",
   expected_return_date: null,
+  days_until_available: null,
+  is_overdue: false,
   created_at: "2026-03-01T00:00:00Z",
   updated_at: "2026-03-01T00:00:00Z",
 };
 
-describe("GarmentCard (Story 5.1)", () => {
+describe("GarmentCard (Story 5.1 & 5.2)", () => {
   it("should render garment name", () => {
     render(<GarmentCard garment={mockGarment} />);
     expect(screen.getByText("Áo dài truyền thống đỏ")).toBeInTheDocument();
@@ -79,16 +83,39 @@ describe("GarmentCard (Story 5.1)", () => {
     expect(screen.getByText("Chưa có hình ảnh")).toBeInTheDocument();
   });
 
-  it("should render view button", () => {
+  it("should render view link with correct href (Story 5.2)", () => {
     render(<GarmentCard garment={mockGarment} />);
-    const button = screen.getByRole("button", { name: /Xem chi tiết/ });
-    expect(button).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /Xem chi tiết/ });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute(
+      "href",
+      `/showroom/${mockGarment.id}`
+    );
   });
 
-  it("should have minimum touch target size", () => {
+  it("should have minimum touch target size on view link (Story 5.2)", () => {
     render(<GarmentCard garment={mockGarment} />);
-    const button = screen.getByRole("button", { name: /Xem chi tiết/ });
-    expect(button).toHaveClass("min-h-[44px]");
-    expect(button).toHaveClass("min-w-[44px]");
+    const link = screen.getByRole("link", { name: /Xem chi tiết/ });
+    expect(link).toHaveClass("min-h-[44px]");
+    expect(link).toHaveClass("min-w-[44px]");
+  });
+
+  it("should show expected_return_date when present (Story 5.2)", () => {
+    const rentedGarment: Garment = {
+      ...mockGarment,
+      status: "rented",
+      expected_return_date: "2026-03-15",
+      days_until_available: 6,
+      is_overdue: false,
+    };
+    render(<GarmentCard garment={rentedGarment} />);
+    expect(screen.getByText(/Dự kiến trả/)).toBeInTheDocument();
+    expect(screen.getByText(/15\/03\/2026/)).toBeInTheDocument();
+  });
+
+  it("should not show return date label when expected_return_date is null (Story 5.2)", () => {
+    render(<GarmentCard garment={mockGarment} />);
+    expect(screen.queryByText(/Dự kiến trả/)).not.toBeInTheDocument();
   });
 });
+

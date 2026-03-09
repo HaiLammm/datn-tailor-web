@@ -1,10 +1,10 @@
-"""API tests for Garment endpoints - Story 5.1.
+"""API tests for Garment endpoints - Story 5.1 & 5.2.
 
-Tests CRUD operations, RBAC, tenant isolation, and filtering.
+Tests CRUD operations, RBAC, tenant isolation, filtering, and computed timeline fields.
 """
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -123,7 +123,7 @@ async def seed_garments(test_db_session: AsyncSession, seed_test_users: dict) ->
         size_options=["M", "L"],
         rental_price=Decimal("400000"),
         status="rented",
-        expected_return_date=date(2026, 3, 15),
+        expected_return_date=date.today() + timedelta(days=6),
     )
     
     test_db_session.add_all([garment1, garment2])
@@ -531,3 +531,122 @@ async def test_rbac_owner_crud_allowed(
         headers={"Authorization": f"Bearer {owner_token}"},
     )
     assert delete_response.status_code == 204
+
+
+# ===== Test Computed Timeline Fields (Story 5.2) =====
+
+
+@pytest.mark.asyncio
+async def test_computed_fields_available_garment_returns_null(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Available garment with no expected_return_date: days_until_available=null, is_overdue=false."""
+    garment_id = seed_garments["garment1"].id  # available, no expected_return_date
+
+    response = await client.get(f"/api/v1/garments/{garment_id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["days_until_available"] is None
+    assert data["is_overdue"] is False
+
+
+@pytest.mark.asyncio
+async def test_computed_fields_rented_future_return(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Rented garment with future expected_return_date: days_until_available > 0, is_overdue=false."""
+    garment_id = seed_garments["garment2"].id  # rented, expected_return_date=today+6
+
+    response = await client.get(f"/api/v1/garments/{garment_id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    # Expected return date is today + 6 days → days_until_available = 6
+    assert data["days_until_available"] == 6
+    assert data["is_overdue"] is False
+
+
+@pytest.mark.asyncio
+async def test_computed_fields_overdue_garment(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """Rented garment with past expected_return_date: days_until_available < 0, is_overdue=true."""
+    tenant_id = seed_test_users["tenant_id"]
+    yesterday = date.today() - timedelta(days=1)
+
+    overdue_garment = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Áo dài quá hạn",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="rented",
+        expected_return_date=yesterday,
+    )
+    test_db_session.add(overdue_garment)
+    await test_db_session.commit()
+
+    response = await client.get(f"/api/v1/garments/{overdue_garment.id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["days_until_available"] is not None
+    assert data["days_until_available"] < 0
+    assert data["is_overdue"] is True
+
+
+@pytest.mark.asyncio
+async def test_computed_fields_return_today(
+    seed_test_users: dict,
+    test_db_session: AsyncSession,
+    client: AsyncClient,
+):
+    """Rented garment due today: days_until_available=0, is_overdue=false."""
+    tenant_id = seed_test_users["tenant_id"]
+    today = date.today()
+
+    today_garment = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Áo dài hôm nay",
+        category="ao_dai_cach_tan",
+        size_options=["L"],
+        rental_price=Decimal("400000"),
+        status="rented",
+        expected_return_date=today,
+    )
+    test_db_session.add(today_garment)
+    await test_db_session.commit()
+
+    response = await client.get(f"/api/v1/garments/{today_garment.id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["days_until_available"] == 0
+    assert data["is_overdue"] is False
+
+
+@pytest.mark.asyncio
+async def test_computed_fields_present_in_list_response(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Computed fields days_until_available and is_overdue are present in list response."""
+    response = await client.get("/api/v1/garments")
+
+    assert response.status_code == 200
+    items = response.json()["data"]["items"]
+    assert len(items) > 0
+    for item in items:
+        assert "days_until_available" in item
+        assert "is_overdue" in item

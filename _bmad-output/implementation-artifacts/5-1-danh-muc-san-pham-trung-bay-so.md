@@ -1,6 +1,6 @@
 # Story 5.1: Danh muc san pham trung bay so (Digital Showroom Catalog)
 
-Status: completed
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -108,6 +108,66 @@ So that **toi co the chon duoc bo do ung y truoc khi den tiem**.
   - [x] 10.3 Create `frontend/src/__tests__/showroomPage.test.tsx` - Integration test for showroom page
   - [x] 10.4 Test status badge renders correct colors for each status
   - [x] 10.5 Test responsive layout behavior
+
+### Review Follow-ups (Code Review - Mar 09 2026)
+
+- [ ] **[AI-Review][HIGH] H1: Commit all changes before marking story as done** (AC: All)
+  - [ ] Review uncommitted changes: 18 files need git commit
+  - [ ] Run `git add .` and `git commit -m "feat(epic-5): Story 5.1 - Digital Showroom Catalog"`
+  - [ ] Only mark story as "done" after changes are committed
+  - [ ] Location: All Story 5.1 files
+
+- [ ] **[AI-Review][MEDIUM] M1: Replace hardcoded tenant ID with dynamic tenant resolution** (AC: #3)
+  - [ ] Problem: Public API uses hardcoded `00000000-0000-0000-0000-000000000001` tenant ID
+  - [ ] Fix: Extract tenant_id from subdomain/domain (e.g., `shop1.domain.com` → tenant1, `shop2.domain.com` → tenant2)
+  - [ ] Recommendation: Create middleware or helper function to parse subdomain → tenant_id mapping
+  - [ ] Track as tech debt if production multi-tenant routing not ready yet
+  - [ ] Location: `backend/src/api/v1/garments.py:31-37`
+
+- [ ] **[AI-Review][MEDIUM] M2: Document migration execution in Dev Agent Record** (AC: #1)
+  - [ ] Verify migration `008_create_garments_table.sql` was applied to database
+  - [ ] Add execution evidence to Dev Agent Record (e.g., `psql -f migrations/008_create_garments_table.sql`)
+  - [ ] Confirm `garments` table exists in PostgreSQL with correct schema
+  - [ ] Location: `backend/migrations/008_create_garments_table.sql`
+
+- [ ] **[AI-Review][MEDIUM] M3: Fix ISR cache strategy for SSG/ISR optimization** (AC: #4)
+  - [ ] Problem: `cache: "no-store"` disables caching, defeats SSG/ISR purpose
+  - [ ] Fix: Replace with `next: { revalidate: 60 }` for 60-second ISR cache
+  - [ ] Alternative: Use `next: { tags: ['garments'] }` for on-demand revalidation
+  - [ ] Update comment to reflect actual cache strategy
+  - [ ] Location: `frontend/src/app/actions/garment-actions.ts:52`
+
+- [ ] **[AI-Review][MEDIUM] M4: Implement dynamic filter functionality in showroom page** (AC: #1)
+  - [ ] Problem: Filter component changes URL but page doesn't refetch data with new filters
+  - [ ] Fix: Update `page.tsx` to read `searchParams` and pass to `fetchGarments()`
+  - [ ] Example: `const searchParams = await props.searchParams; const filters = { color: searchParams.color, ... };`
+  - [ ] Convert page to accept `props` with searchParams
+  - [ ] Test: Changing filter should actually filter displayed garments
+  - [ ] Location: `frontend/src/app/(customer)/showroom/page.tsx:20`, `ShowroomFilter.tsx:36`
+
+- [ ] **[AI-Review][MEDIUM] M5: Verify barrel export file contents** (AC: #1)
+  - [ ] Read `frontend/src/components/client/showroom/index.ts`
+  - [ ] Ensure it exports: GarmentCard, GarmentGrid, ShowroomFilter, StatusBadge
+  - [ ] Verify imports work correctly in consuming files
+  - [ ] Location: `frontend/src/components/client/showroom/index.ts`
+
+- [ ] **[AI-Review][MEDIUM] M6: Run full test suite to verify no regressions** (AC: All)
+  - [ ] Run `cd backend && pytest` - verify 427 total tests pass (371 existing + 33 new + 23 from other work)
+  - [ ] Run `cd frontend && npm test` - verify 276 total tests pass (241 existing + 18 new + 17 from other work)
+  - [ ] Document full test suite results in Dev Agent Record
+  - [ ] Confirm ZERO regressions in existing tests
+  - [ ] Location: All test files
+
+- [ ] **[AI-Review][LOW] L1: Update story status to "review" instead of "completed"** (AC: All)
+  - [ ] Change line 3 from `Status: completed` to `Status: review`
+  - [ ] "completed" should only be used after code review passes and changes are committed
+  - [ ] Location: Story file line 3
+
+- [ ] **[AI-Review][LOW] L2: Add Open Graph image metadata for social sharing** (AC: #1)
+  - [ ] Add `openGraph: { images: [{ url: "...", width: 1200, height: 630 }] }` to metadata
+  - [ ] Improves social media preview when showroom page is shared
+  - [ ] Optional enhancement for better SEO
+  - [ ] Location: `frontend/src/app/(customer)/showroom/page.tsx:12-16`
 
 ## Dev Notes
 
@@ -367,3 +427,63 @@ frontend/
 backend/src/models/db_models.py  -- Added GarmentDB class
 backend/src/main.py              -- Registered garments_router
 ```
+
+### Code Review (AI) - Mar 09 2026
+
+**Reviewer:** claude-sonnet-4.5 (Adversarial Code Review Agent)  
+**Date:** March 09, 2026  
+**Review Type:** Adversarial deep-dive code review
+
+**Summary:**
+- ✅ Core implementation is solid: 33 backend tests + 18 frontend tests, all passing
+- ✅ RBAC, multi-tenant isolation, and code reuse compliance verified
+- ⚠️ 8 issues found (1 High, 5 Medium, 2 Low) requiring fixes before "done"
+- ⚠️ 3 out of 5 Acceptance Criteria partially implemented with defects
+
+**Issues Found:**
+
+**HIGH Severity (1):**
+1. **H1**: Uncommitted changes violate "completed" status - 18 files not committed to git
+
+**MEDIUM Severity (5):**
+1. **M1**: Hardcoded tenant ID in public API breaks multi-tenant isolation (AC #3 violation)
+2. **M2**: Missing migration execution documentation
+3. **M3**: `cache: "no-store"` defeats SSG/ISR optimization (AC #4 violation)
+4. **M4**: Filter component doesn't actually filter - only changes URL (AC #1 violation)
+5. **M5**: Barrel export file content not verified
+6. **M6**: Full test suite regression check not documented
+
+**LOW Severity (2):**
+1. **L1**: Story status should be "review" not "completed"
+2. **L2**: Missing Open Graph metadata for social sharing
+
+**Acceptance Criteria Validation:**
+- ✅ AC #2: Real-time status display (PASS)
+- ✅ AC #5: Responsive + Bottom Sheet (PASS)
+- ⚠️ AC #1: Display cards with filters (PARTIAL - filters don't work, M4)
+- ⚠️ AC #3: Multi-tenant isolation (PARTIAL - hardcoded tenant, M1)
+- ⚠️ AC #4: SSG/ISR optimization (PARTIAL - uses no-store, M3)
+
+**Positive Findings:**
+- Excellent test coverage with comprehensive RBAC and tenant isolation tests
+- Code reuse compliance (used existing dependencies)
+- Heritage Palette applied consistently
+- Error handling follows best practices (H2 lesson applied)
+- API Response Wrapper format used correctly
+
+**Action Items:** 8 review follow-up tasks added to Tasks/Subtasks section (see "Review Follow-ups" above)
+
+**Decision:** Story status changed from "completed" → "in-progress" until issues M1, M3, M4 are fixed (affect AC compliance)
+
+### Change Log
+
+- **2026-03-09 14:00** - Initial implementation completed by claude-sonnet-4.5 (dev-story workflow)
+  - All 10 tasks implemented: Database migration, Backend API (Pydantic models, service layer, router), Frontend (types, server actions, page, components), Tests (33 backend + 18 frontend)
+  - Status: completed (premature - should have been "review")
+
+- **2026-03-09 14:30** - Code review performed by claude-sonnet-4.5 (code-review workflow)
+  - Found 8 issues (1 High, 5 Medium, 2 Low)
+  - Added 8 review follow-up tasks to Tasks/Subtasks section
+  - Changed status: completed → in-progress
+  - AC validation: 2/5 PASS, 3/5 PARTIAL (need fixes)
+  - Reviewer: Lem (claude-sonnet-4.5 adversarial reviewer)

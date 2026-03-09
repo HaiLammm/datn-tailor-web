@@ -8,11 +8,11 @@
  */
 
 import { auth } from "@/auth";
-import { 
-  Garment, 
-  GarmentFilter, 
-  GarmentApiResponse, 
-  GarmentDetailApiResponse 
+import {
+  Garment,
+  GarmentFilter,
+  GarmentApiResponse,
+  GarmentDetailApiResponse
 } from "@/types/garment";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
@@ -88,7 +88,7 @@ export async function fetchGarmentDetail(
         "Content-Type": "application/json",
       },
       signal: controller.signal,
-      cache: "no-store",
+      next: { revalidate: 60 }, // ISR: revalidate every 60s for detail page
     });
 
     clearTimeout(timeoutId);

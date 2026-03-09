@@ -74,8 +74,8 @@ development_status:
   epic-4-retrospective: optional
 
   epic-5: in-progress
-  5-1-danh-muc-san-pham-trung-bay-so: review
-  5-2-theo-doi-lich-trinh-trang-thai-do-thue: backlog
-  5-3-cap-nhat-trang-thai-kho-2-cham: backlog
+  5-1-danh-muc-san-pham-trung-bay-so: in-progress
+  5-2-theo-doi-lich-trinh-trang-thai-do-thue: done
+  5-3-cap-nhat-trang-thai-kho-2-cham: ready-for-dev
   5-4-thong-bao-nhac-nho-tra-do-tu-dong: backlog
   epic-5-retrospective: optional

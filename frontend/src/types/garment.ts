@@ -1,5 +1,5 @@
 /**
- * TypeScript types for Garment (Story 5.1: Digital Showroom)
+ * TypeScript types for Garment (Story 5.1: Digital Showroom, Story 5.2: Return Timeline)
  * 
  * Snake_case field names match backend JSON response format.
  */
@@ -39,6 +39,10 @@ export interface Garment {
   image_url: string | null;
   status: string;
   expected_return_date: string | null;
+  /** Computed by backend: days until available (negative = overdue). Null if no expected_return_date. */
+  days_until_available: number | null;
+  /** Computed by backend: true if rented and expected_return_date is in the past. */
+  is_overdue: boolean;
   created_at: string;
   updated_at: string;
 }

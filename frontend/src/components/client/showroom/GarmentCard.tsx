@@ -1,12 +1,14 @@
 "use client";
 
 /**
- * GarmentCard component - Story 5.1
- * Product card displaying garment information with image, name, price, sizes, status
+ * GarmentCard component - Story 5.1 & 5.2
+ * Product card displaying garment information with image, name, price, sizes, status.
+ * Story 5.2: Shows expected_return_date and navigates to detail page on "Xem" click.
  * Heritage Palette: Indigo #1A2B4C, Silk Ivory #F9F7F2, Heritage Gold #D4AF37
  */
 
 import Image from "next/image";
+import Link from "next/link";
 import { Garment } from "@/types/garment";
 import { StatusBadge } from "./StatusBadge";
 
@@ -19,6 +21,13 @@ export function GarmentCard({ garment }: GarmentCardProps) {
     style: "currency",
     currency: "VND",
   }).format(parseFloat(garment.rental_price));
+
+  const returnDateLabel = garment.expected_return_date
+    ? new Date(garment.expected_return_date + "T00:00:00").toLocaleDateString(
+        "vi-VN",
+        { day: "2-digit", month: "2-digit", year: "numeric" }
+      )
+    : null;
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 border border-gray-200">
@@ -74,6 +83,14 @@ export function GarmentCard({ garment }: GarmentCardProps) {
           )}
         </div>
 
+        {/* Return Date (Story 5.2) */}
+        {returnDateLabel && (
+          <p className="text-xs text-gray-500 mb-3">
+            Dự kiến trả:{" "}
+            <span className="font-medium text-gray-700">{returnDateLabel}</span>
+          </p>
+        )}
+
         {/* Sizes */}
         <div className="mb-3">
           <p className="text-xs text-gray-500 mb-1">Kích cỡ:</p>
@@ -89,20 +106,22 @@ export function GarmentCard({ garment }: GarmentCardProps) {
           </div>
         </div>
 
-        {/* Price */}
+        {/* Price + View Button */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-200">
           <div>
             <p className="text-xs text-gray-500">Giá thuê</p>
             <p className="text-lg font-bold text-[#D4AF37]">{priceFormatted}</p>
           </div>
-          <button
-            className="px-4 py-2 bg-[#1A2B4C] text-white text-sm font-medium rounded hover:bg-[#2A3B5C] transition-colors min-h-[44px] min-w-[44px]"
+          <Link
+            href={`/showroom/${garment.id}`}
+            className="px-4 py-2 bg-[#1A2B4C] text-white text-sm font-medium rounded hover:bg-[#2A3B5C] transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
             aria-label={`Xem chi tiết ${garment.name}`}
           >
             Xem
-          </button>
+          </Link>
         </div>
       </div>
     </div>
   );
 }
+

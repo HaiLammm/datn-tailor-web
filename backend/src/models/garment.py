@@ -1,11 +1,11 @@
-"""Pydantic schemas for Garment (Story 5.1: Digital Showroom)."""
+"""Pydantic schemas for Garment (Story 5.1: Digital Showroom, Story 5.2: Return Timeline)."""
 
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 
 class GarmentStatus(str, Enum):
@@ -113,6 +113,32 @@ class GarmentResponse(BaseModel):
     expected_return_date: date | None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def days_until_available(self) -> int | None:
+        """Days until garment is available (negative = overdue).
+
+        Returns None if status is not 'rented'/'maintenance' or no expected_return_date.
+        Backend is SSOT — frontend MUST NOT recalculate this.
+        """
+        if self.status not in ("rented", "maintenance"):
+            return None
+        if self.expected_return_date is None:
+            return None
+        today = date.today()
+        return (self.expected_return_date - today).days
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_overdue(self) -> bool:
+        """True if garment is rented and expected_return_date is in the past.
+
+        Only 'rented' status can be overdue. Maintenance garments are not flagged.
+        """
+        if self.status != "rented" or self.expected_return_date is None:
+            return False
+        return date.today() > self.expected_return_date
 
     model_config = {"from_attributes": True}
 
