@@ -40,7 +40,7 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-1: in-progress
+  epic-1: done 
   1-0-thiet-lap-du-an-tu-starter-template: done
   1-1-dang-nhap-he-thong-da-phuong-thuc: done
   1-2-dang-ky-tai-khoan-khach-hang-xac-thuc-otp: done
@@ -50,26 +50,26 @@ development_status:
   1-6-thiet-lap-ha-tang-multi-tenant-local-first: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-lua-chon-tru-cot-phong-cach: done
   2-2-tinh-chinh-cuong-do-phong-cach: done
   2-3-goi-y-chat-lieu-vai-dua-tren-phong-cach: done
   2-4-dich-thuat-cam-xuc-sang-ease-delta: done
-  2-5-phac-thao-giao-dien-rule-editor: backlog
+  2-5-phac-thao-giao-dien-rule-editor: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-adaptive-canvas-khoi-tao-rap-chuan: backlog
-  3-2-bien-doi-rap-thoi-gian-thuc: backlog
-  3-3-so-sanh-thiet-ke-voi-rap-chuan: backlog
-  3-4-dong-goi-du-lieu-ssot: backlog
+  epic-3: in-progress
+  3-1-adaptive-canvas-khoi-tao-rap-chuan: done
+  3-2-bien-doi-rap-thoi-gian-thuc: done
+  3-3-so-sanh-thiet-ke-voi-rap-chuan: done
+  3-4-dong-goi-du-lieu-ssot: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1a-loi-kiem-tra-rang-buoc-vat-ly: backlog
-  4-1b-hien-thi-can find-bao-ky-thuat-truc-tiep: backlog
-  4-2-bang-doi-soat-ky-thuat-cho-tho-may: backlog
-  4-3-ghi-de-phan-hoi-tu-nghe-nhan: backlog
+  epic-4: in-progress
+  4-1a-loi-kiem-tra-rang-buoc-vat-ly: done
+  4-1b-hien-thi-canh-bao-ky-thuat-truc-tiep: done
+  4-2-bang-doi-soat-ky-thuat-cho-tho-may: done
+  4-3-ghi-de-phan-hoi-tu-nghe-nhan: ready-for-dev
   4-4-xuat-ban-ve-san-xuat: backlog
   epic-4-retrospective: optional
 
