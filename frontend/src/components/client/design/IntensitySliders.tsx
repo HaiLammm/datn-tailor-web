@@ -34,6 +34,7 @@ function SliderControl({
   unit,
   goldenPoints,
   onChange,
+  onCommit,
   warning,
 }: {
   sliderKey: string;
@@ -46,8 +47,13 @@ function SliderControl({
   unit: string | null;
   goldenPoints: number[];
   onChange: (value: number) => void;
+  onCommit?: (value: number) => void;
   warning: IntensityWarning | undefined;
 }) {
+  // Story 4.1b: Guardrail warnings and violations
+  const guardrailWarnings = useDesignStore((state) => state.guardrail_warnings);
+  const guardrailViolations = useDesignStore((state) => state.guardrail_violations);
+
   const range = maxValue - minValue;
   const percentage = range > 0 ? ((value - minValue) / range) * 100 : 0;
 
@@ -115,6 +121,7 @@ function SliderControl({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
+          onPointerUp={(e) => onCommit?.(Number((e.target as HTMLInputElement).value))}
           aria-label={label}
           aria-valuemin={minValue}
           aria-valuemax={maxValue}
@@ -122,8 +129,6 @@ function SliderControl({
           className="w-full h-2 rounded-lg appearance-none cursor-pointer relative z-20"
           style={{
             background: `linear-gradient(to right, ${thumbColor} 0%, ${thumbColor} ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`,
-            // Dynamic thumb color via CSS custom property trick using inline style
-            // Note: actual thumb color is controlled via Tailwind modifier classes below
           }}
         />
       </div>
@@ -157,6 +162,39 @@ function SliderControl({
           <span>{warning.message}</span>
         </div>
       )}
+
+      {/* Story 4.1b: Guardrail constraint warnings — match by violated_values keys */}
+      {guardrailWarnings
+        .filter((w) => Object.keys(w.violated_values).some((k) => k === sliderKey || sliderKey.includes(k) || k.includes(sliderKey)))
+        .map((w) => (
+          <div
+            key={w.constraint_id}
+            role="alert"
+            className="flex items-start gap-1.5 text-xs px-2 py-1.5 rounded-md mt-1"
+            style={{ backgroundColor: "#FEF3C7", color: "#92400E" }}
+          >
+            <svg className="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span>{w.message_vi}</span>
+          </div>
+        ))}
+      {/* Story 4.1b: Hard constraint violations — match by violated_values keys */}
+      {guardrailViolations
+        .filter((v) => Object.keys(v.violated_values).some((k) => k === sliderKey || sliderKey.includes(k) || k.includes(sliderKey)))
+        .map((v) => (
+          <div
+            key={v.constraint_id}
+            role="alert"
+            className="flex items-start gap-1.5 text-xs px-2 py-1.5 rounded-md mt-1 border border-red-300"
+            style={{ backgroundColor: "#FEF2F2", color: "#991B1B" }}
+          >
+            <svg className="w-3.5 h-3.5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <span>{v.message_vi}</span>
+          </div>
+        ))}
     </div>
   );
 }
@@ -168,7 +206,14 @@ function SliderControl({
  * Submits intensity values to backend (debounced 300ms) after each change.
  * Displays inline soft constraint warnings from backend.
  */
-export function IntensitySliders() {
+interface IntensitySlidersProps {
+  /** Story 3.2: Real-time callback for morphing (fires on every slider move). */
+  onRealtimeChange?: (key: string, value: number) => void;
+  /** Story 3.2: Commit callback when user releases slider (AC5). */
+  onValueCommit?: (key: string, value: number) => void;
+}
+
+export function IntensitySliders({ onRealtimeChange, onValueCommit }: IntensitySlidersProps = {}) {
   const {
     selected_pillar,
     intensity_values,
@@ -237,7 +282,12 @@ export function IntensitySliders() {
 
   const handleSliderChange = (key: string, value: number) => {
     updateIntensity(key, value);
+    onRealtimeChange?.(key, value);
     triggerDebouncedSubmit();
+  };
+
+  const handleSliderCommit = (key: string, value: number) => {
+    onValueCommit?.(key, value);
   };
 
   // Build warning lookup by slider_key
@@ -332,6 +382,7 @@ export function IntensitySliders() {
             unit={slider.unit}
             goldenPoints={slider.golden_points ?? []}
             onChange={(value) => handleSliderChange(slider.key, value)}
+            onCommit={(value) => handleSliderCommit(slider.key, value)}
             warning={warningByKey[slider.key]}
           />
         ))}

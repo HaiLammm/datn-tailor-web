@@ -1,58 +1,130 @@
 "use client";
 
 /**
- * Adaptive Canvas Placeholder Component
- * Story 2.1: Lựa chọn Trụ cột Phong cách
+ * Adaptive Canvas Component
+ * Story 3.1: Adaptive Canvas & Khởi tạo Rập chuẩn
+ * Story 3.2: Real-time morphing via useMorphing hook
  *
- * Placeholder for SVG pattern rendering.
- * Full implementation in Story 3.1: Adaptive Canvas - Khởi tạo Rập chuẩn.
+ * Renders the baseline SVG pattern from backend geometry data.
+ * Uses Heritage Palette: Indigo Depth stroke, Silk Ivory fill, Heritage Gold background.
  *
- * Will use Refs and requestAnimationFrame for transforms (per project rules).
+ * Performance target: First paint < 200ms (AC4).
+ * Morphing target: < 200ms latency, 60fps (AC2).
  */
 
+import React, { memo, useCallback, useMemo } from "react";
 import { useDesignStore } from "@/store/designStore";
+import { useAutoFit } from "@/hooks/useAutoFit";
+import { useMorphing } from "@/hooks/useMorphing";
+import { SvgPattern } from "./SvgPattern";
+import { ComparisonOverlay } from "./ComparisonOverlay";
+import { DeltaStatsPanel } from "./DeltaStatsPanel";
+import { computeDeltaStats } from "@/utils/geometry";
+import type { MorphDelta } from "@/types/geometry";
 
 interface AdaptiveCanvasProps {
   width?: number;
   height?: number;
+  /** Story 3.2: Preloaded morph delta for current style */
+  morphDelta?: MorphDelta | null;
 }
 
 /**
- * Adaptive Canvas - Placeholder
+ * Adaptive Canvas - SVG Pattern Renderer
  *
- * Future functionality:
- * - Display base SVG pattern
- * - Apply real-time transforms based on intensity values
- * - Support zoom and pan interactions
+ * Features:
+ * - Display baseline SVG pattern from backend
+ * - Auto-fit viewBox to center pattern
+ * - Heritage Palette visual styling
+ * - Placeholder when no pillar selected
  */
-export function AdaptiveCanvas({
-  width = 600,
+export const AdaptiveCanvas = memo(function AdaptiveCanvas({
   height = 400,
+  morphDelta = null,
 }: AdaptiveCanvasProps) {
-  const { selected_pillar, intensity_values, is_pillar_selected } =
-    useDesignStore();
+  const { selected_pillar, is_pillar_selected, is_comparison_mode, toggleComparisonMode } = useDesignStore();
+  const currentPattern = useDesignStore((state) => state.current_pattern);
+
+  // Calculate viewBox from geometry (AC1: centered and scaled)
+  const viewBox = useAutoFit(currentPattern, 20);
+
+  // Story 3.2: Morphing engine — direct DOM manipulation for 60fps (AC2, AC4)
+  const { svgContainerRef, updateAlpha, alphaRef } = useMorphing({
+    baseGeometry: currentPattern,
+    morphDelta,
+  });
+
+  // Expose updateAlpha for parent components to call from slider events
+  // This is stored on the component instance via the exported ref pattern
+  const handleMorphUpdate = useCallback(
+    (alpha: number) => {
+      updateAlpha(alpha);
+    },
+    [updateAlpha]
+  );
+
+  // Attach handleMorphUpdate to window for cross-component access
+  // (Alternative: lift to parent or use context — kept simple for now)
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as unknown as Record<string, unknown>).__morphUpdateAlpha = handleMorphUpdate;
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        delete (window as unknown as Record<string, unknown>).__morphUpdateAlpha;
+      }
+    };
+  }, [handleMorphUpdate]);
+
+  const hasPattern = currentPattern && currentPattern.parts.length > 0;
+
+  // Story 3.3 AC3: Compute delta statistics for comparison overlay
+  const deltaStats = useMemo(() => {
+    if (!morphDelta) return { totalChangedPoints: 0, avgDelta: 0, maxDelta: 0 };
+    return computeDeltaStats(morphDelta, alphaRef.current);
+  }, [morphDelta, alphaRef]);
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       {/* Canvas header */}
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700">
-          Bản vẽ Thiết kế
-        </h3>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 bg-green-500 rounded-full" />
-            Sẵn sàng
-          </span>
+        <h3 className="text-sm font-medium text-gray-700">Bản vẽ Thiết kế</h3>
+        <div className="flex items-center gap-2">
+          {/* Story 3.3: Comparison Mode Toggle */}
+          {hasPattern && (
+            <button
+              onClick={toggleComparisonMode}
+              className={`text-xs px-2 py-1 rounded transition-colors ${
+                is_comparison_mode
+                  ? "bg-indigo-100 text-indigo-700 font-medium"
+                  : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+              title="So sánh với rập chuẩn"
+            >
+              So sánh
+            </button>
+          )}
+          <div className="flex items-center gap-1 text-xs text-gray-500 ml-2">
+            <span
+              className={`w-2 h-2 rounded-full ${hasPattern ? "bg-green-500" : "bg-amber-400"}`}
+            />
+            {hasPattern ? "Sẵn sàng" : "Đang tải..."}
+          </div>
         </div>
       </div>
 
-      {/* Canvas area */}
+      {/* Canvas area - Heritage Gold background (AC3) */}
       <div
-        className="relative flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100"
-        style={{ width: "100%", height }}
+        className="relative flex items-center justify-center"
+        style={{
+          width: "100%",
+          height,
+          backgroundColor: "#FFFBF0", // Heritage Gold light variant
+          backgroundImage:
+            "radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.05) 0%, transparent 70%)",
+        }}
       >
-        {!is_pillar_selected ? (
+        {!is_pillar_selected && !hasPattern ? (
           // No pillar selected state
           <div className="text-center p-8">
             <svg
@@ -72,90 +144,73 @@ export function AdaptiveCanvas({
               Chọn phong cách để xem bản vẽ thiết kế
             </p>
           </div>
+        ) : hasPattern ? (
+          // Render actual baseline pattern from backend (AC1, AC2, AC3)
+          <svg
+            width="100%"
+            height="100%"
+            viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
+            preserveAspectRatio="xMidYMid meet"
+            className="drop-shadow-sm"
+            role="img"
+            aria-label="Bản vẽ rập chuẩn"
+          >
+            {/* Background fill - Silk Ivory (AC3) */}
+            <rect
+              x={viewBox.x}
+              y={viewBox.y}
+              width={viewBox.width}
+              height={viewBox.height}
+              fill="#FDFCF5"
+              opacity="0.5"
+            />
+
+            {/* Story 3.3: Comparison Overlay — always in DOM, CSS visibility toggle (AC4) */}
+            <ComparisonOverlay
+              geometry={currentPattern}
+              visible={is_comparison_mode}
+            />
+
+            {/* Render all pattern parts - Main Morphing Layer */}
+            {/* Attach ref to Group instead of SVG to scope morphing updates */}
+            <g ref={svgContainerRef as React.RefObject<SVGGElement>}>
+              {currentPattern.parts.map((part) => (
+                <g key={part.part_id} data-part-name={part.name}>
+                  <SvgPattern
+                    paths={part.paths}
+                    fill="fill-transparent"
+                    stroke="stroke-indigo-600"
+                  />
+                </g>
+              ))}
+            </g>
+          </svg>
         ) : (
-          // Placeholder SVG
-          <div className="relative w-full h-full flex flex-col items-center justify-center">
-            {/* Placeholder pattern */}
-            <svg
-              width={width * 0.8}
-              height={height * 0.8}
-              viewBox="0 0 200 300"
-              className="drop-shadow-sm"
-            >
-              {/* Simple shirt pattern placeholder */}
-              <defs>
-                <linearGradient
-                  id="fabricGradient"
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor="#f0f0f0" />
-                  <stop offset="100%" stopColor="#e0e0e0" />
-                </linearGradient>
-              </defs>
+          // Loading state (pillar selected but no pattern yet)
+          <div className="text-center p-8">
+            <div className="w-12 h-12 mx-auto mb-4 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+            <p className="text-gray-500">Đang tải bản vẽ...</p>
+          </div>
+        )}
 
-              {/* Body shape */}
-              <path
-                d="M100 30 L140 50 L150 80 L145 200 L130 280 L70 280 L55 200 L50 80 L60 50 Z"
-                fill="url(#fabricGradient)"
-                stroke="#d0d0d0"
-                strokeWidth="1"
-              />
-
-              {/* Collar */}
-              <path
-                d="M80 30 Q100 50 120 30 Q100 45 80 30"
-                fill="#f5f5f5"
-                stroke="#d0d0d0"
-                strokeWidth="1"
-              />
-
-              {/* Shoulder lines */}
-              <line
-                x1="60"
-                y1="50"
-                x2="80"
-                y2="30"
-                stroke="#c0c0c0"
-                strokeWidth="1"
-                strokeDasharray="4 2"
-              />
-              <line
-                x1="140"
-                y1="50"
-                x2="120"
-                y2="30"
-                stroke="#c0c0c0"
-                strokeWidth="1"
-                strokeDasharray="4 2"
-              />
-
-              {/* Center line */}
-              <line
-                x1="100"
-                y1="50"
-                x2="100"
-                y2="280"
-                stroke="#c0c0c0"
-                strokeWidth="1"
-                strokeDasharray="4 2"
-              />
-            </svg>
-
-            {/* Info overlay */}
-            <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 text-xs">
-              <div className="flex items-center justify-between text-gray-600">
-                <span>Phong cách: {selected_pillar?.name}</span>
-                <span className="text-indigo-600 font-medium">
-                  Story 3.1: Triển khai đầy đủ
-                </span>
-              </div>
+        {/* Info overlay when pattern is loaded */}
+        {hasPattern && selected_pillar && (
+          <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 text-xs">
+            <div className="flex items-center justify-between text-gray-600">
+              <span>Phong cách: {selected_pillar.name}</span>
+              <span className="text-indigo-600 font-medium">
+                {currentPattern.parts.length} chi tiết rập
+              </span>
             </div>
           </div>
         )}
       </div>
+
+      {/* Story 3.3 AC3: Delta statistics panel */}
+      <DeltaStatsPanel
+        stats={deltaStats}
+        visible={is_comparison_mode && hasPattern === true}
+      />
 
       {/* Canvas footer - zoom controls placeholder */}
       <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
@@ -164,6 +219,7 @@ export function AdaptiveCanvas({
             type="button"
             disabled
             className="p-1.5 text-gray-400 rounded hover:bg-gray-200 disabled:opacity-50"
+            aria-label="Phóng to"
           >
             <svg
               className="w-4 h-4"
@@ -184,6 +240,7 @@ export function AdaptiveCanvas({
             type="button"
             disabled
             className="p-1.5 text-gray-400 rounded hover:bg-gray-200 disabled:opacity-50"
+            aria-label="Thu nhỏ"
           >
             <svg
               className="w-4 h-4"
@@ -201,9 +258,9 @@ export function AdaptiveCanvas({
           </button>
         </div>
         <span className="text-xs text-gray-400">
-          Placeholder - Full implementation in Story 3.1
+          {currentPattern?.units || "mm"} | v{currentPattern?.version || "1.0"}
         </span>
       </div>
     </div>
   );
-}
+});

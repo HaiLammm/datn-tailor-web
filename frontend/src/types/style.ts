@@ -8,6 +8,7 @@
 import { z } from "zod";
 import type { FabricResponse } from "@/types/fabric";
 import type { MasterGeometrySnapshot } from "@/types/inference";
+import type { MasterGeometry, MorphDelta, ConstraintViolation } from "@/types/geometry";
 
 // ===== Intensity Slider Types =====
 
@@ -134,8 +135,30 @@ export interface DesignSessionState {
 
   // Story 2.4: Master Geometry translation state
   master_geometry: MasterGeometrySnapshot | null;
+  // Story 3.1: Adaptive Canvas visual pattern state
+  current_pattern: MasterGeometry | null;
   is_translating: boolean;
   translate_error: string | null;
+
+  // Story 3.2: Current morph delta from morphing engine
+  current_morph_delta: MorphDelta | null;
+
+  // Story 3.3: Comparison Overlay state
+  is_comparison_mode: boolean;
+
+  // Story 3.4: Lock Design state
+  is_design_locked: boolean;
+  is_locking: boolean;
+  lock_error: string | null;
+  locked_design_id: string | null;
+  locked_geometry_hash: string | null;
+
+  // Story 4.1b: Guardrail state
+  guardrail_status: "passed" | "warning" | "rejected" | null;
+  guardrail_warnings: ConstraintViolation[];
+  guardrail_violations: ConstraintViolation[];
+  last_valid_sequence_id: string | null;
+  last_valid_intensity_values: IntensityValues | null;
 
   // Error state
   error: string | null;
@@ -174,9 +197,27 @@ export interface DesignSessionActions {
 
   // Story 2.4: Master Geometry translation actions
   setMasterGeometry: (snapshot: MasterGeometrySnapshot | null) => void;
+  // Story 3.1: Set current visual pattern
+  setCurrentPattern: (pattern: MasterGeometry | null) => void;
   setTranslating: (loading: boolean) => void;
   setTranslateError: (error: string | null) => void;
   clearMasterGeometry: () => void;
+
+  // Story 3.2: Set current morph delta
+  setCurrentMorphDelta: (delta: MorphDelta | null) => void;
+
+  // Story 3.3: Toggle comparison overlay
+  toggleComparisonMode: () => void;
+
+  // Story 3.4: Lock Design actions
+  setLocking: (loading: boolean) => void;
+  setLockResult: (designId: string, geometryHash: string) => void;
+  setLockError: (error: string | null) => void;
+
+  // Story 4.1b: Guardrail actions
+  setGuardrailResult: (result: { status: "passed" | "warning" | "rejected"; violations: ConstraintViolation[]; warnings: ConstraintViolation[]; last_valid_sequence_id: string | null }) => void;
+  snapBackToSafe: () => void;
+  clearGuardrailState: () => void;
 }
 
 /**

@@ -9,6 +9,8 @@
 import { Suspense } from "react";
 
 import type { StylePillarListResponse } from "@/types/style";
+import type { MasterGeometry } from "@/types/geometry";
+import { fetchBaselineGeometry } from "@/app/actions/geometry-actions";
 
 import { DesignSessionClient } from "./DesignSessionClient";
 
@@ -59,11 +61,46 @@ function LoadingSkeleton() {
  * Server Component that fetches style pillars and passes to client.
  */
 export default async function DesignSessionPage() {
-  const pillarsData = await fetchStylePillars();
+  // Parallel fetching
+  const pillarsDataPromise = fetchStylePillars();
+  
+  // Default measurements (Standard Size M)
+  const defaultMeasurements = {
+    neck: 36,
+    bust: 86,
+    waist: 68,
+    hip: 92,
+    shoulder_width: 36,
+    top_length: 100,
+    sleeve_length: 55,
+    wrist: 24,
+    height: 160,
+    weight: 50
+  };
+  
+  const geometryPromise = fetchBaselineGeometry(defaultMeasurements);
+
+  const [pillarsData, geometry] = await Promise.all([
+    pillarsDataPromise,
+    geometryPromise
+  ]);
+
+  // Vietnamese measurement keys for guardrail constraint checks (matches backend BaseMeasurements)
+  const baseMeasurementsVi: Record<string, number> = {
+    vong_co: defaultMeasurements.neck,
+    vong_nguc: defaultMeasurements.bust,
+    vong_eo: defaultMeasurements.waist,
+    vong_mong: defaultMeasurements.hip,
+    rong_vai: defaultMeasurements.shoulder_width,
+  };
 
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <DesignSessionClient initialPillars={pillarsData.pillars} />
+      <DesignSessionClient
+        initialPillars={pillarsData.pillars}
+        initialGeometry={geometry}
+        baseMeasurements={baseMeasurementsVi}
+      />
     </Suspense>
   );
 }

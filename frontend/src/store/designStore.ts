@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
 import type { FabricResponse } from "@/types/fabric";
+import type { MasterGeometry, MorphDelta, ConstraintViolation } from "@/types/geometry";
 import type { MasterGeometrySnapshot } from "@/types/inference";
 import type {
   DesignStore,
@@ -59,8 +60,29 @@ export const useDesignStore = create<DesignStore>()(
 
       // Story 2.4: Master Geometry translation state
       master_geometry: null,
+      current_pattern: null,
       is_translating: false,
       translate_error: null,
+
+      // Story 3.2: Current morph delta
+      current_morph_delta: null,
+
+      // Story 3.3: Comparison Overlay state
+      is_comparison_mode: false,
+
+      // Story 3.4: Lock Design state
+      is_design_locked: false,
+      is_locking: false,
+      lock_error: null,
+      locked_design_id: null,
+      locked_geometry_hash: null,
+
+      // Story 4.1b: Guardrail state
+      guardrail_status: null,
+      guardrail_warnings: [],
+      guardrail_violations: [],
+      last_valid_sequence_id: null,
+      last_valid_intensity_values: null,
 
       // Select a style pillar and initialize sliders with defaults
       selectPillar: (pillar: StylePillarResponse) => {
@@ -189,6 +211,17 @@ export const useDesignStore = create<DesignStore>()(
         );
       },
 
+      /** Story 3.1: Set current visual pattern from backend or updates. */
+      setCurrentPattern: (pattern: MasterGeometry | null) => {
+        set(
+          {
+            current_pattern: pattern,
+          },
+          false,
+          "setCurrentPattern"
+        );
+      },
+
       /** Story 2.4: Set translation loading state. */
       setTranslating: (loading: boolean) => {
         set({ is_translating: loading }, false, "setTranslating");
@@ -220,6 +253,96 @@ export const useDesignStore = create<DesignStore>()(
         );
       },
 
+      /** Story 3.2: Set current morph delta. */
+      setCurrentMorphDelta: (delta: MorphDelta | null) => {
+        set({ current_morph_delta: delta }, false, "setCurrentMorphDelta");
+      },
+
+      /** Story 3.3: Toggle comparison overlay. */
+      toggleComparisonMode: () => {
+        set(
+          (state) => ({ is_comparison_mode: !state.is_comparison_mode }),
+          false,
+          "toggleComparisonMode"
+        );
+      },
+
+      /** Story 3.4: Set locking state. */
+      setLocking: (loading: boolean) => {
+        set({ is_locking: loading, lock_error: null }, false, "setLocking");
+      },
+
+      /** Story 3.4: Set lock result on success. */
+      setLockResult: (designId: string, geometryHash: string) => {
+        set(
+          {
+            is_locking: false,
+            is_design_locked: true,
+            locked_design_id: designId,
+            locked_geometry_hash: geometryHash,
+            lock_error: null,
+          },
+          false,
+          "setLockResult"
+        );
+      },
+
+      /** Story 3.4: Set lock error. */
+      setLockError: (error: string | null) => {
+        set(
+          { is_locking: false, lock_error: error },
+          false,
+          "setLockError"
+        );
+      },
+
+      /** Story 4.1b: Set guardrail check result. Snapshot intensity_values on pass. */
+      setGuardrailResult: (result: { status: "passed" | "warning" | "rejected"; violations: ConstraintViolation[]; warnings: ConstraintViolation[]; last_valid_sequence_id: string | null }) => {
+        const updates: Record<string, unknown> = {
+          guardrail_status: result.status,
+          guardrail_warnings: result.warnings,
+          guardrail_violations: result.violations,
+          last_valid_sequence_id: result.last_valid_sequence_id,
+        };
+        // Snapshot current values as safe on pass or warning
+        if (result.status === "passed" || result.status === "warning") {
+          updates.last_valid_intensity_values = { ...get().intensity_values };
+        }
+        set(updates as Partial<DesignStore>, false, "setGuardrailResult");
+      },
+
+      /** Story 4.1b: Snap back sliders to last valid state. */
+      snapBackToSafe: () => {
+        const { last_valid_intensity_values } = get();
+        if (last_valid_intensity_values) {
+          set(
+            {
+              intensity_values: { ...last_valid_intensity_values },
+              guardrail_status: null,
+              guardrail_violations: [],
+              guardrail_warnings: [],
+            },
+            false,
+            "snapBackToSafe"
+          );
+        }
+      },
+
+      /** Story 4.1b: Clear all guardrail state. */
+      clearGuardrailState: () => {
+        set(
+          {
+            guardrail_status: null,
+            guardrail_warnings: [],
+            guardrail_violations: [],
+            last_valid_sequence_id: null,
+            last_valid_intensity_values: null,
+          },
+          false,
+          "clearGuardrailState"
+        );
+      },
+
       // Clear entire session
       clearSession: () => {
         set(
@@ -235,8 +358,25 @@ export const useDesignStore = create<DesignStore>()(
             is_loading_fabrics: false,
             // Story 2.4
             master_geometry: null,
+            current_pattern: null,
             is_translating: false,
             translate_error: null,
+            // Story 3.2
+            current_morph_delta: null,
+            // Story 3.3
+            is_comparison_mode: false,
+            // Story 3.4
+            is_design_locked: false,
+            is_locking: false,
+            lock_error: null,
+            locked_design_id: null,
+            locked_geometry_hash: null,
+            // Story 4.1b
+            guardrail_status: null,
+            guardrail_warnings: [],
+            guardrail_violations: [],
+            last_valid_sequence_id: null,
+            last_valid_intensity_values: null,
           },
           false,
           "clearSession"
