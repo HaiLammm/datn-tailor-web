@@ -253,3 +253,34 @@ class DesignOverrideDB(Base):
     design: Mapped["DesignDB"] = relationship("DesignDB", back_populates="overrides")
     tailor: Mapped["UserDB"] = relationship("UserDB")
 
+
+class GarmentDB(Base):
+    """ORM model for the `garments` table (Story 5.1).
+    
+    Digital Showroom - stores ao dai garments available for rental.
+    Multi-tenant isolated by tenant_id.
+    """
+
+    __tablename__ = "garments"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    color: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    occasion: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    size_options: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    rental_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="available", index=True)
+    expected_return_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
