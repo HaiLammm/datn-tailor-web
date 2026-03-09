@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { MasterGeometry, MorphDelta, LockDesignResponse, GuardrailCheckResult, SanityCheckResponse } from "@/types/geometry";
+import { MasterGeometry, MorphDelta, LockDesignResponse, GuardrailCheckResult, SanityCheckResponse, ExportFormat, ExportResponse } from "@/types/geometry";
 import { MeasurementCreateInput } from "@/types/customer";
 
 async function getAuthToken(): Promise<string | null> {
@@ -86,10 +86,13 @@ export async function fetchMorphTargets(
 /**
  * Story 3.4: Lock a design, generating the Master Geometry JSON (SSOT).
  * Sends current deltas to backend which computes checksums and persists.
+ * Story 4.3: Support updating existing design with overrides.
  */
 export async function lockDesign(
   deltas: MorphDelta,
-  baseId?: string | null
+  baseId?: string | null,
+  designId?: string | null,
+  measurementDeltas?: Array<{ key: string; value: number; unit: string; label_vi: string }>
 ): Promise<LockDesignResponse> {
   const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
 
@@ -106,8 +109,10 @@ export async function lockDesign(
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
+        design_id: designId ?? null,
         base_id: baseId ?? null,
         deltas,
+        measurement_deltas: measurementDeltas ?? null,
       }),
       cache: "no-store",
     });
@@ -218,6 +223,7 @@ export async function fetchSanityCheck(
 ): Promise<SanityCheckResponse> {
   const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
   const fallback: SanityCheckResponse = {
+    design_id: null,
     rows: [],
     guardrail_status: null,
     is_locked: false,
@@ -263,6 +269,7 @@ export async function fetchSanityCheck(
     }
 
     return {
+      design_id: data.design_id ?? null,
       rows: data.rows,
       guardrail_status: data.guardrail_status ?? null,
       is_locked: data.is_locked ?? false,
@@ -271,5 +278,76 @@ export async function fetchSanityCheck(
   } catch (error) {
     console.error("Error fetching sanity check:", error);
     return fallback;
+  }
+}
+
+/**
+ * Story 4.4: Export a locked design as SVG or DXF for production.
+ * Auth: Owner or Tailor only.
+ */
+export async function exportBlueprint(
+  designId: string,
+  format: ExportFormat = "svg"
+): Promise<{ success: boolean; data?: string; filename?: string; error?: string; violations?: any[] }> {
+  const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+
+  try {
+    const token = await getAuthToken();
+    if (!token) {
+      return { success: false, error: "Bạn cần đăng nhập để thực hiện thao tác này" };
+    }
+
+    const response = await fetch(`${backendUrl}/api/v1/designs/${designId}/export?format=${format}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        return { success: false, error: "Bạn không có quyền xuất bản vẽ sản xuất." };
+      }
+      if (response.status === 422) {
+        try {
+          const errorData = await response.json();
+          return { 
+            success: false, 
+            error: errorData.detail?.message || "Thiết kế không hợp lệ để xuất bản vẽ.",
+            violations: errorData.detail?.violations || []
+          };
+        } catch { /* fall through */ }
+      }
+      const errorBody = await response.text();
+      return {
+        success: false,
+        error: `Export failed: ${response.status} - ${errorBody}`,
+      };
+    }
+
+    // Get the filename from content-disposition if possible
+    const contentDisposition = response.headers.get("content-disposition");
+    let filename = `blueprint-${designId}.${format}`;
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename=(.+)/);
+      if (filenameMatch) filename = filenameMatch[1];
+    }
+
+    // Read as arrayBuffer and convert to base64 for transfer over Server Action
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+
+    return {
+      success: true,
+      data: base64,
+      filename: filename,
+    };
+  } catch (error) {
+    console.error("Error exporting blueprint:", error);
+    return {
+      success: false,
+      error: "Không thể kết nối đến máy chủ",
+    };
   }
 }

@@ -9,8 +9,9 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 
-import { SanityCheckDashboard } from "@/components/client/design";
+import { SanityCheckDashboard, OverrideHistoryPanel, ExportBlueprintButton } from "@/components/client/design";
 import { fetchSanityCheck } from "@/app/actions/geometry-actions";
+import { fetchOverrideHistory, submitOverride } from "@/app/actions/override-actions";
 
 interface ReviewPageProps {
   searchParams: Promise<{
@@ -39,21 +40,55 @@ export default async function TailorReviewPage({ searchParams }: ReviewPageProps
 
   const sanityData = await fetchSanityCheck(customerId, designSequenceId);
 
+  // Story 4.3: Fetch override history if design_id found
+  const overrideHistory = sanityData.design_id 
+    ? await fetchOverrideHistory(sanityData.design_id)
+    : [];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-amber-50">
       <div className="max-w-5xl mx-auto px-4 py-12">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-serif font-bold text-indigo-900 mb-2">
-            Bảng đối soát kỹ thuật
-          </h1>
-          <p className="text-gray-600">
-            Xem xét và đối soát số đo khách hàng với mẫu chuẩn và đề xuất AI.
-          </p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div className="flex-1">
+            <h1 className="text-4xl font-serif font-bold text-indigo-900 mb-2">
+              Bảng đối soát kỹ thuật
+            </h1>
+            <p className="text-gray-600">
+              Xem xét và đối soát số đo khách hàng với mẫu chuẩn và đề xuất AI.
+            </p>
+          </div>
+          
+          <div className="w-full md:w-80">
+            {sanityData.design_id && (
+              <ExportBlueprintButton 
+                designId={sanityData.design_id} 
+                isLocked={sanityData.is_locked} 
+              />
+            )}
+          </div>
         </div>
 
-        {/* Sanity Check Dashboard */}
-        <SanityCheckDashboard data={sanityData} />
+        {/* Sanity Check Dashboard + History */}
+        <div className="space-y-8">
+          <SanityCheckDashboard 
+            data={sanityData} 
+            isOverrideEnabled={true}
+            onOverride={async (key, val, reason) => {
+              "use server";
+              if (sanityData.design_id) {
+                await submitOverride(sanityData.design_id, {
+                  delta_key: key,
+                  overridden_value: val,
+                  reason_vi: reason,
+                  sequence_id: designSequenceId ?? 0
+                });
+              }
+            }}
+          />
+          
+          <OverrideHistoryPanel overrides={overrideHistory} />
+        </div>
 
         {/* Back link */}
         <div className="mt-8">

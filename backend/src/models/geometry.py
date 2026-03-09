@@ -119,6 +119,9 @@ class LockedDesign(BaseModel):
     )
     base_hash: str = Field(..., description="SHA-256 of the base pattern geometry")
     deltas: MorphDelta = Field(..., description="Morph deltas applied to the base pattern")
+    measurement_deltas: Optional[List[dict]] = Field(
+        None, description="Optional measurement deltas for sanity check (Story 4.3)"
+    )
     geometry_hash: str = Field(..., description="SHA-256 checksum of this object (excluding itself)")
 
     model_config = ConfigDict(from_attributes=True)
@@ -126,8 +129,12 @@ class LockedDesign(BaseModel):
 
 class LockDesignRequest(BaseModel):
     """Request body for POST /api/v1/designs/lock."""
+    design_id: Optional[uuid.UUID] = Field(None, description="Optional existing design ID to update")
     base_id: Optional[str] = Field(None, description="ID of the base measurement profile")
     deltas: MorphDelta = Field(..., description="Morph deltas to lock")
+    measurement_deltas: Optional[List[dict]] = Field(
+        None, description="Optional measurement deltas for sanity check (Story 4.3)"
+    )
     base_measurements: Optional[dict] = Field(
         None, description="Customer body measurements for guardrail checks (Story 4.1a)"
     )

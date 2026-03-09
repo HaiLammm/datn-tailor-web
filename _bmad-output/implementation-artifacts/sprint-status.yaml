@@ -58,19 +58,19 @@ development_status:
   2-5-phac-thao-giao-dien-rule-editor: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress
+  epic-3: done
   3-1-adaptive-canvas-khoi-tao-rap-chuan: done
   3-2-bien-doi-rap-thoi-gian-thuc: done
   3-3-so-sanh-thiet-ke-voi-rap-chuan: done
   3-4-dong-goi-du-lieu-ssot: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1a-loi-kiem-tra-rang-buoc-vat-ly: done
   4-1b-hien-thi-canh-bao-ky-thuat-truc-tiep: done
   4-2-bang-doi-soat-ky-thuat-cho-tho-may: done
-  4-3-ghi-de-phan-hoi-tu-nghe-nhan: ready-for-dev
-  4-4-xuat-ban-ve-san-xuat: backlog
+  4-3-ghi-de-phan-hoi-tu-nghe-nhan: done
+  4-4-xuat-ban-ve-san-xuat: done
   epic-4-retrospective: optional
 
   epic-5: backlog

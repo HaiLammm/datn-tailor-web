@@ -213,3 +213,43 @@ class DesignDB(Base):
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
+    # Relationships
+    overrides: Mapped[list["DesignOverrideDB"]] = relationship(
+        "DesignOverrideDB", back_populates="design", cascade="all, delete-orphan"
+    )
+
+
+class DesignOverrideDB(Base):
+    """ORM model for the `design_overrides` table (Story 4.3).
+
+    Stores manual overrides from tailors based on experience.
+    """
+
+    __tablename__ = "design_overrides"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    design_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("designs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tailor_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    delta_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    original_value: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    overridden_value: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    delta_unit: Mapped[str] = mapped_column(String(20), nullable=False, default="cm")
+    label_vi: Mapped[str] = mapped_column(String(255), nullable=False)
+    reason_vi: Mapped[str | None] = mapped_column(Text, nullable=True)
+    flagged_for_learning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sequence_id: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    design: Mapped["DesignDB"] = relationship("DesignDB", back_populates="overrides")
+    tailor: Mapped["UserDB"] = relationship("UserDB")
+

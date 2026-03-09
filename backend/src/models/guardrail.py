@@ -135,6 +135,9 @@ class SanityCheckResponse(BaseModel):
     Story 4.2 AC#1-5: 3-column comparison data for Artisan Dashboard.
     """
 
+    design_id: Optional[str] = Field(
+        None, description="Design UUID if found"
+    )
     rows: list[SanityCheckRow] = Field(
         default_factory=list, description="Sanity check comparison rows"
     )

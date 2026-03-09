@@ -122,6 +122,8 @@ export interface SanityCheckRow {
  * Story 4.2 AC#1-5: 3-column comparison data for Artisan Dashboard.
  */
 export interface SanityCheckResponse {
+  /** Design UUID if found */
+  design_id: string | null;
   /** Sanity check comparison rows */
   rows: SanityCheckRow[];
   /** Current guardrail status (passed/warning/rejected) */
@@ -130,4 +132,17 @@ export interface SanityCheckResponse {
   is_locked: boolean;
   /** Geometry hash if design is locked */
   geometry_hash: string | null;
+}
+
+// --- Story 4.4: Blueprint Export Types ---
+
+export type ExportFormat = "svg" | "dxf";
+
+export interface ExportResponse {
+  success: boolean;
+  /** Base64-encoded file data returned from server action */
+  data?: string;
+  filename?: string;
+  error?: string;
+  violations?: ConstraintViolation[];
 }

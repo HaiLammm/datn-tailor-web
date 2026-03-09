@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 import {
   AdaptiveCanvas,
@@ -16,13 +17,16 @@ import {
   IntensitySliders,
   SanityCheckDashboard,
   StylePillarSelector,
+  OverrideHistoryPanel,
 } from "@/components/client/design";
 import { useDesignStore } from "@/store/designStore";
 import type { StylePillarResponse } from "@/types/style";
 import type { MasterGeometry, SanityCheckResponse } from "@/types/geometry";
+import type { OverrideHistoryItem } from "@/types/override";
 
 import { translateDesign } from "@/app/actions/design-actions";
 import { lockDesign, checkGuardrails, fetchSanityCheck } from "@/app/actions/geometry-actions";
+import { submitOverride, fetchOverrideHistory } from "@/app/actions/override-actions";
 
 function LoadingSpinner() {
   return (
@@ -54,6 +58,8 @@ export function DesignSessionClient({
   initialGeometry,
   baseMeasurements = {},
 }: DesignSessionClientProps) {
+  const { data: session } = useSession();
+
   // Story 2.4: Translation state from store
   const selectedPillar = useDesignStore((state) => state.selected_pillar);
   const intensityValues = useDesignStore((state) => state.intensity_values);
@@ -94,12 +100,33 @@ export function DesignSessionClient({
   const [isSanityCheckLoading, setIsSanityCheckLoading] = useState(false);
   const [isSanityCheckExpanded, setIsSanityCheckExpanded] = useState(true);
 
+  // Story 4.3: Manual Override state
+  const [overrides, setOverrides] = useState<Record<string, { value: number; original: number }>>({});
+  const [overrideHistory, setOverrideHistory] = useState<OverrideHistoryItem[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
   // Initialize current pattern from server (Story 3.1)
+...
   useEffect(() => {
     if (initialGeometry && !currentPattern) {
       setCurrentPattern(initialGeometry);
     }
   }, [initialGeometry, currentPattern, setCurrentPattern]);
+
+  /**
+   * Story 4.3: Fetch override history when design is locked
+   */
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (lockedDesignId) {
+        setIsHistoryLoading(true);
+        const history = await fetchOverrideHistory(lockedDesignId);
+        setOverrideHistory(history);
+        setIsHistoryLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [lockedDesignId]);
 
 
   /**
@@ -162,11 +189,69 @@ export function DesignSessionClient({
   ]);
 
   /**
+   * Story 4.3: Handle manual override from Sanity Check Dashboard.
+   * Calls backend to re-validate and persist the override.
+   */
+  const handleOverride = async (deltaKey: string, value: number, reason?: string) => {
+    if (!lockedDesignId) {
+      throw new Error("Vui lòng khóa thiết kế trước khi thực hiện ghi đè");
+    }
+
+    const result = await submitOverride(lockedDesignId, {
+      delta_key: deltaKey,
+      overridden_value: value,
+      reason_vi: reason,
+      sequence_id: masterGeometry?.sequence_id ?? 0,
+    });
+
+    if (!result) {
+      throw new Error("Không thể lưu ghi đè. Vui lòng kiểm tra lại ràng buộc vật lý.");
+    }
+
+    // Update local overrides map
+    setOverrides((prev) => ({
+      ...prev,
+      [deltaKey]: { value: result.overridden_value, original: result.original_value },
+    }));
+
+    // Update sanity check data locally for immediate feedback
+    if (sanityCheckData) {
+      const updatedRows = sanityCheckData.rows.map((row) => {
+        if (row.key === deltaKey) {
+          const newDelta = result.overridden_value - row.base_value;
+          return {
+            ...row,
+            suggested_value: result.overridden_value,
+            delta: newDelta,
+            // severity is handled by backend in full refresh, but we can approximate
+            severity: (Math.abs(newDelta) >= 5.0 ? "danger" : Math.abs(newDelta) >= 2.0 ? "warning" : "normal") as any,
+          };
+        }
+        return row;
+      });
+
+      setSanityCheckData({
+        ...sanityCheckData,
+        rows: updatedRows,
+        guardrail_status: result.guardrail_result.status,
+      });
+
+      // Update global store guardrail status
+      setGuardrailResult(result.guardrail_result);
+
+      // Refresh history
+      const history = await fetchOverrideHistory(lockedDesignId);
+      setOverrideHistory(history);
+    }
+  };
+
+  /**
    * Story 3.4: Handle "Lock Design" button click.
    * Sends current morph deltas to backend to create SSOT Master Geometry JSON.
+   * Story 4.3: Includes designId if already locked to merge overrides.
    */
   const handleLockDesign = useCallback(async () => {
-    if (!masterGeometry || isDesignLocked) return;
+    if (!masterGeometry || (isDesignLocked && Object.keys(overrides).length === 0)) return;
 
     if (!currentMorphDelta) {
       setLockError("Chưa có dữ liệu hình học để khóa");
@@ -181,7 +266,16 @@ export function DesignSessionClient({
 
     setLocking(true);
 
-    const result = await lockDesign(currentMorphDelta);
+    // If already locked, we pass the designId to update/merge overrides
+    // We also pass measurement_deltas for SSOT completeness
+    const measurementDeltas = masterGeometry.deltas.map(d => ({
+      key: d.key,
+      value: overrides[d.key] ? overrides[d.key].value - (sanityCheckData?.rows.find(r => r.key === d.key)?.base_value ?? 0) : d.value,
+      unit: d.unit,
+      label_vi: d.label_vi
+    }));
+
+    const result = await lockDesign(currentMorphDelta, null, lockedDesignId, measurementDeltas);
 
     if (result.success && result.design_id && result.geometry_hash) {
       setLockResult(result.design_id, result.geometry_hash);
@@ -197,7 +291,7 @@ export function DesignSessionClient({
     } else {
       setLockError(result.error ?? "Không thể khóa thiết kế");
     }
-  }, [masterGeometry, isDesignLocked, currentMorphDelta, guardrailStatus, sanityCheckData, setLocking, setLockResult, setLockError]);
+  }, [masterGeometry, isDesignLocked, currentMorphDelta, guardrailStatus, sanityCheckData, lockedDesignId, overrides, setLocking, setLockResult, setLockError]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-amber-50">
@@ -459,13 +553,23 @@ export function DesignSessionClient({
             </button>
 
             {isSanityCheckExpanded && (
-              <div id="sanity-check-content" className="mt-4">
+              <div id="sanity-check-content" className="mt-4 space-y-6">
                 <SanityCheckDashboard
                   data={sanityCheckData}
                   isLoading={isSanityCheckLoading}
                   guardrailWarnings={guardrailWarnings}
                   guardrailViolations={guardrailViolations}
+                  onOverride={handleOverride}
+                  overrides={overrides}
+                  isOverrideEnabled={session?.user?.role === "Tailor" || session?.user?.role === "Owner"}
                 />
+                
+                {lockedDesignId && (
+                  <OverrideHistoryPanel 
+                    overrides={overrideHistory} 
+                    isLoading={isHistoryLoading} 
+                  />
+                )}
               </div>
             )}
           </div>

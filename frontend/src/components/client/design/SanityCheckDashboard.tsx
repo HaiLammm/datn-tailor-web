@@ -14,10 +14,10 @@
  * AC#5: Empty state when no data
  */
 
-import React from "react";
+import React, { useState } from "react";
 import type { SanityCheckRow, SanityCheckResponse, ConstraintViolation } from "@/types/geometry";
 
-/** Heritage Gold color for positive deltas */
+/** Heritage Gold color for positive deltas and overrides */
 const HERITAGE_GOLD = "#D4AF37";
 
 /** Severity styling configuration (Heritage Palette) */
@@ -48,6 +48,13 @@ interface SanityCheckDashboardProps {
   guardrailWarnings?: ConstraintViolation[];
   /** Optional guardrail violations to display inline */
   guardrailViolations?: ConstraintViolation[];
+
+  /** Story 4.3: Manual Override - handler for saving an override */
+  onOverride?: (deltaKey: string, value: number, reason?: string) => Promise<void>;
+  /** Story 4.3: Map of existing overrides to display */
+  overrides?: Record<string, { value: number; original: number }>;
+  /** Story 4.3: Whether override editing is enabled for current user */
+  isOverrideEnabled?: boolean;
 }
 
 /**
@@ -76,18 +83,45 @@ function DeltaDisplay({ delta, unit }: { delta: number; unit: string }) {
 function SanityCheckTableRow({
   row,
   guardrailMessage,
+  isOverrideEnabled,
+  overriddenData,
+  isEditing,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  isSubmitting,
+  editValue,
+  setEditValue,
+  editReason,
+  setEditReason,
+  error,
 }: {
   row: SanityCheckRow;
   guardrailMessage?: string;
+  isOverrideEnabled?: boolean;
+  overriddenData?: { value: number; original: number };
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  isSubmitting: boolean;
+  editValue: string;
+  setEditValue: (v: string) => void;
+  editReason: string;
+  setEditReason: (v: string) => void;
+  error: string | null;
 }) {
   const style = SEVERITY_STYLES[row.severity];
+  const hasOverride = !!overriddenData;
+  const displayValue = hasOverride ? overriddenData.value : row.suggested_value;
+  const originalValue = hasOverride ? overriddenData.original : row.suggested_value;
 
   return (
     <>
       <tr
         data-testid={`sanity-row-${row.key}`}
-        className={`border-b border-gray-200 ${style.border}`}
-        style={{ backgroundColor: style.bg }}
+        className={`border-b border-gray-200 transition-colors ${style.border} ${isEditing ? "ring-2 ring-inset ring-[#D4AF37] bg-amber-50" : ""}`}
+        style={{ backgroundColor: !isEditing ? style.bg : undefined }}
       >
         <td className="px-4 py-3 font-medium" style={{ color: style.text !== "text-gray-700" ? style.text : undefined }}>
           {row.label_vi}
@@ -99,21 +133,81 @@ function SanityCheckTableRow({
           {row.base_value.toFixed(1)} {row.unit}
         </td>
         <td className="px-4 py-3 text-center">
-          <span className="font-mono">
-            {row.suggested_value.toFixed(1)} {row.unit}
-          </span>
-          <span className="ml-2">
-            <DeltaDisplay delta={row.delta} unit={row.unit} />
-          </span>
-          {row.severity !== "normal" && (
-            <span className="ml-1" aria-hidden="true">
-              {row.severity === "warning" ? "⚠️" : "🚨"}
-            </span>
+          {isEditing ? (
+            <div className="flex flex-col gap-2 p-2">
+              <div className="flex items-center justify-center gap-2">
+                <input
+                  type="number"
+                  step="0.1"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  className="w-20 px-2 py-1 text-center font-mono border border-gray-300 rounded focus:ring-1 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none"
+                  autoFocus
+                />
+                <span className="text-sm text-gray-500">{row.unit}</span>
+                <span className="text-xs text-gray-400 line-through">
+                  {originalValue.toFixed(1)}
+                </span>
+              </div>
+              <textarea
+                placeholder="Lý do ghi đè..."
+                value={editReason}
+                onChange={(e) => setEditReason(e.target.value)}
+                className="w-full p-2 text-xs border border-gray-200 rounded resize-none h-12 outline-none focus:ring-1 focus:ring-[#D4AF37]"
+              />
+              {error && <p className="text-[10px] text-red-600 mt-1">{error}</p>}
+              <div className="flex justify-center gap-2">
+                <button
+                  onClick={onSaveEdit}
+                  disabled={isSubmitting}
+                  className="px-3 py-1 bg-[#D4AF37] text-white text-xs font-medium rounded hover:bg-amber-600 disabled:opacity-50"
+                >
+                  {isSubmitting ? "..." : "Lưu"}
+                </button>
+                <button
+                  onClick={onCancelEdit}
+                  disabled={isSubmitting}
+                  className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded hover:bg-gray-200"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className={`flex flex-col items-center justify-center ${isOverrideEnabled ? "cursor-pointer hover:bg-black/5 rounded py-1" : ""}`}
+              onClick={isOverrideEnabled ? onStartEdit : undefined}
+              title={isOverrideEnabled ? "Nhấn để ghi đè thông số" : undefined}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`font-mono font-bold ${hasOverride ? "text-indigo-900" : ""}`}>
+                  {displayValue.toFixed(1)} {row.unit}
+                </span>
+                {hasOverride && (
+                  <span className="text-xs text-gray-400 line-through">
+                    {overriddenData.original.toFixed(1)}
+                  </span>
+                )}
+                <DeltaDisplay delta={displayValue - row.base_value} unit={row.unit} />
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                {hasOverride && (
+                  <span className="px-1.5 py-0.5 bg-[#D4AF37] text-white text-[10px] font-bold rounded uppercase tracking-wider">
+                    Ghi đè
+                  </span>
+                )}
+                {row.severity !== "normal" && !hasOverride && (
+                  <span className="text-sm" aria-hidden="true">
+                    {row.severity === "warning" ? "⚠️" : "🚨"}
+                  </span>
+                )}
+              </div>
+            </div>
           )}
         </td>
       </tr>
       {/* Inline guardrail message for this row */}
-      {guardrailMessage && (
+      {guardrailMessage && !isEditing && (
         <tr>
           <td colSpan={4} className="px-4 py-2">
             <div
@@ -234,13 +328,61 @@ function LoadingSkeleton() {
  * Sanity Check Dashboard
  *
  * Main component displaying the 3-column comparison table for Tailors.
+ * Now supports manual overrides for artisans (Story 4.3).
  */
 export function SanityCheckDashboard({
   data,
   isLoading = false,
   guardrailWarnings = [],
   guardrailViolations = [],
+  onOverride,
+  overrides = {},
+  isOverrideEnabled = false,
 }: SanityCheckDashboardProps) {
+  // --- Story 4.3: Local state for manual override editing ---
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+  const [editReason, setEditReason] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [overrideError, setOverrideError] = useState<string | null>(null);
+
+  const startEditing = (row: SanityCheckRow) => {
+    const currentVal = overrides[row.key] ? overrides[row.key].value : row.suggested_value;
+    setEditingKey(row.key);
+    setEditValue(currentVal.toFixed(1));
+    setEditReason("");
+    setOverrideError(null);
+  };
+
+  const cancelEditing = () => {
+    setEditingKey(null);
+    setEditValue("");
+    setEditReason("");
+    setOverrideError(null);
+  };
+
+  const handleSaveOverride = async (deltaKey: string) => {
+    if (!onOverride) return;
+
+    const val = parseFloat(editValue);
+    if (isNaN(val)) {
+      setOverrideError("Vui lòng nhập số hợp lệ");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setOverrideError(null);
+
+    try {
+      await onOverride(deltaKey, val, editReason);
+      setEditingKey(null);
+    } catch (err: any) {
+      setOverrideError(err.message || "Không thể lưu ghi đè");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Build guardrail message lookup by key
   const guardrailMessagesByKey: Record<string, string> = {};
   
@@ -270,6 +412,7 @@ export function SanityCheckDashboard({
 
   return (
     <div
+      id="sanity-check-dashboard"
       data-testid="sanity-check-dashboard"
       className="bg-white rounded-xl border border-gray-200 overflow-hidden"
     >
@@ -330,6 +473,18 @@ export function SanityCheckDashboard({
                 key={row.key}
                 row={row}
                 guardrailMessage={guardrailMessagesByKey[row.key]}
+                isOverrideEnabled={isOverrideEnabled && !data.is_locked}
+                overriddenData={overrides[row.key]}
+                isEditing={editingKey === row.key}
+                onStartEdit={() => startEditing(row)}
+                onCancelEdit={cancelEditing}
+                onSaveEdit={() => handleSaveOverride(row.key)}
+                isSubmitting={isSubmitting}
+                editValue={editValue}
+                setEditValue={setEditValue}
+                editReason={editReason}
+                setEditReason={setEditReason}
+                error={overrideError}
               />
             ))}
           </tbody>
@@ -354,6 +509,10 @@ export function SanityCheckDashboard({
           <div className="flex items-center gap-1.5">
             <span className="text-red-600 font-mono">-X.X</span>
             <span>Giảm</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="px-1.5 py-0.5 bg-[#D4AF37] text-white text-[10px] font-bold rounded uppercase">Ghi đè</span>
+            <span>Điều chỉnh thủ công</span>
           </div>
         </div>
       </div>

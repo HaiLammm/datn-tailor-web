@@ -10,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.v1.auth import router as auth_router
 from src.api.v1.customers import router as customers_router
 from src.api.v1.designs import router as designs_router
+from src.api.v1.overrides import router as overrides_router
+from src.api.v1.export import router as export_router
 from src.api.v1.guardrails import router as guardrails_router
 from src.api.v1.fabrics import router as fabrics_router
 from src.api.v1.geometry import router as geometry_router
@@ -49,6 +51,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(customers_router)
 app.include_router(designs_router)
+app.include_router(overrides_router)
+app.include_router(export_router)
 app.include_router(fabrics_router)
 app.include_router(geometry_router)
 app.include_router(guardrails_router)

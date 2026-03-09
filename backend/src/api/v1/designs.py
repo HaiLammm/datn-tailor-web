@@ -1,7 +1,7 @@
 """API endpoints for Design lock operations (Story 3.4, 4.1a, 4.2)."""
 
 import uuid
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -72,13 +72,48 @@ async def lock_design(
     """Lock a design, generating the Master Geometry JSON (SSOT).
 
     Story 4.1a: Guardrail check runs BEFORE persisting.
-    If hard constraints fail, returns 422 with violation details.
-    If soft constraints warn, proceeds but includes warnings.
+    Story 4.3: Merge overrides if updating an existing design.
 
     Returns:
         design_id, success status, and optional warnings.
     """
-    # Story 4.1a: Run guardrail check before locking
+    # 1. Merge Measurement Deltas and Overrides
+    final_measurement_deltas = []
+    if request.measurement_deltas:
+        final_measurement_deltas = request.measurement_deltas
+
+    if request.design_id:
+        # Fetch existing overrides for this design
+        from src.models.db_models import DesignOverrideDB
+        stmt = select(DesignOverrideDB).where(
+            DesignOverrideDB.design_id == request.design_id,
+            DesignOverrideDB.tenant_id == tenant_id
+        )
+        result = await db.execute(stmt)
+        overrides = result.scalars().all()
+
+        if overrides:
+            for o in overrides:
+                eng_key = next((k for k, (v_key, _) in MEASUREMENT_MAPPING.items() if v_key == o.delta_key), None)
+                base_val = BASE_PATTERN_VALUES.get(eng_key, 0.0) if eng_key else 0.0
+                overridden_delta = float(o.overridden_value) - base_val
+
+                # Update or append to measurement_deltas
+                found = False
+                for d in final_measurement_deltas:
+                    if d.get("key") == o.delta_key:
+                        d["value"] = overridden_delta
+                        found = True
+                        break
+                if not found:
+                    final_measurement_deltas.append({
+                        "key": o.delta_key,
+                        "value": overridden_delta,
+                        "unit": o.delta_unit,
+                        "label_vi": o.label_vi
+                    })
+
+    # 2. Story 4.1a: Run guardrail check before locking
     measurements = {}
     if request.base_measurements:
         measurements = {
@@ -87,10 +122,9 @@ async def lock_design(
             if v is not None
         }
 
-    # Hard constraints check measurements only (MorphDelta geometry ≠ style intensity deltas).
-    # Soft constraints based on style values run through style_service, not here.
+    # Pass final merged deltas to guardrail check
     registry = get_registry()
-    guardrail_result = registry.run_all(measurements, {})
+    guardrail_result = registry.run_all(measurements, final_measurement_deltas)
 
     if guardrail_result["status"] == "rejected":
         # AC#2: Query last valid sequence_id for snap-back
@@ -115,6 +149,7 @@ async def lock_design(
         "sequence_id": sequence_id,
         "base_hash": base_hash,
         "deltas": request.deltas.model_dump(),
+        "measurement_deltas": final_measurement_deltas,
     }
 
     # Compute geometry_hash over the canonical representation
@@ -125,18 +160,31 @@ async def lock_design(
         sequence_id=sequence_id,
         base_hash=base_hash,
         deltas=request.deltas,
+        measurement_deltas=final_measurement_deltas,
         geometry_hash=geometry_hash,
     )
 
     # Persist to database
-    design_record = DesignDB(
-        user_id=current_user.id,
-        tenant_id=tenant_id,
-        master_geometry=locked.model_dump(),
-        geometry_hash=geometry_hash,
-        status="locked",
-    )
-    db.add(design_record)
+    if request.design_id:
+        stmt = select(DesignDB).where(DesignDB.id == request.design_id, DesignDB.tenant_id == tenant_id)
+        result = await db.execute(stmt)
+        design_record = result.scalar_one_or_none()
+        if design_record:
+            design_record.master_geometry = locked.model_dump()
+            design_record.geometry_hash = geometry_hash
+            design_record.status = "locked"
+        else:
+            raise HTTPException(status_code=404, detail="Không tìm thấy thiết kế để cập nhật")
+    else:
+        design_record = DesignDB(
+            user_id=current_user.id,
+            tenant_id=tenant_id,
+            master_geometry=locked.model_dump(),
+            geometry_hash=geometry_hash,
+            status="locked",
+        )
+        db.add(design_record)
+    
     await db.flush()
     await db.commit()
 
@@ -198,6 +246,7 @@ async def sanity_check(
     guardrail_status: str | None = None
     is_locked: bool = False
     geometry_hash: str | None = None
+    design_id: str | None = None
 
     # Fetch customer measurements if customer_id provided
     body_measurements: dict[str, float] = {}
@@ -240,20 +289,23 @@ async def sanity_check(
         design = result.scalar_one_or_none()
 
         if design:
+            design_id = str(design.id)
             is_locked = design.status == "locked"
             geometry_hash = design.geometry_hash
             
             # Extract deltas from master_geometry
             master_geo = design.master_geometry
-            if isinstance(master_geo, dict) and "deltas" in master_geo:
+            if isinstance(master_geo, dict) and "measurement_deltas" in master_geo:
+                m_deltas = master_geo.get("measurement_deltas")
+                if isinstance(m_deltas, list):
+                    for d in m_deltas:
+                        if isinstance(d, dict) and "key" in d and "value" in d:
+                            suggested_deltas[d["key"]] = d["value"]
+            
+            # Fallback to deltas list if measurement_deltas not found
+            if not suggested_deltas and isinstance(master_geo, dict) and "deltas" in master_geo:
                 deltas_data = master_geo.get("deltas", {})
-                if isinstance(deltas_data, dict) and "parts" in deltas_data:
-                    # MorphDelta format (geometric path deltas) - cannot directly map to measurement deltas
-                    # TODO: Store measurement-style deltas alongside geometric deltas in Master Geometry
-                    # For now, suggested values will equal base values (no delta applied)
-                    pass
-                elif isinstance(deltas_data, list):
-                    # List of DeltaValue format (measurement-style deltas)
+                if isinstance(deltas_data, list):
                     for delta in deltas_data:
                         if isinstance(delta, dict) and "key" in delta and "value" in delta:
                             suggested_deltas[delta["key"]] = delta["value"]
@@ -289,10 +341,11 @@ async def sanity_check(
     # Run guardrail check if we have measurements
     if body_measurements:
         registry = get_registry()
-        guardrail_result = registry.run_all(body_measurements, {})
+        guardrail_result = registry.run_all(body_measurements, suggested_deltas)
         guardrail_status = guardrail_result["status"]
 
     return SanityCheckResponse(
+        design_id=design_id,
         rows=rows,
         guardrail_status=guardrail_status,
         is_locked=is_locked,

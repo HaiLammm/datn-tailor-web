@@ -1,5 +1,5 @@
 /**
- * Design Components - Story 2.1, 2.2, 2.3 & 4.2
+ * Design Components - Story 2.1, 2.2, 2.3, 4.2, 4.3 & 4.4
  *
  * Export all design-related client components.
  */
@@ -10,3 +10,5 @@ export { AdaptiveCanvas } from "./AdaptiveCanvas";
 export { FabricCard } from "./FabricCard";
 export { FabricRecommendationPanel } from "./FabricRecommendationPanel";
 export { SanityCheckDashboard } from "./SanityCheckDashboard";
+export { OverrideHistoryPanel } from "./OverrideHistoryPanel";
+export { ExportBlueprintButton } from "./ExportBlueprintButton";
