@@ -27,16 +27,55 @@ export const config = {
 export default async function proxy(request: NextRequest): Promise<NextResponse | undefined> {
     const { pathname } = request.nextUrl;
 
-    // Allow public routes and static assets
-    const isPublicRoute = publicRoutes.some(
-        (route) => pathname === route || pathname.startsWith(`${route}/`)
-    );
-    if (isPublicRoute || pathname.startsWith("/_next") || pathname.startsWith("/api")) {
+    // 1. FAST PATH: Bỏ qua ngay lập tức các tệp tĩnh, hình ảnh và API xác thực nội bộ
+    if (
+        pathname.startsWith("/_next") || 
+        pathname.startsWith("/api/auth") ||
+        pathname.includes(".") || // favicon.ico, images, etc.
+        publicRoutes.includes(pathname)
+    ) {
         return undefined;
     }
 
-    // Get session for all protected routes
+    // 2. Lấy session cho các yêu cầu bảo mật
     const session = await auth();
+
+    // Protection for critical APIs (/api/v1/*)
+    if (pathname.startsWith("/api/v1")) {
+        if (!session) {
+            return new NextResponse(JSON.stringify({ error: "Unauthorized" }), { 
+                status: 401, 
+                headers: { 'Content-Type': 'application/json' } 
+            });
+        }
+        
+        const userRole = session.user?.role;
+        // Example: Only Owner/Tailor can access customer API
+        if (pathname.startsWith("/api/v1/customers") && userRole !== "Owner" && userRole !== "Tailor") {
+            return new NextResponse(JSON.stringify({ error: "Forbidden" }), { 
+                status: 403, 
+                headers: { 'Content-Type': 'application/json' } 
+            });
+        }
+
+        // TỰ ĐỘNG CHUYỂN TIẾP YÊU CẦU API VỚI ACCESS TOKEN
+        // Điều này thay thế cho rewrites trong next.config.ts vì chúng ta cần thêm Token
+        const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+        const targetUrl = new URL(pathname + request.nextUrl.search, backendUrl);
+        
+        const headers = new Headers(request.headers);
+        if (session.accessToken) {
+            headers.set("Authorization", `Bearer ${session.accessToken}`);
+        }
+
+        return fetch(targetUrl.toString(), {
+            method: request.method,
+            headers: headers,
+            body: request.body,
+            // @ts-expect-error - Next.js 16/Node fetch body handling
+            duplex: 'half', 
+        });
+    }
 
     // Check if route needs protection
     const isProtectedRoute = protectedRoutes.some(

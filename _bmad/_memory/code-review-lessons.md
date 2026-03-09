@@ -102,6 +102,7 @@ Server actions with complex return types must import and use already-defined Typ
 - **Real data:** Never call server actions with empty/placeholder data — always source from props, store, or API responses
 - **Field names:** Verify field names match backend Pydantic models — Vietnamese vs English naming is a common trap
 - **Type imports:** Always import existing types from `@/types/` — never duplicate inline
+- **Python packages:** Always install backend dependencies using `./venv/bin/pip install` — never use global pip or conda
 
 ### 11. Task Checkboxes Must Reflect Completion Status
 **Severity:** HIGH | **Detected in:** Story 4.4
@@ -130,3 +131,19 @@ When an AC says "redirect to X on failure", the implementation must actually per
 When a story specifies test cases (e.g., "Test design not found -> 404", "Test coordinate precision <= 1mm"), every listed test must exist. Missing tests from the story's task list is a coverage gap.
 
 **Rule:** Cross-reference the story's test task list against actual test files. Every listed test scenario must have a corresponding test function.
+
+### 15. Python Packages Must Be Installed to Project Virtual Environment
+**Severity:** HIGH | **Detected in:** Backend development session
+
+Installing Python packages globally (`pip install`, `conda install`) instead of to the project's virtual environment (`./venv/bin/pip install`) causes `ModuleNotFoundError` at runtime and creates environment inconsistencies across developers.
+
+**Root cause:** Using system Python or conda pip instead of project venv pip.
+
+**Symptoms:**
+- Import works in one terminal but not in uvicorn subprocess
+- Package shows "already satisfied" when installing but module not found at runtime
+- Works on developer machine but fails in production/CI
+
+**Rule:** ALWAYS install backend Python packages using `./venv/bin/pip install <package>`. Verify with `which pip` before installing. After installation, run `./venv/bin/pip freeze > requirements.txt` to update dependencies.
+
+**Best practice:** Use Makefile targets (`make install PACKAGE=ezdxf`) to abstract the venv path and prevent human error.
