@@ -650,3 +650,271 @@ async def test_computed_fields_present_in_list_response(
     for item in items:
         assert "days_until_available" in item
         assert "is_overdue" in item
+
+
+# --- STORY 5.3: 2-TOUCH INVENTORY UPDATE TESTS ---
+
+@pytest.mark.asyncio
+async def test_update_garment_status_available_to_rented_success(
+    seed_test_users: dict,
+    seed_garments: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """Owner can update status from available to rented with a future return date."""
+    garment_id = seed_garments["garment1"].id  # available
+    future_date = (date.today() + timedelta(days=5)).isoformat()
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment_id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "rented", "expected_return_date": future_date},
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["status"] == "rented"
+    assert data["expected_return_date"] == future_date
+    assert data["days_until_available"] == 5
+    assert data["is_overdue"] is False
+
+
+@pytest.mark.asyncio
+async def test_update_garment_status_rented_to_maintenance_clears_date(
+    seed_test_users: dict,
+    seed_garments: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """Owner can update rented garment to maintenance, which auto-clears the expected return date."""
+    garment_id = seed_garments["garment2"].id  # rented
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment_id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "maintenance"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["status"] == "maintenance"
+    assert data["expected_return_date"] is None
+    assert data["days_until_available"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_garment_status_rented_no_date_fails(
+    seed_test_users: dict,
+    seed_garments: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """Updating status to rented without expected_return_date fails validation."""
+    garment_id = seed_garments["garment1"].id
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment_id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "rented"},
+    )
+
+    assert response.status_code == 422
+    assert "Phải nhập ngày dự kiến trả đồ" in response.text
+
+
+@pytest.mark.asyncio
+async def test_update_garment_status_past_date_fails(
+    seed_test_users: dict,
+    seed_garments: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """Updating status to rented with a past date fails validation."""
+    garment_id = seed_garments["garment1"].id
+    past_date = (date.today() - timedelta(days=1)).isoformat()
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment_id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "rented", "expected_return_date": past_date},
+    )
+
+    assert response.status_code == 422
+    assert "Ngày dự kiến trả đồ phải ở tương lai" in response.text
+
+
+@pytest.mark.asyncio
+async def test_update_garment_status_forbidden_for_customer(
+    seed_test_users: dict,
+    seed_garments: dict,
+    customer_token: str,
+    client: AsyncClient,
+):
+    """Customer role cannot update garment status."""
+    garment_id = seed_garments["garment1"].id
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment_id}/status",
+        headers={"Authorization": f"Bearer {customer_token}"},
+        json={"status": "maintenance"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_list_garments_sorted_by_status(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+):
+    """Garments are sorted: Rented first, then Maintenance, then Available."""
+    tenant_id = seed_test_users["tenant_id"]
+    
+    # Add a maintenance garment to ensure all 3 statuses are present
+    m_garment = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="ZZ Maintenance Garment", # Name should not affect primary sort
+        category="ao_dai_cach_tan",
+        size_options=["L"],
+        rental_price=Decimal("500000"),
+        status="maintenance",
+    )
+    test_db_session.add(m_garment)
+    await test_db_session.commit()
+
+    response = await client.get("/api/v1/garments?sort_by_status=true")
+    
+    assert response.status_code == 200
+    items = response.json()["data"]["items"]
+    
+    # Check ordering
+    statuses = [item["status"] for item in items]
+    
+    # Finding first occurrence of each status
+    first_rented = statuses.index("rented") if "rented" in statuses else -1
+    first_maintenance = statuses.index("maintenance") if "maintenance" in statuses else -1
+    first_available = statuses.index("available") if "available" in statuses else -1
+    
+    if first_rented != -1 and first_maintenance != -1:
+        assert first_rented < first_maintenance
+    if first_maintenance != -1 and first_available != -1:
+        assert first_maintenance < first_available
+
+
+@pytest.mark.asyncio
+async def test_update_garment_status_maintenance_to_available_clears_date(
+    seed_test_users: dict,
+    seed_garments: dict,
+    owner_token: str,
+    client: AsyncClient,
+    test_db_session: AsyncSession,
+):
+    """Owner can update maintenance garment to available, auto-clearing expected_return_date (AC #5)."""
+    tenant_id = seed_test_users["tenant_id"]
+
+    # Create a maintenance garment
+    maint_garment = GarmentDB(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        name="Áo dài bảo trì",
+        category="ao_dai_truyen_thong",
+        size_options=["M"],
+        rental_price=Decimal("300000"),
+        status="maintenance",
+    )
+    test_db_session.add(maint_garment)
+    await test_db_session.commit()
+
+    response = await client.patch(
+        f"/api/v1/garments/{maint_garment.id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "available"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["status"] == "available"
+    assert data["expected_return_date"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_garment_status_same_status_idempotent(
+    seed_test_users: dict,
+    seed_garments: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """Updating to the same status is idempotent and returns 200 (Task 3.6)."""
+    garment_id = seed_garments["garment1"].id  # available
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment_id}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "available"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["status"] == "available"
+
+
+@pytest.mark.asyncio
+async def test_update_garment_status_not_found(
+    seed_test_users: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """PATCH non-existent garment returns 404 (Task 3.7)."""
+    response = await client.patch(
+        f"/api/v1/garments/{uuid.uuid4()}/status",
+        headers={"Authorization": f"Bearer {owner_token}"},
+        json={"status": "maintenance"},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_garment_status_tenant_isolation(
+    seed_test_users: dict,
+    seed_garments: dict,
+    test_db_session: AsyncSession,
+    client: AsyncClient,
+):
+    """Owner cannot PATCH a garment belonging to another tenant (Task 3.9)."""
+    # Create a second tenant and owner
+    other_tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000099")
+    other_tenant = TenantDB(
+        id=other_tenant_id,
+        name="Other Tailor Shop",
+        slug="other-tailor-shop",
+    )
+    test_db_session.add(other_tenant)
+    await test_db_session.flush()
+
+    other_owner = UserDB(
+        email="other-owner@test.com",
+        hashed_password=hash_password("password"),
+        role="Owner",
+        is_active=True,
+        full_name="Other Owner",
+        tenant_id=other_tenant_id,
+    )
+    test_db_session.add(other_owner)
+    await test_db_session.commit()
+
+    other_owner_token = create_access_token(data={"sub": "other-owner@test.com", "role": "Owner"})
+
+    # Try to update garment from tenant 1 using owner from tenant 2
+    garment_id = seed_garments["garment1"].id
+
+    response = await client.patch(
+        f"/api/v1/garments/{garment_id}/status",
+        headers={"Authorization": f"Bearer {other_owner_token}"},
+        json={"status": "maintenance"},
+    )
+
+    assert response.status_code == 404

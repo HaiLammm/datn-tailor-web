@@ -7,17 +7,18 @@ Backend is SSOT for garment data.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.db_models import GarmentDB
-from src.models.garment import GarmentCreate, GarmentFilter, GarmentUpdate
+from src.models.garment import GarmentCreate, GarmentFilter, GarmentStatusUpdate, GarmentUpdate
 
 
 async def list_garments(
     db: AsyncSession,
     tenant_id: uuid.UUID,
     filters: GarmentFilter | None = None,
+    sort_by_status: bool = False,
 ) -> tuple[list[GarmentDB], int]:
     """List garments for a tenant with optional filtering and pagination.
     
@@ -53,8 +54,18 @@ async def list_garments(
         offset = (filters.page - 1) * filters.page_size
         query = query.offset(offset).limit(filters.page_size)
     
-    # Order by created_at descending (newest first)
-    query = query.order_by(GarmentDB.created_at.desc())
+    # Sort by status if requested (Rented -> Maintenance -> Available)
+    if sort_by_status:
+        status_order = case(
+            (GarmentDB.status == "rented", 1),
+            (GarmentDB.status == "maintenance", 2),
+            (GarmentDB.status == "available", 3),
+            else_=4,
+        )
+        query = query.order_by(status_order, GarmentDB.name)
+    else:
+        # Order by created_at descending (newest first)
+        query = query.order_by(GarmentDB.created_at.desc())
     
     result = await db.execute(query)
     garments = result.scalars().all()
@@ -183,3 +194,25 @@ async def delete_garment(
     await db.commit()
     
     return True
+
+
+async def update_garment_status(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    garment_id: uuid.UUID,
+    status_update: GarmentStatusUpdate,
+) -> GarmentDB | None:
+    """Efficiently update garment status and return date (Story 5.3)."""
+    garment = await get_garment(db, tenant_id, garment_id)
+    if not garment:
+        return None
+
+    garment.status = status_update.status.value
+    garment.expected_return_date = status_update.expected_return_date
+    garment.updated_at = datetime.now(timezone.utc)
+
+    await db.flush()
+    await db.commit()
+    await db.refresh(garment)
+
+    return garment

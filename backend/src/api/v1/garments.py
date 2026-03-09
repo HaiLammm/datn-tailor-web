@@ -20,6 +20,7 @@ from src.models.garment import (
     GarmentOccasion,
     GarmentResponse,
     GarmentStatus,
+    GarmentStatusUpdate,
     GarmentUpdate,
 )
 from src.services import garment_service
@@ -51,6 +52,7 @@ async def list_garments_endpoint(
     category: GarmentCategory | None = Query(None, description="Filter by category"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    sort_by_status: bool = Query(False, description="Sort by status: Rented -> Maintenance -> Available"),
 ) -> dict:
     """List garments with filters and pagination.
     
@@ -71,7 +73,9 @@ async def list_garments_endpoint(
         page_size=page_size,
     )
     
-    garments, total = await garment_service.list_garments(db, tenant_id, filters)
+    garments, total = await garment_service.list_garments(
+        db, tenant_id, filters, sort_by_status=sort_by_status
+    )
     
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     
@@ -199,3 +203,35 @@ async def delete_garment_endpoint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Khong tim thay san pham",
         )
+
+
+@router.patch(
+    "/{garment_id}/status",
+    response_model=dict,
+    summary="Update garment status (Owner only)",
+    description="Focused status update for inventory management. Owner role required.",
+)
+async def update_status_endpoint(
+    garment_id: uuid.UUID,
+    status_update: GarmentStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: uuid.UUID = Depends(get_tenant_id_from_user),
+    current_user=Depends(require_roles("Owner")),
+) -> dict:
+    """Update garment status (Owner only).
+    
+    Returns:
+        API Response Wrapper: {"data": {...}}
+    """
+    garment = await garment_service.update_garment_status(
+        db, tenant_id, garment_id, status_update
+    )
+    if not garment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Khong tim thay san pham",
+        )
+
+    return {
+        "data": GarmentResponse.model_validate(garment).model_dump(),
+    }

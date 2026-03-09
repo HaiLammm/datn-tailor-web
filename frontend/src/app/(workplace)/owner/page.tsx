@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 /**
  * Owner Dashboard - Placeholder page for Story 1.1
@@ -51,7 +52,7 @@ export default async function OwnerDashboard() {
                             Dashboard đang được phát triển
                         </h2>
                         <p className="text-gray-600 max-w-md mx-auto mb-8">
-                            Chức năng quản lý tiệm may sẽ được triển khai trong các story tiếp theo. 
+                            Chức năng quản lý tiệm may sẽ được triển khai trong các story tiếp theo.
                             Hiện tại bạn đã đăng nhập thành công với vai trò Owner.
                         </p>
                         <div className="flex gap-4 justify-center">
@@ -67,6 +68,22 @@ export default async function OwnerDashboard() {
 
                 {/* Feature Preview */}
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Link href="/owner/inventory" className="bg-white p-6 rounded-xl border-2 border-indigo-100 hover:border-indigo-300 hover:shadow-lg transition-all transform hover:-translate-y-1 group">
+                        <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-indigo-600 transition-colors">
+                            <svg className="w-6 h-6 text-indigo-600 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                            </svg>
+                        </div>
+                        <h3 className="font-semibold text-gray-900 mb-2">Quản lý Kho</h3>
+                        <p className="text-sm text-gray-600">Cập nhật trạng thái đồ thuê "2 chạm"</p>
+                        <div className="mt-4 flex items-center text-indigo-600 font-medium text-sm">
+                            Bắt đầu ngay
+                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+                    </Link>
+
                     <a href="/owner/staff" className="bg-white p-6 rounded-xl border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all">
                         <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
                             <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,16 +103,6 @@ export default async function OwnerDashboard() {
                         <h3 className="font-semibold text-gray-900 mb-2">Quản lý Quy tắc</h3>
                         <p className="text-sm text-gray-600">Xem và chỉnh sửa Smart Rules</p>
                     </a>
-
-                    <div className="bg-white p-6 rounded-xl border border-gray-200">
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                        </div>
-                        <h3 className="font-semibold text-gray-900 mb-2">Báo cáo kinh doanh</h3>
-                        <p className="text-sm text-gray-600">Coming in later epics</p>
-                    </div>
                 </div>
             </div>
         </div>

@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
 
 
 class GarmentStatus(str, Enum):
@@ -141,6 +141,31 @@ class GarmentResponse(BaseModel):
         return date.today() > self.expected_return_date
 
     model_config = {"from_attributes": True}
+
+
+class GarmentStatusUpdate(BaseModel):
+    """Schema for updating garment status - Story 5.3 '2-Touch' Update."""
+
+    status: GarmentStatus
+    expected_return_date: date | None = None
+
+    @field_validator("expected_return_date")
+    @classmethod
+    def validate_date(cls, v: date | None) -> date | None:
+        """Ensure date is in the future if provided."""
+        if v and v <= date.today():
+            raise ValueError("Ngày dự kiến trả đồ phải ở tương lai")
+        return v
+
+    @model_validator(mode="after")
+    def validate_rented_date(self) -> "GarmentStatusUpdate":
+        """Cross-field validation for rented status."""
+        if self.status == GarmentStatus.RENTED and self.expected_return_date is None:
+            raise ValueError("Phải nhập ngày dự kiến trả đồ khi trạng thái là 'rented'")
+        if self.status != GarmentStatus.RENTED:
+            # Auto-clear date for non-rented statuses (AC #5)
+            self.expected_return_date = None
+        return self
 
 
 class GarmentFilter(BaseModel):

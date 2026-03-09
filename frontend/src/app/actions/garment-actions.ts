@@ -8,6 +8,7 @@
  */
 
 import { auth } from "@/auth";
+import { revalidatePath } from "next/cache";
 import {
   Garment,
   GarmentFilter,
@@ -331,5 +332,117 @@ export async function deleteGarment(
       }
     }
     return { success: false, error: "Unknown error" };
+  }
+}
+
+/**
+ * Update garment status (Owner only) - Story 5.3 '2-Touch' Update.
+ */
+export async function updateGarmentStatus(
+  id: string,
+  status: string,
+  expectedReturnDate?: string
+): Promise<{ success: boolean; data?: Garment; error?: string }> {
+  const session = await auth();
+  const token = session?.accessToken;
+
+  if (!token) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const body: Record<string, unknown> = { status };
+    if (expectedReturnDate) {
+      body.expected_return_date = expectedReturnDate;
+    }
+
+    const response = await fetch(`${BACKEND_URL}/api/v1/garments/${id}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    clearTimeout(timeoutId);
+
+    const json = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: json.detail || `HTTP ${response.status}` };
+    }
+
+    revalidatePath("/(workplace)/owner/inventory");
+    revalidatePath("/(customer)/showroom");
+    revalidatePath(`/(customer)/showroom/${id}`);
+
+    return { success: true, data: json.data };
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        return { success: false, error: "Timeout" };
+      }
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Unknown error" };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Fetch inventory list sorted by status (Owner/Staff only).
+ */
+export async function fetchInventoryList(
+  sortByStatus: boolean = true
+): Promise<{ data: Garment[]; total: number; error?: string }> {
+  const token = await getAuthToken();
+  if (!token) {
+    return { data: [], total: 0, error: "Unauthorized" };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const params = new URLSearchParams({
+      sort_by_status: sortByStatus.toString(),
+      page: "1",
+      page_size: "100", // Large enough for inventory view
+    });
+
+    const response = await fetch(`${BACKEND_URL}/api/v1/garments?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+      next: { revalidate: 60 },
+    });
+
+    clearTimeout(timeoutId);
+
+    const json = await response.json();
+
+    if (!response.ok) {
+      throw new Error(json.detail || "Failed to fetch inventory");
+    }
+
+    return {
+      data: json.data.items,
+      total: json.data.total,
+    };
+  } catch (error) {
+    console.error("fetchInventoryList error:", error);
+    return { data: [], total: 0, error: error instanceof Error ? error.message : "Unknown error" };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
