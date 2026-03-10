@@ -1,4 +1,4 @@
-# generated: 2026-03-01
+# generated: 2026-03-10
 # project: tailor_project
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,49 +33,78 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-03-01
+generated: 2026-03-10
 project: tailor_project
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-1: done 
-  1-0-thiet-lap-du-an-tu-starter-template: done
-  1-1-dang-nhap-he-thong-da-phuong-thuc: done
-  1-2-dang-ky-tai-khoan-khach-hang-xac-thuc-otp: done
-  1-3-quan-ly-ho-so-so-do: done
-  1-4-quan-ly-tao-tai-khoan-nhan-vien: done
-  1-5-khoi-tao-tai-khoan-chu-tiem: done
-  1-6-thiet-lap-ha-tang-multi-tenant-local-first: done
+  epic-1: done
+  1-1-thiet-lap-cau-truc-du-an-tu-starter-template: done
+  1-2-thiet-ke-va-khoi-tao-database-multi-tenant: done
+  1-3-dang-nhap-he-thong-da-phuong-thuc: done
+  1-4-dang-ky-tai-khoan-xac-thuc-otp: done
+  1-5-khoi-phuc-mat-khau-qua-otp: done
+  1-6-quan-ly-nhan-su: done
+  1-7-quan-ly-ho-so-so-do-khach-hang: done
   epic-1-retrospective: optional
 
-  epic-2: done
-  2-1-lua-chon-tru-cot-phong-cach: done
-  2-2-tinh-chinh-cuong-do-phong-cach: done
-  2-3-goi-y-chat-lieu-vai-dua-tren-phong-cach: done
-  2-4-dich-thuat-cam-xuc-sang-ease-delta: done
-  2-5-phac-thao-giao-dien-rule-editor: done
+  epic-2: in-progress
+  2-1-hien-thi-listing-grid-san-pham: done
+  2-2-tuong-tac-view-chi-tiet-zoom-anh: backlog
+  2-3-he-thong-loc-san-pham-da-chieu: backlog
+  2-4-dashboard-owner-crud-san-pham-ao-dai: backlog
+  2-5-tracker-trang-thai-2-cham: done
+  2-6-timeline-tracking-automated-email-reminders: done
   epic-2-retrospective: optional
 
-  epic-3: done
-  3-1-adaptive-canvas-khoi-tao-rap-chuan: done
-  3-2-bien-doi-rap-thoi-gian-thuc: done
-  3-3-so-sanh-thiet-ke-voi-rap-chuan: done
-  3-4-dong-goi-du-lieu-ssot: done
+  epic-3: backlog
+  3-1-cart-state-management: backlog
+  3-2-render-cart-checkout-details: backlog
+  3-3-checkout-information-payment-gateway: backlog
+  3-4-lich-book-appointments-tiem-khach: backlog
   epic-3-retrospective: optional
 
-  epic-4: done
-  4-1a-loi-kiem-tra-rang-buoc-vat-ly: done
-  4-1b-hien-thi-canh-bao-ky-thuat-truc-tiep: done
-  4-2-bang-doi-soat-ky-thuat-cho-tho-may: done
-  4-3-ghi-de-phan-hoi-tu-nghe-nhan: done
-  4-4-xuat-ban-ve-san-xuat: done
+  epic-4: backlog
+  4-1-xu-ly-state-thanh-toan-qua-webhook: backlog
+  4-2-visual-bang-don-hang-owner-host: backlog
+  4-3-owner-theo-doi-thuemuon-dai-han: backlog
+  4-4-view-orders-lich-su-mua-hang-khach-le: backlog
   epic-4-retrospective: optional
 
-  epic-5: in-progress
-  5-1-danh-muc-san-pham-trung-bay-so: done
-  5-2-theo-doi-lich-trinh-trang-thai-do-thue: done
-  5-3-cap-nhat-trang-thai-kho-2-cham: done
-  5-4-thong-bao-nhac-nho-tra-do-tu-dong: review
+  epic-5: backlog
+  5-1-kpi-morning-command-center-dash: backlog
+  5-2-bang-dieu-phoi-khoi-san-xuat-gap-viec: backlog
+  5-3-workstation-production-flow-dash-cho-tho-tiem: backlog
+  5-4-tinh-luongthu-nhap-tho: backlog
   epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-quan-tri-he-thong-danh-sach-bang-chia-khoa: backlog
+  6-2-khai-mo-chuyen-hoa-khach: backlog
+  6-3-voucher-creator-ui: backlog
+  6-4-tuong-tac-broadcasting-template-sms-sns: backlog
+  epic-6-retrospective: optional
+
+  epic-7: done
+  7-1-uiux-tru-cot-phong-cach: done
+  7-2-style-intensity-ease-control-sliders: done
+  7-3-he-goi-y-loai-vai-tu-thong-so: done
+  7-4-goi-compiler-doi-adjective-ra-semantic-toan: done
+  epic-7-retrospective: optional
+
+  epic-8: in-progress
+  8-1-api-hinh-hoc-can-ban-sinh-json-cot-so: done
+  8-2-base-render-2d-svg-cat-path-kich-co-mo: done
+  8-3-noi-moc-morphing-effect-truot-thanh-so-slider: backlog
+  8-4-layer-bong-mo-so-sanh-cham-comparison-dau-lech: done
+  epic-8-retrospective: optional
+
+  epic-9: done
+  9-1-hard-constraints: done
+  9-2-hintsui-truc-tiep-nhay-vi-pham-kheo-nho-cui-soft: done
+  9-3-chuc-nang-bang-sanity-check-3-cot-khao-sat-tho: done
+  9-4-manual-override: done
+  9-5-cat-export-ban-thiet-ke-so: done
+  epic-9-retrospective: optional

@@ -29,13 +29,14 @@ def generate_otp() -> str:
     return str(secrets.randbelow(1000000)).zfill(6)
 
 
-async def create_otp_record(db: AsyncSession, email: str, code: str) -> OTPCodeDB:
+async def create_otp_record(db: AsyncSession, email: str, code: str, purpose: str = "register") -> OTPCodeDB:
     """Create a new OTP record in the database.
     
     Args:
         db: Database session
         email: User's email address (lowercase normalized)
         code: 6-digit OTP code
+        purpose: Purpose of the OTP (default: "register")
         
     Returns:
         OTPCodeDB: Created OTP record
@@ -46,6 +47,7 @@ async def create_otp_record(db: AsyncSession, email: str, code: str) -> OTPCodeD
         email=email.lower(),
         code=code,
         expires_at=expires_at,
+        purpose=purpose,
         is_used=False,
     )
     
@@ -56,13 +58,14 @@ async def create_otp_record(db: AsyncSession, email: str, code: str) -> OTPCodeD
     return otp_record
 
 
-async def verify_otp(db: AsyncSession, email: str, code: str) -> bool:
+async def verify_otp(db: AsyncSession, email: str, code: str, purpose: str = "register") -> bool:
     """Verify an OTP code for a given email.
     
     Args:
         db: Database session
         email: User's email address
         code: OTP code to verify
+        purpose: Expected purpose of the OTP (default: "register")
         
     Returns:
         bool: True if OTP is valid (correct, not expired, not used), False otherwise
@@ -74,6 +77,7 @@ async def verify_otp(db: AsyncSession, email: str, code: str) -> bool:
         select(OTPCodeDB)
         .where(OTPCodeDB.email == email.lower())
         .where(OTPCodeDB.code == code)
+        .where(OTPCodeDB.purpose == purpose)
         .where(OTPCodeDB.is_used == False)  # noqa: E712
         .where(OTPCodeDB.expires_at > now)
         .order_by(OTPCodeDB.created_at.desc())
@@ -90,14 +94,12 @@ async def verify_otp(db: AsyncSession, email: str, code: str) -> bool:
     return True
 
 
-async def invalidate_old_otps(db: AsyncSession, email: str) -> int:
+async def invalidate_old_otps(db: AsyncSession, email: str, purpose: str = "register") -> int:
     """Mark all unused OTPs for an email as used (invalidate them).
     
-    This is called when resending OTP to prevent confusion with old codes.
-    
-    Args:
         db: Database session
         email: User's email address
+        purpose: Purpose of the OTPs to invalidate (default: "register")
         
     Returns:
         int: Number of OTPs invalidated
@@ -105,6 +107,7 @@ async def invalidate_old_otps(db: AsyncSession, email: str) -> int:
     result = await db.execute(
         update(OTPCodeDB)
         .where(OTPCodeDB.email == email.lower())
+        .where(OTPCodeDB.purpose == purpose)
         .where(OTPCodeDB.is_used == False)  # noqa: E712
         .values(is_used=True)
     )
@@ -132,15 +135,15 @@ async def get_latest_otp(db: AsyncSession, email: str) -> OTPCodeDB | None:
     return result.scalar_one_or_none()
 
 
-async def check_rate_limit(db: AsyncSession, email: str) -> tuple[bool, int]:
+async def check_rate_limit(db: AsyncSession, email: str, purpose: str = "register") -> tuple[bool, int]:
     """Check if email has exceeded OTP rate limit.
     
     Story 1.2: HIGH Priority Fix - Prevent OTP spam
     Max 3 OTP requests per email per hour.
     
-    Args:
         db: Database session
         email: User's email address
+        purpose: Purpose of the OTP (default: "register")
         
     Returns:
         tuple[bool, int]: (is_allowed, remaining_requests)
@@ -149,10 +152,10 @@ async def check_rate_limit(db: AsyncSession, email: str) -> tuple[bool, int]:
     """
     rate_limit_start = datetime.now(timezone.utc) - timedelta(minutes=OTP_RATE_LIMIT_WINDOW_MINUTES)
     
-    # Count OTP requests in the last hour
     result = await db.execute(
         select(func.count(OTPCodeDB.id))
         .where(OTPCodeDB.email == email.lower())
+        .where(OTPCodeDB.purpose == purpose)
         .where(OTPCodeDB.created_at >= rate_limit_start)
     )
     count = result.scalar() or 0

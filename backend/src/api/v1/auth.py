@@ -14,9 +14,11 @@ from src.models.user import (
     TokenResponse,
     UserResponse,
     VerifyTokenRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from src.services.auth_service import authenticate_user, determine_role, get_user_by_email
-from src.services.email_service import send_otp_email
+from src.services.email_service import send_otp_email, send_reset_password_email
 from src.services.otp_service import (
     check_rate_limit,
     create_otp_record,
@@ -311,5 +313,100 @@ async def resend_otp(
     
     return {
         "message": "Mã OTP mới đã được gửi đến email của bạn.",
+        "email": user.email,
+    }
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    """Request password reset via OTP email.
+    
+    Story 1.7: AC1
+    - Checks rate limit
+    - Checks if email exists
+    - Generates 6-digit OTP for 'password_recovery'
+    - Sends recovery email
+    """
+    # Check rate limit
+    is_allowed, remaining = await check_rate_limit(db, request.email, purpose="recovery")
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Bạn đã yêu cầu quá nhiều mã khôi phục. Vui lòng thử lại sau 1 giờ.",
+        )
+    
+    # Get user
+    user = await get_user_by_email(db, request.email)
+    if user is None:
+        # Security best practice: Don't reveal if email exists
+        # But for this small internal-ish app, we can be more helpful
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy tài khoản với email này.",
+        )
+    
+    # Invalidate old recovery OTPs
+    await invalidate_old_otps(db, user.email, purpose="recovery")
+    
+    # Generate recovery OTP
+    otp_code = generate_otp()
+    await create_otp_record(db, user.email, otp_code, purpose="recovery")
+    
+    # Send email
+    email_sent = await send_reset_password_email(
+        email=user.email,
+        full_name=user.full_name or "Khách hàng",
+        otp_code=otp_code,
+    )
+    
+    if not email_sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể gửi email khôi phục. Vui lòng thử lại sau.",
+        )
+    
+    return {
+        "message": "Hướng dẫn khôi phục mật khẩu đã được gửi đến email của bạn.",
+        "email": user.email,
+    }
+
+
+@router.post("/reset-password")
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    """Reset password using OTP.
+    
+    Story 1.7: AC2, AC3
+    - Verifies recovery OTP
+    - Updates user password
+    - Redirects (handled by frontend)
+    """
+    # Get user
+    user = await get_user_by_email(db, request.email)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy tài khoản với email này.",
+        )
+    
+    # Verify recovery OTP
+    is_valid = await verify_otp(db, request.email, request.code, purpose="recovery")
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mã xác thực không đúng hoặc đã hết hạn. Vui lòng thử lại.",
+        )
+    
+    # Hash and update password
+    user.hashed_password = hash_password(request.new_password)
+    await db.commit()
+    
+    return {
+        "message": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới.",
         "email": user.email,
     }

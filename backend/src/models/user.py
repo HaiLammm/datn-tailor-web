@@ -134,3 +134,37 @@ class UserProfileResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+    
+
+class ForgotPasswordRequest(BaseModel):
+    """Schema for forgot password request (email only)."""
+
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def email_lowercase(cls, v: str) -> str:
+        """Normalize email to lowercase."""
+        return v.lower()
+
+
+class ResetPasswordRequest(BaseModel):
+    """Schema for reset password request."""
+
+    email: EmailStr
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
+    new_password: str = Field(..., min_length=8, description="New password must be at least 8 characters")
+
+    @field_validator("email")
+    @classmethod
+    def email_lowercase(cls, v: str) -> str:
+        """Normalize email to lowercase."""
+        return v.lower()
+
+    @field_validator("code")
+    @classmethod
+    def code_numeric(cls, v: str) -> str:
+        """Validate OTP code is numeric."""
+        if not v.isdigit():
+            raise ValueError("OTP code must be 6 digits")
+        return v

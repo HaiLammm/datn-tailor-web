@@ -1,7 +1,6 @@
 import asyncio
 import os
 import sys
-import re
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -19,28 +18,45 @@ load_dotenv(dotenv_path=env_path)
 from src.core.config import settings
 
 def split_sql_statements(sql):
-    """Split SQL while preserving dollar-quoted functions and triggers."""
-    # First, protect dollar-quoted blocks by replacing them temporarily
-    dollar_blocks = []
-    def protect_dollar_quotes(match):
-        dollar_blocks.append(match.group(0))
-        return f"__DOLLAR_BLOCK_{len(dollar_blocks) - 1}__"
-    
-    # Match dollar-quoted strings ($$...$$)
-    protected_sql = re.sub(r'\$\$.*?\$\$', protect_dollar_quotes, sql, flags=re.DOTALL)
-    
-    # Now split on semicolons outside quotes
-    statements = re.split(r';(?=(?:[^\'"]*[\'"][^\'"]*[\'"])*[^\'"]*$)', protected_sql)
-    
-    # Restore dollar-quoted blocks
-    result = []
-    for stmt in statements:
-        for i, block in enumerate(dollar_blocks):
-            stmt = stmt.replace(f"__DOLLAR_BLOCK_{i}__", block)
-        if stmt.strip():
-            result.append(stmt.strip())
-    
-    return result
+    """Split SQL into individual statements, preserving dollar-quoted blocks.
+
+    Handles:
+    - $$ ... $$ blocks (PL/pgSQL functions, DO blocks)
+    - Single-quoted strings spanning multiple lines
+    - Comment lines (-- ...)
+    """
+    statements = []
+    current = []
+    in_dollar_quote = False
+
+    for line in sql.split("\n"):
+        stripped = line.strip()
+
+        # Skip pure comment / blank lines (but still accumulate them for context)
+        if not stripped or stripped.startswith("--"):
+            current.append(line)
+            continue
+
+        # Track dollar-quote boundaries
+        dollar_count = line.count("$$")
+        if dollar_count % 2 == 1:
+            in_dollar_quote = not in_dollar_quote
+
+        current.append(line)
+
+        # A statement ends with ';' at the end of a line, outside dollar quotes
+        if stripped.endswith(";") and not in_dollar_quote:
+            stmt = "\n".join(current).strip()
+            if stmt:
+                statements.append(stmt)
+            current = []
+
+    # Catch any trailing statement without a final semicolon
+    leftover = "\n".join(current).strip()
+    if leftover:
+        statements.append(leftover)
+
+    return statements
 
 async def run_migrations():
     # Use settings.DATABASE_URL which now should have the .env value

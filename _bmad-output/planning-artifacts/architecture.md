@@ -1,10 +1,26 @@
 ---
-stepsCompleted: [1, 2, 3, 4, 5, 6]
-inputDocuments: ["_bmad-output/planning-artifacts/prd.md", "_bmad-output/planning-artifacts/product-brief-tailor_project-2026-02-17.md", "_bmad-output/planning-artifacts/ux-design-specification.md", "_bmad-output/planning-artifacts/research/technical-semantic-to-geometric-translation-architecture-2026-02-17.md"]
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
+workflowType: 'architecture'
+lastStep: 8
+status: 'complete'
+completedAt: '2026-03-10T15:42:18+07:00'
+inputDocuments:
+  - _bmad-output/planning-artifacts/prd/index.md
+  - _bmad-output/planning-artifacts/prd/executive-summary.md
+  - _bmad-output/planning-artifacts/prd/product-scope.md
+  - _bmad-output/planning-artifacts/prd/success-criteria.md
+  - _bmad-output/planning-artifacts/prd/user-journeys.md
+  - _bmad-output/planning-artifacts/prd/functional-requirements.md
+  - _bmad-output/planning-artifacts/prd/non-functional-requirements-nfrs.md
+  - _bmad-output/planning-artifacts/prd/domain-specific-requirements.md
+  - _bmad-output/planning-artifacts/prd/technical-project-type-requirements.md
+  - _bmad-output/planning-artifacts/product-brief-tailor_project-2026-02-17.md
+  - _bmad-output/planning-artifacts/ux-design-specification.md
+  - _bmad-output/project-context.md
 workflowType: 'architecture'
 project_name: 'tailor_project'
 user_name: 'Lem'
-date: 'Sunday, February 22, 2026'
+date: '2026-03-10T15:09:35+07:00'
 ---
 
 # Architecture Decision Document
@@ -16,217 +32,351 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 ### Requirements Overview
 
 **Functional Requirements:**
-Hệ thống tập trung vào việc số hóa quy trình may đo cao cấp thông qua 6 module chính:
-1. **Style Interpretation:** Dịch thuật cảm xúc khách hàng sang thông số kỹ thuật.
-2. **Geometric Engine:** Áp dụng biến đổi Delta vào mẫu rập chuẩn SVG/DXF.
-3. **Deterministic Guardrails:** Kiểm soát vi phạm vật lý tự động.
-4. **Collaboration:** Giao diện Adaptive Canvas cho khách hàng và thợ may.
-5. **Profile Management:** Lưu trữ số đo và lịch sử thiết kế.
-6. **Rental Management:** Quản lý kho đồ thuê với tương tác "2 chạm".
+Hệ thống là một nền tảng lai mức độ cao (Hybrid Platform) bao gồm 8 phân hệ chính:
+1. **E-commerce & Digital Catalog:** Quản lý sản phẩm, giỏ hàng, thanh toán và xử lý đơn hàng.
+2. **Appointment Booking:** Quản lý lịch tư vấn Bespoke giữa Customer và Tailor trực tiếp tại tiệm.
+3. **AI Bespoke Engine & Geometry Transformation:** Cốt lõi dịch thuật cảm xúc thành thông số kỹ thuật (Deltas) và tái tạo bản vẽ (Master Geometry JSON).
+4. **Operations & CRM Dashboard:** Trung tâm chỉ huy (Command Center) quản lý doanh thu, kho hàng, leads, vouchers, và phân việc.
+5. **Tailor Workstation:** Công cụ cho nghệ nhân nhận việc, kiểm tra bản vẽ rập, và cập nhật tiến độ tự động tới khách hàng.
 
-**Non-Functional Requirements:**
-- **Hiệu năng:** Độ trễ suy luận < 15 giây, phản hồi UI < 200ms.
-- **Độ chính xác:** Sai số hình học ΔG ≤ 1mm (mục tiêu 0.5mm).
-- **Bảo mật:** Phân quyền RBAC chặt chẽ để bảo vệ "Hầm chứa tri thức" của các nghệ nhân.
-- **Khả dụng:** 99.9% thời gian hoạt động, sử dụng 100% thuật ngữ chuyên ngành may Việt Nam.
+**Non-Functional Requirements (Architectural Drivers):**
+- **Performance:** Phản hồi thay đổi hình học trên UI < 200ms bằng nội suy Client-side. API phản hồi < 300ms, tải trang < 2s.
+- **Security & Reliability:** PCI DSS compliance cho thanh toán; JWT lưu trữ bằng HttpOnly cookies; Uptime thanh toán > 99.5%.
+- **Accessibility & i18n:** WCAG 2.1 Level A. Bắt buộc 100% thuật ngữ Tiếng Việt chuyên ngành may.
 
 **Scale & Complexity:**
-Dự án có độ phức tạp cao do yêu cầu tích hợp giữa suy luận AI (Probabilistic) và sản xuất hình học (Deterministic).
-- Primary domain: Full-stack AI-Driven Manufacturing
-- Complexity level: High
-- Estimated architectural components: ~8-10 components (Agents, Geometry Engine, API, Database, Storage, UI Modes)
+- Hệ thống hỗ trợ đồng thời ít nhất 100 kết nối người dùng/nhân viên với độ trễ thấp.
+- **Primary domain:** Full-stack E-commerce & AI-Driven Manufacturing
+- **Complexity level:** Cao (High)
+- **Estimated architectural components:** ~12-15 components (Frontend Apps, APIs, Database Services, AI Agents, Payment Integrations, Mailing/SMS Services)
 
 ### Technical Constraints & Dependencies
 
-- **Technology Stack:** Python (Backend), LangGraph (AI Orchestration), FastAPI (API), PostgreSQL + pgvector (Data), React + Tailwind (Frontend).
-- **Legacy Knowledge:** Phải ưu tiên tri thức nội bộ của tiệm (LKB) hơn kiến thức phổ thông.
-- **Physical Integrity:** Không được phép xuất bản vẽ nếu vi phạm Guardrails.
+- **Technology Stack:** Next.js (Frontend), FastAPI + LangGraph (Backend), PostgreSQL + pgvector (Data).
+- Hệ thống bắt buộc sử dụng Authoritative Server Pattern — Backend là Nguồn chân lý duy nhất (SSOT) cho mọi validation vật lý, giá trị hóa đơn và tồn kho. Frontend chỉ đảm nhiệm validate Type và UI Rendering.
+- **Integrations:** Gateway thanh toán (VNPay/Momo/Stripe), SMS/Email Notification API (nhắc lịch, OTP password recovery).
 
 ### Cross-Cutting Concerns Identified
 
-- **Knowledge Digitization:** Cơ chế chuyển đổi tri thức ngầm (Tacit) thành dữ liệu số (Explicit).
-- **Human-in-the-loop:** Quyền ghi đè (Manual Override) của nghệ nhân là tối cao.
-- **Data Integrity:** Đảm bảo Master Geometry JSON không bị sai lệch trong quá trình truyền tải và lưu trữ.
+- **Dual-Mode UI Architecture:** Kiến trúc Frontend phải hỗ trợ tách biệt hoàn toàn CSS styling, Layouts và Component behaviors giữa "Boutique Mode" (Customer) và "Command Mode" (Owner/Tailor) theo Role của Auth.
+- **Transaction & Inventory Consistency:** Race conditions logic xử lý giỏ hàng E-commerce, Booking slot booking và Cập nhật kho phải là ACID-compliant thuần túy.
+- **Data Integrity & Traceability:** Tính bất biến của `Master Geometry JSON` qua các chu kỳ thay đổi của AI; cơ chế Versioning rập thiết kế (Snapshot-based rollback).
 
 ## Starter Template Evaluation
 
 ### Primary Technology Domain
-Full-stack AI-Driven Manufacturing (Next.js Frontend + FastAPI/LangGraph Backend)
 
-### Starter Options Selected
+Full-stack Microservices Architecture dựa trên phân tích yêu cầu tích hợp sâu: **Next.js 16 (Frontend)** giao tiếp qua REST API tới **FastAPI + LangGraph (Backend)**.
 
-**Frontend: Next.js 16 Starter**
-- **Rationale:** Next.js 16 cung cấp hiệu năng tối ưu (Turbopack) và App Router ổn định, phù hợp cho việc xử lý SVG morphing mượt mà.
-- **Initialization Command:**
-  ```bash
-  npx create-next-app@latest frontend --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
-  ```
+### Starter Options Considered
 
-**Backend: FastAPI + LangGraph Starter**
-- **Rationale:** Python là ngôn ngữ tốt nhất cho AI và xử lý hình học. LangGraph cho phép xây dựng các vòng lặp suy luận AI (Reasoning Loops) cần thiết cho việc dịch thuật cảm xúc sang hình học.
-- **Initialization Command:** (Custom installation via pip/poetry for FastAPI, LangGraph, Pydantic v2)
+1. **Frontend: Official Next.js 16 `create-next-app` Starter**
+   - Sự lựa chọn tiêu chuẩn và an toàn nhất từ Vercel. Nó luôn đi kèm các thiết lập mới nhất về App Router, Turbopack, Tailwind CSS v4 và ESLint nguyên bản. Lý tưởng để tích hợp sau này với Framer Motion và Zustand.
+2. **Backend: LangGraph Production-Ready FastAPI Template** (như `wassim249/fastapi-langgraph-agent-production-ready-template`)
+   - Cung cấp sẵn mô hình Asynchronous API (uvloop), cấu hình kết nối chuẩn với PostgreSQL/pgvector, và tích hợp Langfuse để đo lường/theo dõi tiến trình suy luận (tracing). Đây là thiết lập rất quan trọng để đảm bảo sự ổn định của `AI Bespoke Engine`.
+
+### Selected Starters: Next.js 16 App Router & FastAPI-LangGraph Base
+
+**Rationale for Selection:**
+Vì `tailor_project` yêu cầu tính chuyên biệt rất cao (đặc biệt là việc xử lý Validation Hình học 2 lớp ngặt nghèo và kiến trúc Dual-Mode UI), việc dùng các boilerplate gộp chung (như T3 Stack, Blitz) sẽ gây cản trở và khó tùy biến. Việc tách hẳn frontend bằng công cụ chính chủ của Next.js và dựng backend dựa trên một khung LangGraph chuẩn (tự thiết lập Custom Docker/FastAPI) giúp đảm bảo Performance và bảo vệ The Vault Knowledge vững chắc nhất.
+
+**Initialization Commands:**
+
+**Frontend:**
+```bash
+npx create-next-app@latest frontend --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm
+```
+
+**Backend:**
+```bash
+mkdir backend && cd backend
+python -m venv venv
+source venv/bin/activate
+pip install fastapi "uvicorn[standard]" pydantic pydantic-settings sqlalchemy asyncpg pgvector langgraph langchain-core
+```
+*(Lưu ý: Backend sẽ được khởi tạo như một custom boilerplate thay vì clone 1 template phức tạp, sau đó cài các dependencies chủ chốt của hệ thống ngay từ đầu).*
+
+**Architectural Decisions Provided by Starters:**
+
+**Language & Runtime:**
+- Frontend: TypeScript chạy trên Node.js/Edge Runtime (yêu cầu Node 20.9+).
+- Backend: Python 3.11+ chạy môi trường ảo (venv) với Uvicorn ASGI.
+
+**Styling Solution:**
+- Tailwind CSS v4 được config mặc định qua directive `@tailwind` và file CSS gốc. Sẽ thêm plugin tùy chỉnh cho "Heritage Palette" sau.
+
+**Build Tooling & Optimization:**
+- Frontend xử lý qua Turbopack (dev) và cấu hình chuẩn Next.js Build cache.
+- Backend tận dụng Pydantic V2 (code bằng Rust) để tối ưu hóa việc validate mảng SVG Deltas kích thước lớn.
+
+**State & Fetching:**
+- Không sử dụng App Router cache mù quáng mà sẽ bypass bằng TanStack Query cho danh bạ Khách hàng và Trạng thái Inventory thời gian thực.
+
+**Code Organization:**
+- Khẳng định áp dụng cấu trúc Layered trên Backend (routers/services/agents/models) và Feature-Folded trên Frontend.
+
+**Note:** Project initialization using this command should be the first implementation story.
 
 ## Core Architectural Decisions
 
 ### Decision Priority Analysis
 
 **Critical Decisions (Block Implementation):**
-- **Auth Strategy:** Auth.js v5 + JWT với Role-based Middleware.
-- **Data Foundation:** PostgreSQL 17 + `pgvector` cho lưu trữ hybrid (quan hệ + vector).
-- **Inference Strategy:** Tách biệt Client-side Morphing (tức thì) và Backend Inference (đóng gói thiết kế).
+- Authentication & State Management cho E-commerce giỏ hàng (Cart) và AI Bespoke Studio.
+- Thiết kế kết nối Database chung cho The Vault Knowledge và Orders.
 
 **Important Decisions (Shape Architecture):**
-- **State Management:** Zustand (Local state Sliders) + TanStack Query (Server sync).
-- **Communication:** REST API thuần túy, không sử dụng WebSockets cho tương tác UI.
+- Xử lý bất đồng bộ (Thanh toán Webhook, Notification Order).
+
+**Deferred Decisions (Post-MVP):**
+- Recommendation Engine cho Digital Catalog (giữ mặc định Query ban đầu).
 
 ### Data Architecture
 
-**Database Choice:**
-- **Technology:** PostgreSQL 17
-- **Name:** `tailor_db`
-- **Extension:** `pgvector` 0.8.x
-- **Rationale:** Giải pháp duy nhất cho phép quản lý cả dữ liệu quan hệ (SSOT) và tìm kiếm ngữ nghĩa (Smart Rules) trong cùng một môi trường ACID-compliant.
-
-**Data Modeling:**
-- **Validation:** Pydantic v2 (Backend) đảm bảo tính toàn vẹn của Master Geometry JSON trước khi lưu trữ.
+- **Database Choice:** PostgreSQL 17 + `pgvector` 0.8.x định tuyến qua `asyncpg`. Hỗ trợ luồng dữ liệu E-commerce thuần quan hệ ACID (Orders, Inventory) kết hợp song hành với lưu trữ Data JSON bất biến (Immutable State của bản vẽ AI).
+- **Validation:** Pydantic V2 trên Backend làm màng lọc toàn vẹn dữ liệu cho Hình học cấu trúc áo dài (Hard Constraints) và Dữ liệu giỏ hàng.
 
 ### Authentication & Security
 
-**Authentication Method:**
-- **Provider:** Auth.js v5 (NextAuth.js)
-- **Session:** JWT (Stateless)
-- **Rationale:** Tận dụng hệ sinh thái Next.js 16, hỗ trợ tốt cho cả Node.js và Edge runtime.
-
-**Authorization Patterns:**
-- **Pattern:** Role-based Access Control (RBAC) thông qua `proxy.ts` (Next.js 16 Proxy pattern).
-- **Roles:** `Owner` (Quản trị tri thức), `Tailor` (Thợ may kế thừa), `Customer` (Khách hàng).
-- **CRITICAL:** Trong Next.js 16, `proxy.ts` thay thế hoàn toàn cho `middleware.ts`. Tuyệt đối KHÔNG tạo file `middleware.ts` vì sẽ gây xung đột runtime.
+- **Authentication Method:** Dùng **Auth.js v5 (NextAuth)**. Lưu trữ JWT qua chuẩn **HttpOnly Secure Cookie**.
+- **Proxy Pattern:** Chuyến hướng API từ Next.js Client > `proxy.ts` (Next Server) > Kèm Cookie xác thực > FastAPI Backend. Không gọi trực tiếp từ trình duyệt đến API Backend. Cách tiếp cận này giúp Next.js App Router xử lý RBAC (Role-based Access Control) cho 2 chế độ (Boutique & Command Mode) mượt mà mà vẫn tách biệt khỏi mã Backend (The Vault).
 
 ### API & Communication Patterns
 
-**API Design:**
-- **Pattern:** RESTful API (FastAPI).
-- **Real-time Interaction:** Không sử dụng WebSockets. Slider UI tính toán chuyển đổi SVG (Morphing) hoàn toàn tại Client bằng thuật toán nội suy (Interpolation) để đạt độ trễ < 200ms.
+- **Communication:** Thuần RESTful API Backend qua FastAPI, không dùng WebSockets để tính hình học (Morphing ở Client via UI <200ms).
+- **E-commerce Payments:** Giải pháp thiết kế theo mô hình **Webhook & Background Tasks**. Hệ thống Frontend gọi Backend khởi tạo Order Pending -> Chuyển sang URL VNPay/Stripe -> Trả về kết quả qua Webhook Backend -> Trigger background task gửi email và cập nhật Inventory. Hạn chế hoàn toàn rủi ro nghẽn cổ chai kịch bản Timeout.
 
-### Geometry & Constraint Architecture (The Engine)
+### Frontend Architecture
 
-Hệ thống tuân thủ mô hình **Authoritative Server**, Backend là nguồn chân lý duy nhất (SSOT).
+- **E-commerce State & Cart Management:** Kết hợp linh hoạt **Zustand** (Local UI, Cart UI nhanh nhạy) và **TanStack Query** (Background Syncing + Cache Invalidation). Dữ liệu Inventory và Giá trị giỏ hàng cuối cùng đều phải được Backend quyết định (Authoritative Server) khi Checkout, Zustand chỉ phục vụ mặt trải nghiệm (Optimistic UI - Zero-Thought Commerce).
+- **Component Design System:** Radix UI cho các Control nguyên thủy không bị định hướng sẵn Styles, được tùy biến thông qua Tailwind CSS V4 và Framer Motion. Thiết kế này giúp đảm bảo chuẩn tiếp cận WCAG 2.1 Level A. Cấu trúc Component được chia tách rõ rệt dựa trên route phân nhóm `(customer)` cho giao diện mua hàng và `(workplace)` cho hệ thống quản lý lệnh.
 
-**1. Master Geometry Snapshot (Immutable State):**
-- Mỗi thay đổi được lưu thành một trạng thái bất biến (Immutable).
-- Chứa: `sequence_id`, `base_hash`, `algorithm_version`, `deltas`, `geometry_hash`.
-- Nguyên tắc: Không bao giờ tin tưởng hình học từ Frontend; luôn tái dựng từ **Base Geometry + Deltas**.
+### Infrastructure & Deployment
 
-**2. Concurrency & Race Condition Control:**
-- Sử dụng **Sequence-based Validation**: Frontend gắn `sequence_id` tăng dần. Backend chỉ chấp nhận và xử lý request có sequence cao nhất, loại bỏ các request cũ (Early Return).
+- **Deployment Model:** Container hóa hoàn toàn, Next.js chạy độc lập trên Vercel hoặc Docker; FastAPI chạy Node riêng rẽ có GPU/CPU tối ưu cho LLM Routing.
+- **Monitoring:** Sử dụng Langfuse (đã thiết lập trong Starter template Backend) cho việc Trace chuỗi Graph truy vấn cấu trúc Áo dài, và Prometheus cho API Monitoring.
 
-**3. Constraint Engine (Registry Pattern):**
-- **Phase 1 - Hard Constraints:** Vi phạm dẫn đến Reject Snapshot ngay lập tức.
-- **Phase 2 - Soft Constraints:** Trả về cảnh báo (Warnings) nhưng cho phép lưu snapshot.
-- Cô lập logic kiểm tra: Dễ dàng tích hợp AI để giải thích lỗi vi phạm cho người dùng.
+### Decision Impact Analysis
 
-**4. Error Recovery & Evolution:**
-- **FE Revert:** Tự động snap-back về `safe_snapshot_id` gần nhất khi validation thất bại.
-- **GeometryRebuilderService:** Đảm bảo tính tương thích ngược khi thuật toán rập gốc (Base) nâng cấp phiên bản.
+**Implementation Sequence:**
+1. Cài đặt DB `pgvector` và `asyncpg` -> Khởi tạo Models căn bản.
+2. Xây dựng Next.js Route Framework kèm Auth.js v5 và Proxy.ts.
+3. Thiết lập Background Task Queues và Webhooks cho Payment.
+4. Triển khai các Component UI Boutique và Cart State Management.
+
+**Cross-Component Dependencies:**
+- Việc lựa chọn Cookie-based Auth + Proxy.ts ảnh hưởng toàn bộ tới các lệnh Fetch dữ liệu ở Client. TanStack Query bắt buộc phải cấu hình Custom Fetcher truyền Cookie này trên Server Layer.
+- Database Schema phải hỗ trợ rõ Multi-tenancy nếu muốn mở rộng Brand (mặc định Schema ban đầu sẽ cần `brand_id` ẩn).
 
 ## Implementation Patterns & Consistency Rules
 
-### Validation & Constraint Strategy
+### Pattern Categories Defined
 
-Hệ thống áp dụng nguyên tắc **Phân tách Trách nhiệm Kiểm soát (Separation of Validation Concerns)**:
+**Critical Conflict Points Identified:**
+4 areas where AI agents could make different choices: Naming Conventions, API Response Wrappers, State Management usage, and Error Handling formats.
 
-**1. Frontend Validation (Zod):**
-- **Trách nhiệm:** Chỉ kiểm tra tính hợp lệ của dữ liệu thô (Type safety, Required fields).
-- **Phạm vi:** `number`, `string`, `boolean`, `enum`, `null check`.
-- **Cấm Replicate:** Tuyệt đối không tái lập logic hình học (Geometry constraints) hoặc logic vật liệu (Fabric constraints) tại Frontend.
+### Naming Patterns
 
-**2. Backend Constraint Engine (Authoritative):**
-- **Trách nhiệm:** Thực thi toàn bộ logic nghiệp vụ, hình học và vật lý.
-- **Quy trình:** Nhận Delta → Tái dựng hình học → Chạy Constraint Registry (Hard/Soft) → Trả về kết quả Validation + Snap-back data (nếu lỗi).
+**Database Naming Conventions:**
+- Sử dụng 100% `snake_case` cho Table, Column, và Foreign Keys. (VD: `user_id`, `orders`, `line_items`).
+- Tên bảng (Table) bắt buộc ở dạng số nhiều (Plural).
+- Pydantic Models trên Backend sử dụng `PascalCase`.
 
-### Naming & Structure Patterns
+**API Naming Conventions:**
+- REST endpoint dùng số nhiều (VD: `/api/v1/users`, `/api/v1/orders`).
+- Route parameter dùng định dạng bracket (FastAPI chuẩn: `/{user_id}`).
+- Dữ liệu Query Paramenter và JSON Body truyền đi BẮT BUỘC ở định dạng `snake_case` để khớp với Pydantic Backend.
 
-**Naming Conventions:**
-- **Backend (Python):** `snake_case` cho DB, API Endpoints, Hàm/Biến. `PascalCase` cho Pydantic Models.
-- **Frontend (TS):** `PascalCase` cho Components. `camelCase` cho Hàm/Biến. `snake_case` cho JSON Fields (để đồng bộ với Master Geometry JSON).
+**Code Naming Conventions:**
+- Frontend React Component và tên File: `PascalCase.tsx` (VD: `UserCard.tsx`) để tương thích tính case-sensitive trên Linux.
+- Local variables, hàm utils Frontend: `camelCase` (VD: `getUserData`).
+
+### Structure Patterns
 
 **Project Organization:**
-- **Backend:** Layered Architecture (`api`, `services`, `models`, `geometry`).
-- **Frontend:** Feature-based Structure (Components, Hooks, Types theo tính năng).
-- **Tests:** Folder `tests/` riêng biệt tại root của mỗi service.
+- Backend: Cấu trúc Layered Architecture (routers, services, agents, models, geometry).
+- Frontend: Cấu trúc Feature-Folded Organization, phân tách theo luồng `(customer)` và `(workplace)` thông qua Route Groups của Next.js App Router.
 
-### Communication & Data Formats
+### Format Patterns
 
-**API Response Wrapper:**
-```json
-{
-  "data": { ... },
-  "meta": { "sequence_id": 123 },
-  "error": { "message": "...", "code": "ERR_CODE", "details": { ... } }
+**API Response Formats:**
+- **Thành công:** `{ "data": { ... }, "meta": { "pagination": ... } }`
+- **Thất bại:** `{ "error": { "code": "ERR_CODE", "message": "Thông báo người dùng" } }`
+
+**Data Exchange Formats:**
+- Frontend phải chủ động remap `camelCase` state hiện tại thành `snake_case` payload trước khi gửi POST/PUT.
+
+### Communication Patterns
+
+**State Management Patterns:**
+- **Zustand:** Chỉ quản lý Local UI State (Slider parameters, Modal Visibility, Optimistic UI update). Sử dụng `Immer` Middleware cho nested objects.
+- **TanStack Query:** Chuyên trị mọi nghiệp vụ Server State Syncing, Fetching, và Cache Invalidation. Đặc biệt quan trọng ở bước Checkout để chốt Validation tồn kho và giá cả từ Backend thay vì tin vào Zustand.
+
+### Process Patterns
+
+**Error Handling Patterns:**
+- **Validation lóp thô (Type):** Zod trên Next.js chặn ngay tại Client.
+- **Validation Database/Domain:** FastAPI trả về `400 Bad Request` nếu sai định dạng.
+- **Vi phạm Geometry (Áo dài):** Trả về HTTP `422 Unprocessable Entity` với Error Message mô tả Tiếng Việt 100% chuyên ngành để User/Tailor hiểu.
+
+### Enforcement Guidelines
+
+**All AI Agents MUST:**
+- KHÔNG BAO GIỜ tự dịch thuật ngữ ngành may sang Tiếng Anh trong Database hay UI (VD: Bắt buộc dùng `vong_nach`, `ha_eo`, `can_tay`).
+- Bắt buộc tuân thủ Wrapper Structure (`data`, `error`) khi xử lý mọi lệnh Fetch.
+
+**Pattern Examples:**
+
+**Good Examples:**
+```typescript
+// Component: ProductGrid.tsx
+const fetchOrders = async () => {
+    const res = await api.get('/api/v1/orders');
+    return res.data.data; // Wrapper extraction
 }
 ```
 
-**Enforcement Guidelines:**
-- Tất cả AI Agents phải tuân thủ nghiêm ngặt Schema của **Master Geometry JSON**.
-- Mọi thay đổi về thuật ngữ phải sử dụng 100% thuật ngữ chuyên ngành may Việt Nam.
+**Anti-Patterns:**
+```typescript
+// BAD: Chữ thường cho component
+// product-grid.tsx
+// BAD: Sai format body
+axios.post('/api/v1/orders', { userId: 123 }) // userId thay vì user_id
+```
 
 ## Project Structure & Boundaries
 
-### Frontend Structure (Next.js 16 App Router)
+### Complete Project Directory Structure
 
-**Sub-applications & Route Groups:**
-- `/app/(customer)`: Ưu tiên SSG/ISR. Trải nghiệm mượt mà, SEO tốt cho Showroom và Design Session.
-- `/app/(workplace)/tailor`: Ưu tiên CSR. Công cụ kỹ thuật, bản vẽ SVG và quản lý sản xuất cho Minh.
-- `/app/(workplace)/owner`: Dashboard quản trị, doanh thu và quản lý "The Vault" cho Cô Lan.
-
-**Server vs Client Components Strategy:**
-- **Server Components (Default):** Layouts & Pages. Xử lý RBAC (Auth.js), Fetch dữ liệu bảo mật và chuẩn bị Master Geometry JSON từ Server.
-- **Client Components ("use client"):** Chỉ dành cho tương tác lá (Leaves). Ví dụ: `InteractiveCanvas.tsx` (GSAP/Zustand), `MeasurementSliders.tsx`, `RealTimeStatus.tsx`.
-
-**Refined Directory Tree:**
+**Frontend (Next.js 16 App Router):**
 ```text
-frontend/src/
-├── app/
-│   ├── (customer)/           # SSG/ISR prioritized
-│   │   ├── showroom/
-│   │   └── design-session/   # Mixed: Server Page + Client Canvas
-│   ├── (workplace)/          # CSR/Private prioritized
-│   │   ├── layout.tsx        # Shared Auth Gating (Owner/Tailor)
-│   │   ├── tailor/           # Minh's Workspace
-│   │   └── owner/            # Cô Lan's Dashboard
-│   ├── layout.tsx            # Root layout
-│   └── proxy.ts              # Next.js 16 Proxy - Role-based Redirection (Node.js Runtime)
-├── components/
-│   ├── server/               # Pure Server Components (Table, Info)
-│   └── client/               # Interactive Components (Canvas, Sliders)
-├── actions/                  # Server Actions (Gửi delta lên Backend)
-├── store/                    # Zustand (Local UI state)
-├── lib/
-│   ├── api-client.ts         # FastAPI Communication
-│   └── auth.ts               # Auth.js v5 Configuration
-└── types/                    # Shared SSOT Schemas (Snake_case)
+frontend/
+├── src/
+│   ├── app/
+│   │   ├── (customer)/           # Chế độ Boutique (E-commerce & Booking)
+│   │   │   ├── showroom/         # Catalog sản phẩm
+│   │   │   ├── design-session/   # Tương tác áo dài (Canvas AI)
+│   │   │   └── checkout/         # Thanh toán
+│   │   ├── (workplace)/          # Chế độ Command (Role: Owner, Tailor)
+│   │   │   ├── layout.tsx        # Chứa Role-based Guards
+│   │   │   ├── tailor/           # Trạm làm việc của thợ may (View bản vẽ)
+│   │   │   └── owner/            # Dashboard tổng & Quản lý The Vault
+│   │   ├── layout.tsx            # Global layout (Font chữ, Header chung)
+│   │   └── proxy.ts              # Proxy server trung chuyển JWT, Server Actions
+│   ├── components/
+│   │   ├── ui/                   # Radix UI primitives
+│   │   ├── 3d/                   # Render Engine cho Áo dài
+│   │   └── features/             # Component nhóm theo tính năng (VD: cart, booking)
+│   ├── store/                    # Slice quản lý State (Zustand)
+│   ├── lib/
+│   │   ├── api-client.ts         # Axios/Fetch utility có đính kèm config
+│   │   └── auth.ts               # Config Auth.js v5 (NextAuth)
+│   └── types/                    # Định nghĩa chung TypeScript (SSOT)
 ```
 
-### Backend Structure (FastAPI + LangGraph)
-
+**Backend (FastAPI + LangGraph Python):**
 ```text
-backend/src/
-├── api/
-│   └── v1/                   # Endpoints: /blueprints, /inference
-├── agents/                   # LangGraph: Emotional Compiler, Atelier Academy
-├── geometry/                 # GeometryRebuilder, SVG/DXF Engine
-├── constraints/              # Constraint Registry (Hard/Soft Rules)
-├── services/                 # Business Logic & Orchestration
-├── models/                   # Pydantic & DB Schemas (SSOT)
-└── core/                     # Security, JWT, Global Config
+backend/
+├── src/
+│   ├── api/
+│   │   └── v1/                   # Endpoints chia theo Router (orders, geometry, booking)
+│   ├── agents/                   # Thư mục riêng chứa LangGraph (Emotional Compiler)
+│   ├── geometry/                 # GeometryRebuilder & Delta engine cốt lõi
+│   ├── constraints/              # Màng lọc Hard/Soft rules (The Vault logic)
+│   ├── services/                 # Xử lý nghiệp vụ Backend, webhook listener
+│   ├── models/                   # Pydantic Schemas & SQLAlchemy Entities 
+│   ├── core/                     # JWT Authentication, Config & Loggings
+│   └── main.py                   # FastAPI Application Entry point
+├── tests/
+│   ├── e2e/                      # End-to-end API tests
+│   └── unit/                     # Unit testing cho Agents & Validator
 ```
 
-### Architectural Boundaries & Integration
+### Architectural Boundaries
 
-**Internal Communication:**
-- **Frontend -> Backend:** Gửi `Deltas + sequence_id` qua Server Actions hoặc API Client.
-- **Backend -> Frontend:** Trả về `Validated Snapshot` hoặc `Snap-back data` when vi phạm ràng buộc.
+**API Boundaries:**
+- Mọi giao tiếp tĩnh (Dữ liệu Profile, Products, Inventories) sẽ truy xuất qua REST endpoint từ FastAPI.
+- Authentication JWT BẮT BUỘC chỉ được xử lý, parse và decode tại vòng ngoài (Next.js `proxy.ts`). Sau khi Proxy xác thực thành công, nó gửi payload gốc xuống Backend API nội bộ (tránh Backend phải quản lý vòng lặp cấp quyền rườm rà).
 
-**Security Boundaries:**
-- **Auth Middleware:** Chặn truy cập trái phép dựa trên Role ngay tại tầng Next.js Middleware.
-- **The Vault Boundary:** Tri thức nghệ nhân (Smart Rules) được bảo vệ nghiêm ngặt tại Backend, không bao giờ lộ ra Client code.
+**Component Boundaries:**
+- **Client Components** (`"use client"`): Chứa tương tác (Slider, Mouse Event, Morphing Áo dài Canvas).
+- **Server Components** (default): Chứa việc Load dữ liệu ban đầu, SEO tags, cấu trúc Layout chung.
+
+**Data Boundaries:**
+- Hình học ảo của Áo Dài sẽ không bao giờ được validate hay lưu trữ tại LocalStorage UI. Database Backend luôn đóng vai trò là SSOT (nguồn chân lý duy nhất).
+
+## Architecture Validation Results
+
+### Coherence Validation ✅
+
+**Decision Compatibility:**
+- Next.js 16, Auth.js v5, và FastAPI hoàn toàn tương thích thông qua Cookie-forwarding Proxy pattern.
+- PostgreSQL 17 + `pgvector` xử lý tốt cả Data Relationship (Orders, Inventory) lẫn Vector search (Semantic).
+
+**Pattern Consistency:**
+- Sự phân định rõ ràng `camelCase` (Frontend) và `snake_case` (Backend DB/API) đi kèm quy tắc Remap Payload giúp loại bỏ 90% lỗi Type Mismatch thường gặp.
+
+**Structure Alignment:**
+- Tổ chức Route Groups `(customer)` và `(workplace)` của Next.js khớp hoàn toàn với định hướng chia đôi luồng trải nghiệm người dùng của PRD.
+
+### Requirements Coverage Validation ✅
+
+**Epic/Feature Coverage:**
+- Kiến trúc đủ sức bao phủ đầy đủ các nhóm tính năng (E-commerce, Booking, AI Canvas, Tailor Workspace, Owner Dashboard).
+
+**Non-Functional Requirements Coverage:**
+- **Performance:** Giải quyết bằng Client-side Morphing và FastAPI Asynchronous Routing.
+- **Security:** Giải quyết bằng HttpOnly JWT Cookie và The Vault Backend Protection.
+
+### Implementation Readiness Validation ✅
+
+**Decision Completeness:**
+- Gần như mọi quyết định công nghệ quan trọng đã được chốt (kèm giải pháp thay thế/Webhook/Background tasks).
+- Thiếu sót duy nhất chỉ là các công cụ External nhỏ lẻ (VD: chọn VNPay hay Momo) nhưng không ảnh hưởng cốt lõi kiến trúc hiện tại.
+
+### Architecture Completeness Checklist
+
+**✅ Requirements Analysis**
+- [x] Project context thoroughly analyzed
+- [x] Scale and complexity assessed
+- [x] Technical constraints identified
+- [x] Cross-cutting concerns mapped
+
+**✅ Architectural Decisions**
+- [x] Critical decisions documented with versions
+- [x] Technology stack fully specified
+- [x] Integration patterns defined
+- [x] Performance considerations addressed
+
+**✅ Implementation Patterns**
+- [x] Naming conventions established
+- [x] Structure patterns defined
+- [x] Communication patterns specified
+- [x] Process patterns documented
+
+**✅ Project Structure**
+- [x] Complete directory structure defined
+- [x] Component boundaries established
+- [x] Integration points mapped
+- [x] Requirements to structure mapping complete
+
+### Architecture Readiness Assessment
+
+**Overall Status:** READY FOR IMPLEMENTATION
+
+**Confidence Level:** Cao (High) - Do giải pháp tách bạch rõ ràng Separation of Concerns giữa UI và Business Logic.
+
+**Key Strengths:**
+- Authoritative Server Pattern bảo vệ toàn vẹn logic may đo.
+- Zero-Thought Commerce nhờ bộ khung Zustand UI mượt mà.
+
+### Implementation Handoff
+
+**AI Agent Guidelines:**
+- Follow all architectural decisions exactly as documented
+- Use implementation patterns consistently across all components
+- Respect project structure and boundaries
+- Refer to this document for all architectural questions
+
+**First Implementation Priority:**
+- Story đầu tiên phải là việc Khởi tạo Dự Án (Project Initialization) chạy lệnh `create-next-app` và cài đặt môi trường ảo (venv) FastAPI.

@@ -1,21 +1,33 @@
 # User Journeys
 
-## Journey 1: Linh - "Hiện đại hóa niềm tin truyền thống" (Khách hàng)
-- **Mở đầu:** Linh (Nhà thiết kế số) tìm đến tiệm may di sản vì tin vào tay nghề nghệ nhân, nhưng lo lắng chú thợ không hiểu phong cách "Minimalist" (Tối giản).
-- **Tương tác:** 
-    - **May đo:** Linh và thợ may dùng **Adaptive Canvas** để điều chỉnh phong cách. Linh thấy lớp phủ **Comparison Overlay** so sánh rập chuẩn và rập tùy chỉnh.
-    - **Thuê đồ:** Linh truy cập danh mục "Áo dài sẵn có", xem hình ảnh, size và trạng thái thực tế. Cô thấy dòng chữ "Dự kiến sẵn sàng vào: 25/02/2026" và đặt lịch hẹn.
-- **Kết thúc:** Linh nhận được bộ đồ vừa vặn cả về số đo lẫn tâm hồn. Sự mơ hồ biến mất hoàn toàn nhờ dữ liệu hình học trực quan.
+## Journey 1: Linh - "From Browsing to Bespoke" (Customer)
 
-## Journey 2: Minh (F2) - "Số hóa đôi tay cha ông" (Người thợ kế thừa)
-- **Mở đầu:** Minh là con trai chủ tiệm, đang học nghề. Anh chưa có kinh nghiệm xử lý các dáng người đặc biệt.
-- **Tương tác:** Minh mở **Manufacturing Blueprint** và nhận các con số gia giảm (**Geometric Delta**) chi tiết. Hệ thống cảnh báo: "Vải lụa tơ tằm dãn canh vải, nới thêm 0.5cm sườn".
-- **Cao trào:** Minh nhận ra đây là bí kíp cha anh đã đúc kết hàng chục năm. Nhờ AI hỗ trợ, anh tự tin cắt rập chính xác mà không cần hỏi cha từng li một.
-- **Kết thúc:** Minh rút ngắn thời gian học nghề, tiệm có thêm một tay kéo vững vàng dựa trên tri thức số hóa.
+- **Discovery:** Linh (digital designer) discovers the shop online. She browses the Homepage, views new Áo dài collections, and applies filters (Season: Tết, Style: Modern).
+- **Shopping:**
+    - Linh opens a Product Detail page, views HD images with zoom, reads the size chart, and selects "Rent" with a calendar date range (borrow/return).
+    - She adds 2 items to Cart (1 buy, 1 rent), reviews quantities and total price breakdown.
+- **Checkout:** Linh enters shipping info, selects e-wallet payment, confirms the order. She receives an order confirmation notification.
+- **Booking:** Linh books an in-store bespoke consultation via the Appointment Booking calendar. She selects a date/time, fills in personal info and special requests, and receives a confirmation.
+- **Bespoke Consultation:** At the shop, Linh and the tailor use the **Adaptive Canvas** to adjust style. She sees the **Comparison Overlay** between standard and custom patterns.
+- **Follow-up:** Linh checks her Profile Dashboard for order status, rental return dates, and upcoming appointments.
 
-## Journey 3: Cô Lan - "Bảo hiểm bí kíp gia truyền" (Chủ tiệm/Founder)
-- **Mở đầu:** Cô Lan muốn nghỉ hưu nhưng trăn trở vì khách quen sẽ rời đi nếu không ai may "ra đúng cái chất" riêng biệt.
-- **Diễn biến:** 
-    - **Quản trị tri thức:** Cô Lan trực tiếp tham gia mã hóa các "mẹo" nghề vào hệ thống.
-    - **Quản lý vận hành:** Cô dùng Dashboard cho thuê trên điện thoại để cập nhật trạng thái "Đang giặt ủi" cho bộ áo dài, hệ thống tự động tính ngày sẵn sàng.
-- **Kết thúc:** Cô Lan yên tâm nghỉ hưu, giá trị của tiệm nằm ở hệ thống tri thức số hóa trọn vẹn và quy trình vận hành trơn tru.
+## Journey 2: Minh (F2) - "Digital Craftsmanship" (Tailor)
+
+- **Task Reception:** Minh opens his Tailor Dashboard and sees assigned tasks for the day — 3 bespoke orders and 2 rental preparations.
+- **AI-Guided Production:** For a bespoke order, Minh opens the **Manufacturing Blueprint** and receives detailed geometric delta adjustments (+/- cm) for each cut position. The system warns: "Silk fabric stretches on warp — add 0.5cm at side seam."
+- **Status Updates:** Minh updates each task status (In Progress → Completed) and logs the garment type and pricing for income tracking.
+- **Income Review:** At month end, Minh reviews his Income Statistics dashboard — total earnings, breakdown by garment type, and comparison with previous months.
+- **Heritage Learning:** Minh realizes the AI-guided deltas encode decades of his father's tacit knowledge. He gains confidence to handle complex body types independently.
+
+## Journey 3: Cô Lan - "Digital Command Center" (Owner/Founder)
+
+- **Morning Dashboard:** Cô Lan opens the Owner Dashboard on her phone. She sees today's revenue summary, 5 pending orders, 2 appointments, and an alert: "3 garments due for production within 7 days."
+- **Order Management:** She reviews new orders, updates statuses (Confirmed → In Production), and assigns bespoke tasks to Minh.
+- **Appointment Review:** Cô Lan checks the Appointment List, filters by today's date, and prepares for 2 walk-in consultations.
+- **Inventory & Rentals:** She updates rental statuses — marks a returned Áo dài as "Maintenance (dry cleaning)" and the system calculates the next available date.
+- **CRM & Marketing:**
+    - Cô Lan reviews the Lead List — 8 new leads from the website. She classifies their interest level and converts 2 high-interest leads to customers.
+    - She creates a Tết promotion voucher (15% off, min order 500k VND, valid 30 days) and distributes it to the customer email list.
+    - She launches an outreach campaign via Zalo with a template message about the new Spring collection.
+- **Knowledge Management:** Cô Lan encodes a new tailoring "trick" (handling silk with irregular weave) into the Smart Rules system for Minh and future tailors.
+- **Retirement Assurance:** Cô Lan is confident that the shop's knowledge, operations, and customer relationships are fully digitized and sustainable.

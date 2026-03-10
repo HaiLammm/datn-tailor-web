@@ -40,7 +40,7 @@ freeze:
 
 # Run database migrations
 migrate:
-	./venv/bin/alembic upgrade head
+	./venv/bin/python scripts/migrate.py
 
 # Clean Python cache
 clean:

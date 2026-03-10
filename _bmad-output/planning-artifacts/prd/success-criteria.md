@@ -2,26 +2,36 @@
 
 ## User Success
 
-*   **Chỉ số Thỏa mãn Kỹ thuật:** Đạt điểm **> 4.5/5** từ các nghệ nhân về độ minh bạch và đầy đủ của bản vẽ Blueprint.
-*   **Độ chính xác Cảm xúc:** Chỉ số Semantic Fidelity **> 4.0/5** thông qua khảo sát khớp lệnh giữa tính từ khách hàng chọn và cảm nhận thực tế.
-*   **Tỷ lệ First-Fit:** Đạt **> 90%** độ vừa vặn vật lý ngay lần cắt vải đầu tiên.
+*   **Technical Satisfaction Index:** Artisan blueprint satisfaction score **> 4.5/5**, measured via post-session survey after each consultation.
+*   **Emotional Accuracy:** Semantic Fidelity index **> 4.0/5**, measured by comparing customer-selected adjectives against actual garment perception via structured feedback form.
+*   **First-Fit Rate:** **> 90%** physical fit accuracy on first fabric cut, measured by tracking alteration requests per order.
+*   **E-commerce Conversion Rate:** **> 3%** visitor-to-purchase conversion, measured by analytics tracking (page view to order completion).
+*   **Booking Completion Rate:** **> 80%** of initiated appointment bookings are completed and attended, measured by booking system records.
 
 ## Business Success
 
-*   **Hiệu suất Vận hành:** Giảm **70% thời gian tư vấn** (từ 60 phút xuống 15 phút) nhờ hệ thống chuẩn bị sẵn các phương án Blueprint.
-*   **Mô hình Di sản:** Số hóa thành công ít nhất **50+ Smart Rules** (bí kíp ngầm) vào hệ thống "Atelier Academy".
-*   **Giá trị Kế thừa:** Minh (thợ F2) thực hiện cắt rập chính xác cho các mẫu phức tạp mà không cần sự hỗ trợ trực tiếp từ nghệ nhân chủ tiệm.
+*   **Consultation Efficiency:** Reduce consultation time by **70%** (from 60 minutes to 15 minutes), measured by session duration logging.
+*   **Heritage Digitization:** Digitize **50+ Smart Rules** (tacit artisan knowledge) into the "Atelier Academy" system, measured by rule count in the knowledge base.
+*   **Successor Autonomy:** Tailor (Minh/F2) executes complex pattern cutting without direct artisan supervision, measured by independent task completion rate **> 85%**.
+*   **Monthly Revenue Growth:** **> 10%** month-over-month revenue growth from combined sales, rentals, and bespoke services during first 6 months, measured by payment gateway transaction reports.
+*   **Cart Abandonment Rate:** **< 40%**, measured by analytics tracking cart creation vs. order completion.
+*   **Customer Retention:** **> 60%** repeat purchase/rental rate within 6 months, measured by unique customer order frequency.
 
 ## Technical Success
 
-*   **Geometric Integrity:** Tỷ lệ lỗi logic hình học **E = 0%**. Hệ thống chặn đứng các thiết kế vi phạm vùng an toàn vật lý.
-*   **Hiệu năng Suy luận:** Thời gian phản hồi trung bình **Lavg < 15 giây** cho toàn bộ chu trình LangGraph (Input đến Blueprint).
-*   **Độ chính xác Tìm kiếm:** Search Precision **P@3 > 85%** cho các gợi ý vải và quy tắc dựa trên phong cách.
-*   **Sai số Toán học:** Sai số hình học tuyệt đối **ΔG ≤ 1mm** so với tính toán lý thuyết trên bản vẽ rập.
+*   **Geometric Integrity:** Geometry logic error rate **E = 0%** — system blocks all designs violating physical safety zones. Measured by automated constraint violation tests with 50 extreme measurement sets.
+*   **Inference Latency:** Average response time **Lavg < 15 seconds** for full LangGraph cycle (Input to Blueprint). Measured by APM monitoring over 100 consecutive requests.
+*   **Search Precision:** **P@3 > 85%** for fabric and rule suggestions based on style input. Measured by comparing AI suggestions against artisan expert panel validation.
+*   **Mathematical Accuracy:** Absolute geometric error **ΔG ≤ 1mm** compared to theoretical calculations. Measured by coordinate comparison between AI-generated and reference vector drawings.
+*   **Payment Processing:** **99.5%** successful transaction rate for valid payment attempts. Measured by payment gateway success/failure logs.
+*   **Page Load Time:** Product listing and detail pages load in **< 2 seconds** for 95th percentile users. Measured by Real User Monitoring (RUM) tools.
 
 ## Measurable Outcomes
 
-*   **Lavg < 15s** (Đo lường qua 100 request liên tục).
-*   **P@3 > 85%** (Đối chứng giữa gợi ý AI và thẩm định của nghệ nhân).
-*   **Error Rate = 0%** (Kiểm thử với 50 bộ số đo cực đoan).
-*   **ΔG ≤ 0.1cm** (So sánh tọa độ node trên bản vẽ AI và bản vẽ chuẩn).
+*   **Lavg < 15s** (APM monitoring, 100 consecutive requests).
+*   **P@3 > 85%** (AI suggestion vs. artisan expert panel validation).
+*   **Error Rate = 0%** (Automated constraint tests, 50 extreme measurement sets).
+*   **ΔG ≤ 0.1cm** (Coordinate node comparison: AI drawing vs. reference drawing).
+*   **Conversion > 3%** (Analytics: page views to completed orders).
+*   **Cart Abandonment < 40%** (Analytics: cart creation to checkout completion).
+*   **Page Load < 2s** (RUM 95th percentile).

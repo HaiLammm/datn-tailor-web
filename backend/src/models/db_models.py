@@ -99,6 +99,7 @@ class OTPCodeDB(Base):
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
+    purpose: Mapped[str] = mapped_column(String(50), nullable=False, default="register", index=True)
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

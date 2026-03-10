@@ -1,20 +1,29 @@
 # Non-Functional Requirements (NFRs)
 
 ## 1. Performance & Scalability
-- **NFR1 (Latency):** Thời gian phản hồi chu trình suy luận LangGraph trung bình Lavg < 15 giây, đo lường bằng hệ thống giám sát hiệu năng (APM) qua 100 request liên tục.
-- **NFR2 (Throughput):** Hệ thống hỗ trợ xử lý ít nhất 5 yêu cầu suy luận đồng thời, kiểm chứng qua Load Testing trong môi trường staging.
+- **NFR1 (AI Latency):** Average LangGraph inference cycle response time Lavg < 15 seconds, measured by APM monitoring over 100 consecutive requests in staging environment.
+- **NFR2 (AI Throughput):** System supports at least 5 concurrent inference requests, verified by load testing in staging environment.
+- **NFR3 (Page Load):** Product listing and detail pages load in < 2 seconds for 95th percentile users, measured by Real User Monitoring (RUM) tools.
+- **NFR4 (API Response):** Non-inference API endpoints respond in < 300ms for 95th percentile under normal load, measured by APM monitoring.
+- **NFR5 (Concurrent Users):** System supports 100 concurrent e-commerce users without performance degradation, verified by load testing with simulated user sessions.
 
 ## 2. Accuracy & Reliability
-- **NFR3 (Geometric Precision):** Sai số hình học tuyệt đối ΔG không vượt quá 1mm so với tính toán lý thuyết, xác minh bằng công cụ kiểm tra tọa độ node trên bản vẽ vector SVG/DXF.
-- **NFR4 (Availability):** Hệ thống sẵn sàng hoạt động 99.9% thời gian làm việc của tiệm, theo dõi qua uptime monitor của hạ tầng cloud.
-- **NFR5 (Data Integrity):** Master Geometry Specification được kiểm tra tính toàn vẹn thông qua mã băm (Checksum) trước khi lưu trữ và truyền tải.
+- **NFR6 (Geometric Precision):** Absolute geometric error ΔG ≤ 1mm compared to theoretical calculations, verified by coordinate comparison tool on SVG/DXF vector drawings.
+- **NFR7 (Availability):** System available 99.9% during shop operating hours, monitored by cloud infrastructure uptime monitoring.
+- **NFR8 (Data Integrity):** Master Geometry Specification verified via checksum (hash) before storage and transmission, validated by automated integrity tests.
+- **NFR9 (Payment Reliability):** Payment processing success rate > 99.5% for valid payment attempts, measured by payment gateway transaction logs.
+- **NFR10 (Order Consistency):** Order and inventory states remain consistent under concurrent access, verified by concurrent transaction testing.
 
 ## 3. Security & Privacy
-- **NFR6 (Authentication):** Xác thực đa yếu tố cho mọi phiên làm việc tại tiệm, kiểm chứng bằng nhật ký truy cập (Audit Log).
-- **NFR7 (Authorization):** Tuân thủ RBAC chặt chẽ để bảo vệ bí kíp Golden Rules, xác minh bằng kiểm thử phân quyền định kỳ.
-- **NFR8 (Data Encryption):** Mã hóa dữ liệu số đo và tri thức di sản ở trạng thái nghỉ (at rest) bằng tiêu chuẩn AES-256.
+- **NFR11 (Authentication):** Multi-factor authentication for all shop work sessions, verified by access audit logs.
+- **NFR12 (Authorization):** Strict RBAC enforcement protecting Golden Rules knowledge and role-specific data, verified by periodic access control testing.
+- **NFR13 (Data Encryption):** Customer measurements and heritage knowledge encrypted at rest using AES-256 standard, verified by storage encryption audit.
+- **NFR14 (Payment Security):** Payment processing complies with PCI DSS requirements — no raw card data stored on system, verified by PCI compliance audit.
+- **NFR15 (Session Security):** JWT tokens stored in HttpOnly, Secure, SameSite cookies — no token storage in localStorage or sessionStorage, verified by security review.
 
 ## 4. Maintainability & Usability
-- **NFR9 (Logging):** Ghi log chi tiết 100% các quyết định AI và các lần thợ may ghi đè (Override) để phục vụ Atelier Academy.
-- **NFR10 (Usability):** Giao diện Adaptive Canvas phản hồi trực quan (UI response) trong vòng < 200ms khi người dùng kéo Sliders, đo bằng công cụ DevTools browser.
-- **NFR11 (Terminology):** Sử dụng 100% thuật ngữ chuyên môn ngành may Việt Nam, xác thực thông qua bảng đối soát thuật ngữ (Terminology Glossary) được nghệ nhân phê duyệt.
+- **NFR16 (AI Logging):** 100% of AI decisions and tailor overrides logged in detail for Atelier Academy training, verified by log completeness audit.
+- **NFR17 (UI Responsiveness):** Adaptive Canvas UI responds visually within < 200ms when users drag Sliders, measured by browser DevTools performance profiling.
+- **NFR18 (Terminology):** 100% Vietnamese professional tailoring terminology in all UI labels and outputs, validated against artisan-approved Terminology Glossary.
+- **NFR19 (Mobile Responsiveness):** E-commerce pages (Homepage, Product List, Cart, Checkout) fully functional on mobile devices (viewport ≥ 375px), verified by responsive design testing across 3 device sizes.
+- **NFR20 (Accessibility):** E-commerce pages meet WCAG 2.1 Level A compliance, verified by automated accessibility testing tools.
