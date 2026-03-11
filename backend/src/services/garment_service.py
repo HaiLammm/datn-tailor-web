@@ -43,6 +43,16 @@ async def list_garments(
             query = query.where(GarmentDB.status == filters.status.value)
         if filters.category:
             query = query.where(GarmentDB.category == filters.category.value)
+        if filters.material:
+            query = query.where(GarmentDB.material == filters.material.value)
+        if filters.size:
+            # Filter garments whose size_options JSON array contains the given size
+            # JSON stored as '["S", "M", "L"]' - search for '"L"' (with quotes) avoids
+            # partial matches like "L" inside "XL" (Story 2.3 Task 2.2)
+            from sqlalchemy import String, cast
+            query = query.where(
+                cast(GarmentDB.size_options, String).contains(f'"{filters.size}"')
+            )
     
     # Count total before pagination
     count_query = select(func.count()).select_from(query.subquery())
@@ -71,6 +81,23 @@ async def list_garments(
     garments = result.scalars().all()
     
     return list(garments), total
+
+
+async def list_unique_colors(db: AsyncSession, tenant_id: uuid.UUID) -> list[str]:
+    """Get all unique color values present for a tenant.
+    
+    Used for dynamic filter chip generation (Review Follow-up MEDIUM).
+    """
+    from sqlalchemy import select, func
+    query = (
+        select(GarmentDB.color)
+        .where(GarmentDB.tenant_id == tenant_id)
+        .where(GarmentDB.color.is_not(None))
+        .distinct()
+        .order_by(GarmentDB.color)
+    )
+    result = await db.execute(query)
+    return list(result.scalars().all())
 
 
 async def get_garment(
@@ -118,9 +145,12 @@ async def create_garment(
         category=data.category.value,
         color=data.color,
         occasion=data.occasion.value if data.occasion else None,
+        material=data.material.value if data.material else None,
         size_options=data.size_options,
         rental_price=data.rental_price,
+        sale_price=data.sale_price,
         image_url=data.image_url,
+        image_urls=data.image_urls,
         status="available",  # Default status
     )
     
@@ -156,7 +186,7 @@ async def update_garment(
     # Update only provided fields
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
-        if key in ["category", "occasion", "status"] and value is not None:
+        if key in ["category", "occasion", "status", "material"] and value is not None:
             # Convert enum to value
             value = value.value if hasattr(value, "value") else value
         setattr(garment, key, value)

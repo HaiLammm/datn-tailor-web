@@ -39,6 +39,8 @@ export async function fetchGarments(
     if (filters?.occasion) params.append("occasion", filters.occasion);
     if (filters?.status) params.append("status", filters.status);
     if (filters?.category) params.append("category", filters.category);
+    if (filters?.material) params.append("material", filters.material);
+    if (filters?.size) params.append("size", filters.size);
     if (filters?.page) params.append("page", filters.page.toString());
     if (filters?.page_size) params.append("page_size", filters.page_size.toString());
 
@@ -513,6 +515,43 @@ export async function sendReturnReminders(): Promise<{
         return { success: false, error: "Timeout" };
       }
       console.error("sendReturnReminders error:", error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Unknown error" };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Fetch unique garment colors for filtering (Story 2.3 - Review Follow-up MEDIUM)
+ */
+export async function fetchGarmentColors() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const url = `${BACKEND_URL}/api/v1/garments/colors`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return { success: true, data: data.data as string[] };
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        console.error("fetchGarmentColors: Request timeout");
+        return { success: false, error: "Timeout" };
+      }
+      console.error("fetchGarmentColors error:", error.message);
       return { success: false, error: error.message };
     }
     return { success: false, error: "Unknown error" };

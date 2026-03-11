@@ -65,7 +65,7 @@ describe("translateDesign (Story 2.4)", () => {
       const translateDesign = await getTranslateDesign();
       const result = await translateDesign(
         "traditional",
-        [{ key: "do_rong_vai", value: 60 }],
+        [{ key: "shoulder_width", value: 60 }],
         1
       );
 
@@ -100,8 +100,8 @@ describe("translateDesign (Story 2.4)", () => {
       await translateDesign(
         "minimalist",
         [
-          { key: "do_rong_vai", value: 45 },
-          { key: "do_om_than", value: 70 },
+          { key: "shoulder_width", value: 45 },
+          { key: "body_fit", value: 70 },
         ],
         5,
         "measurement-123"
@@ -115,8 +115,8 @@ describe("translateDesign (Story 2.4)", () => {
           body: JSON.stringify({
             pillar_id: "minimalist",
             intensities: [
-              { key: "do_rong_vai", value: 45 },
-              { key: "do_om_than", value: 70 },
+              { key: "shoulder_width", value: 45 },
+              { key: "body_fit", value: 70 },
             ],
             sequence_id: 5,
             base_measurement_id: "measurement-123",

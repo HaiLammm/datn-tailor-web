@@ -81,11 +81,13 @@ async def seed_users(test_db_session: AsyncSession) -> dict:
     test_db_session.add_all([owner, tailor, customer])
     await test_db_session.commit()
 
-    return {
+    yield {
         "owner_token": create_access_token({"sub": "owner@test.com"}),
         "tailor_token": create_access_token({"sub": "tailor@test.com"}),
         "customer_token": create_access_token({"sub": "customer@test.com"}),
     }
+    
+    # Cleanup if needed (app.dependency_overrides is already cleared in override_get_db)
 
 
 @pytest_asyncio.fixture
@@ -177,7 +179,7 @@ async def test_update_pillar_rules(client: AsyncClient, seed_users: dict):
     update_body = {
         "mappings": [
             {
-                "slider_key": "do_rong_vai",
+                "slider_key": "shoulder_width",
                 "delta_key": "rong_vai",
                 "delta_label_vi": "Rộng vai",
                 "delta_unit": "cm",
@@ -187,7 +189,7 @@ async def test_update_pillar_rules(client: AsyncClient, seed_users: dict):
                 "offset": -2.5,
             },
             {
-                "slider_key": "do_om_than",
+                "slider_key": "body_fit",
                 "delta_key": "do_cu_eo",
                 "delta_label_vi": "Độ cử eo",
                 "delta_unit": "cm",
@@ -436,7 +438,7 @@ async def test_update_reflected_in_detail(client: AsyncClient, seed_users: dict)
     update_body = {
         "mappings": [
             {
-                "slider_key": "do_rong_vai",
+                "slider_key": "shoulder_width",
                 "delta_key": "rong_vai",
                 "delta_label_vi": "Rộng vai",
                 "delta_unit": "cm",
@@ -464,6 +466,6 @@ async def test_update_reflected_in_detail(client: AsyncClient, seed_users: dict)
 
     detail = detail_response.json()
     assert len(detail["mappings"]) == 1
-    assert detail["mappings"][0]["slider_key"] == "do_rong_vai"
+    assert detail["mappings"][0]["slider_key"] == "shoulder_width"
     assert detail["mappings"][0]["scale_factor"] == 0.06
     assert detail["mappings"][0]["offset"] == -3.0

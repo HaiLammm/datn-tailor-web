@@ -59,7 +59,7 @@ const mockDetail: RulePillarDetail = {
     pillar_name_vi: "Truyền thống",
     mappings: [
         {
-            slider_key: "do_rong_vai",
+            slider_key: "shoulder_width",
             delta_key: "rong_vai",
             delta_label_vi: "Rộng vai",
             delta_unit: "cm",
@@ -70,7 +70,7 @@ const mockDetail: RulePillarDetail = {
             golden_point: 50.0,
         },
         {
-            slider_key: "do_om_than",
+            slider_key: "body_fit",
             delta_key: "do_cu_eo",
             delta_label_vi: "Độ cử eo",
             delta_unit: "cm",
@@ -184,7 +184,7 @@ describe("PillarRuleTable", () => {
         expect(screen.getByText("Điểm Vàng")).toBeInTheDocument();
 
         // Mapping data
-        expect(screen.getByText("do_rong_vai")).toBeInTheDocument();
+        expect(screen.getByText("shoulder_width")).toBeInTheDocument();
         expect(screen.getByText("rong_vai")).toBeInTheDocument();
         expect(screen.getByText("Rộng vai")).toBeInTheDocument();
     });

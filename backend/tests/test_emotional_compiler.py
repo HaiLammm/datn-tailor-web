@@ -22,8 +22,8 @@ class TestEmotionalCompilerAgent:
         request = TranslateRequest(
             pillar_id="traditional",
             intensities=[
-                IntensityValueItem(key="do_rong_vai", value=60.0),
-                IntensityValueItem(key="do_om_than", value=50.0),
+                IntensityValueItem(key="shoulder_width", value=60.0),
+                IntensityValueItem(key="body_fit", value=50.0),
             ],
             sequence_id=1,
             base_measurement_id=None,
@@ -41,7 +41,7 @@ class TestEmotionalCompilerAgent:
         request = TranslateRequest(
             pillar_id="traditional",
             intensities=[
-                IntensityValueItem(key="do_rong_vai", value=70.0),
+                IntensityValueItem(key="shoulder_width", value=70.0),
             ],
             sequence_id=1,
         )
@@ -57,7 +57,7 @@ class TestEmotionalCompilerAgent:
         request = TranslateRequest(
             pillar_id="minimalist",
             intensities=[
-                IntensityValueItem(key="do_om_than", value=65.0),
+                IntensityValueItem(key="body_fit", value=65.0),
             ],
             sequence_id=42,
         )
@@ -80,8 +80,8 @@ class TestEmotionalCompilerAgent:
         request = TranslateRequest(
             pillar_id="traditional",
             intensities=[
-                IntensityValueItem(key="do_rong_vai", value=50.0),
-                IntensityValueItem(key="do_om_than", value=50.0),
+                IntensityValueItem(key="shoulder_width", value=50.0),
+                IntensityValueItem(key="body_fit", value=50.0),
             ],
             sequence_id=1,
         )
@@ -100,7 +100,7 @@ class TestEmotionalCompilerAgent:
         request = TranslateRequest(
             pillar_id="nonexistent_pillar",
             intensities=[
-                IntensityValueItem(key="do_rong_vai", value=50.0),
+                IntensityValueItem(key="shoulder_width", value=50.0),
             ],
             sequence_id=1,
         )
@@ -132,9 +132,9 @@ class TestEmotionalCompilerAgent:
         request = TranslateRequest(
             pillar_id="avant_garde",
             intensities=[
-                IntensityValueItem(key="do_rong_vai", value=80.0),
-                IntensityValueItem(key="do_om_than", value=70.0),
-                IntensityValueItem(key="chieu_dai_ao", value=60.0),
+                IntensityValueItem(key="shoulder_width", value=80.0),
+                IntensityValueItem(key="body_fit", value=70.0),
+                IntensityValueItem(key="garment_length", value=60.0),
                 IntensityValueItem(key="do_rong_tay", value=55.0),
                 IntensityValueItem(key="do_bat_doi_xung", value=40.0),
             ],
@@ -154,7 +154,7 @@ class TestEmotionalCompilerAgent:
         request = TranslateRequest(
             pillar_id="traditional",
             intensities=[
-                IntensityValueItem(key="do_rong_vai", value=50.0),
+                IntensityValueItem(key="shoulder_width", value=50.0),
             ],
             sequence_id=12345,
         )
@@ -168,7 +168,7 @@ class TestEmotionalCompilerAgent:
     def test_run_compiler_all_pillars_work(self) -> None:
         """All three pillars should work correctly."""
         pillars = ["traditional", "minimalist", "avant_garde"]
-        intensities = [IntensityValueItem(key="do_om_than", value=60.0)]
+        intensities = [IntensityValueItem(key="body_fit", value=60.0)]
 
         for pillar_id in pillars:
             request = TranslateRequest(
@@ -209,8 +209,8 @@ class TestEmotionalCompilerDeltaOutput:
         request = TranslateRequest(
             pillar_id="traditional",
             intensities=[
-                IntensityValueItem(key="do_rong_vai", value=60.0),
-                IntensityValueItem(key="do_om_than", value=55.0),
+                IntensityValueItem(key="shoulder_width", value=60.0),
+                IntensityValueItem(key="body_fit", value=55.0),
             ],
             sequence_id=1,
         )
@@ -230,8 +230,8 @@ class TestEmotionalCompilerDeltaOutput:
             pillar_id="traditional",
             intensities=[
                 IntensityValueItem(key="do_rong_tay", value=60.0),
-                IntensityValueItem(key="do_rong_vai", value=55.0),
-                IntensityValueItem(key="do_om_than", value=50.0),
+                IntensityValueItem(key="shoulder_width", value=55.0),
+                IntensityValueItem(key="body_fit", value=50.0),
             ],
             sequence_id=1,
         )

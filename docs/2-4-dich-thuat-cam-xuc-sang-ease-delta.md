@@ -156,7 +156,7 @@ Story 2.4 **MO RONG** tren nen tang da co:
 
 - Hardcode rules trong `smart_rules_service.py` (giong cach `style_service.py` hardcode pillars)
 - Moi pillar co mapping: `slider_key -> delta_key, delta_formula`
-- Vi du: `do_om_than: 70% -> waist_ease: +1.5cm`
+- Vi du: `body_fit: 70% -> waist_ease: +1.5cm`
 
 **6. Khong WebSockets — REST API thuan tuy**
 > "REST API thuan tuy, khong su dung WebSockets cho tuong tac UI" — [Source: architecture.md#API & Communication Patterns]
@@ -214,7 +214,7 @@ frontend/src/
 ### Smart Rules Formula Examples
 
 ```python
-# Traditional pillar - do_om_than slider
+# Traditional pillar - body_fit slider
 if slider_value >= 70:
     waist_ease = -1.5  # Tighter fit
 elif slider_value >= 50:
@@ -222,7 +222,7 @@ elif slider_value >= 50:
 else:
     waist_ease = +2.0  # Looser fit
 
-# Minimalist pillar - do_rong_vai slider
+# Minimalist pillar - shoulder_width slider
 shoulder_delta = (slider_value - 50) * 0.05  # Linear scaling
 ```
 

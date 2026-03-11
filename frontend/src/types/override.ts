@@ -61,3 +61,17 @@ export interface OverrideHistoryResponse {
   /** Total number of overrides for this design */
   total: number;
 }
+
+/**
+ * Story 4.3: Custom error class for Manual Override failures.
+ */
+export class OverrideError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly violations?: Array<{ message: string; violated_values: Record<string, number> }>
+  ) {
+    super(message);
+    this.name = "OverrideError";
+  }
+}

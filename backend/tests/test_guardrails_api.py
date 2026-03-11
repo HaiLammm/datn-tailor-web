@@ -44,7 +44,7 @@ class TestGuardrailsEndpoint:
         resp = self._make_request(
             {"vong_nach": 45.0, "vong_bap_tay": 30.0},
             deltas=[
-                {"key": "do_om_than", "value": 90.0, "unit": "%", "label_vi": "Độ ôm thân"}
+                {"key": "body_fit", "value": 90.0, "unit": "%", "label_vi": "Độ ôm thân"}
             ],
         )
         assert resp.status_code == 200
@@ -98,7 +98,7 @@ class TestGuardrailsEndpoint:
         resp = self._make_request(
             {"vong_nach": 30.0, "vong_bap_tay": 35.0},
             deltas=[
-                {"key": "do_om_than", "value": 90.0, "unit": "%", "label_vi": "Độ ôm thân"}
+                {"key": "body_fit", "value": 90.0, "unit": "%", "label_vi": "Độ ôm thân"}
             ],
         )
         data = resp.json()
@@ -118,8 +118,8 @@ class TestGuardrailsEndpoint:
                 "vong_mong": 100.0,
             },
             "deltas": [
-                {"key": "do_om_than", "value": 60.0, "unit": "%", "label_vi": "Độ ôm thân"},
-                {"key": "do_rong_vai", "value": 50.0, "unit": "%", "label_vi": "Độ rộng vai"},
+                {"key": "body_fit", "value": 60.0, "unit": "%", "label_vi": "Độ ôm thân"},
+                {"key": "shoulder_width", "value": 50.0, "unit": "%", "label_vi": "Độ rộng vai"},
             ],
         }
         start = time.perf_counter()

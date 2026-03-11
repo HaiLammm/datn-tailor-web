@@ -12,24 +12,24 @@ from src.constraints.soft_constraints import (
 
 
 class TestHighBodyHugWarning:
-    """Migrated from style_service.py: do_om_than > 85."""
+    """Migrated from style_service.py: body_fit > 85."""
 
     def setup_method(self):
         self.constraint = HighBodyHugWarning()
 
     def test_no_warning_below_threshold(self):
-        deltas = {"do_om_than": 80.0}
+        deltas = {"body_fit": 80.0}
         result = self.constraint.check({}, deltas)
         assert result is None
 
     def test_no_warning_at_threshold(self):
         """At exactly 85, no warning (> not >=)."""
-        deltas = {"do_om_than": 85.0}
+        deltas = {"body_fit": 85.0}
         result = self.constraint.check({}, deltas)
         assert result is None
 
     def test_warning_above_threshold(self):
-        deltas = {"do_om_than": 90.0}
+        deltas = {"body_fit": 90.0}
         result = self.constraint.check({}, deltas)
         assert result is not None
         assert result.severity == ConstraintSeverity.SOFT
@@ -41,23 +41,23 @@ class TestHighBodyHugWarning:
 
 
 class TestNarrowShoulderWarning:
-    """Migrated from style_service.py: do_rong_vai < 30."""
+    """Migrated from style_service.py: shoulder_width < 30."""
 
     def setup_method(self):
         self.constraint = NarrowShoulderWarning()
 
     def test_no_warning_above_threshold(self):
-        deltas = {"do_rong_vai": 50.0}
+        deltas = {"shoulder_width": 50.0}
         result = self.constraint.check({}, deltas)
         assert result is None
 
     def test_no_warning_at_threshold(self):
-        deltas = {"do_rong_vai": 30.0}
+        deltas = {"shoulder_width": 30.0}
         result = self.constraint.check({}, deltas)
         assert result is None
 
     def test_warning_below_threshold(self):
-        deltas = {"do_rong_vai": 25.0}
+        deltas = {"shoulder_width": 25.0}
         result = self.constraint.check({}, deltas)
         assert result is not None
         assert result.severity == ConstraintSeverity.SOFT

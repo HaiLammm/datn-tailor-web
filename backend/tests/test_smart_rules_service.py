@@ -61,9 +61,9 @@ class TestSmartRulesServiceComputeDeltas:
         """Traditional pillar with basic intensities should return deltas."""
         service = SmartRulesService()
         intensities = {
-            "do_rong_vai": 50.0,
-            "do_om_than": 50.0,
-            "chieu_dai_ao": 50.0,
+            "shoulder_width": 50.0,
+            "body_fit": 50.0,
+            "garment_length": 50.0,
             "do_rong_tay": 50.0,
         }
 
@@ -78,7 +78,7 @@ class TestSmartRulesServiceComputeDeltas:
     def test_compute_deltas_returns_vietnamese_labels(self) -> None:
         """All delta labels should be in Vietnamese."""
         service = SmartRulesService()
-        intensities = {"do_om_than": 60.0}
+        intensities = {"body_fit": 60.0}
 
         deltas = service.compute_deltas("traditional", intensities)
 
@@ -91,7 +91,7 @@ class TestSmartRulesServiceComputeDeltas:
     def test_compute_deltas_at_50_percent_neutral(self) -> None:
         """At 50% intensity, most deltas should be near zero."""
         service = SmartRulesService()
-        intensities = {"do_rong_vai": 50.0}
+        intensities = {"shoulder_width": 50.0}
 
         deltas = service.compute_deltas("traditional", intensities)
 
@@ -103,7 +103,7 @@ class TestSmartRulesServiceComputeDeltas:
     def test_compute_deltas_high_intensity_positive(self) -> None:
         """High intensity should produce positive deltas for expansion sliders."""
         service = SmartRulesService()
-        intensities = {"do_rong_vai": 100.0}
+        intensities = {"shoulder_width": 100.0}
 
         deltas = service.compute_deltas("traditional", intensities)
 
@@ -115,7 +115,7 @@ class TestSmartRulesServiceComputeDeltas:
     def test_compute_deltas_low_intensity_negative(self) -> None:
         """Low intensity should produce negative deltas for expansion sliders."""
         service = SmartRulesService()
-        intensities = {"do_rong_vai": 0.0}
+        intensities = {"shoulder_width": 0.0}
 
         deltas = service.compute_deltas("traditional", intensities)
 
@@ -135,7 +135,7 @@ class TestSmartRulesServiceComputeDeltas:
     def test_compute_deltas_unknown_pillar_returns_empty(self) -> None:
         """Unknown pillar should return empty deltas."""
         service = SmartRulesService()
-        intensities = {"do_rong_vai": 50.0}
+        intensities = {"shoulder_width": 50.0}
 
         deltas = service.compute_deltas("unknown", intensities)
 
@@ -154,8 +154,8 @@ class TestSmartRulesServiceComputeDeltas:
         """Deltas should be sorted by key for deterministic output."""
         service = SmartRulesService()
         intensities = {
-            "do_rong_vai": 60.0,
-            "do_om_than": 70.0,
+            "shoulder_width": 60.0,
+            "body_fit": 70.0,
             "do_rong_tay": 55.0,
         }
 
@@ -169,9 +169,9 @@ class TestSmartRulesServiceComputeDeltas:
         service = SmartRulesService()
         # Test extreme values
         intensities = {
-            "do_rong_vai": 100.0,
-            "do_om_than": 0.0,
-            "chieu_dai_ao": 100.0,
+            "shoulder_width": 100.0,
+            "body_fit": 0.0,
+            "garment_length": 100.0,
             "do_rong_tay": 100.0,
         }
 
@@ -202,13 +202,13 @@ class TestSmartRulesServiceFormulas:
         service = SmartRulesService()
 
         # At 0%: should be +3cm ease (loose)
-        deltas_loose = service.compute_deltas("traditional", {"do_om_than": 0.0})
+        deltas_loose = service.compute_deltas("traditional", {"body_fit": 0.0})
         do_cu_eo = next((d for d in deltas_loose if d.key == "do_cu_eo"), None)
         assert do_cu_eo is not None
         assert do_cu_eo.value == 3.0
 
         # At 100%: should be -1.5cm (tight)
-        deltas_tight = service.compute_deltas("traditional", {"do_om_than": 100.0})
+        deltas_tight = service.compute_deltas("traditional", {"body_fit": 100.0})
         do_cu_eo = next((d for d in deltas_tight if d.key == "do_cu_eo"), None)
         assert do_cu_eo is not None
         assert do_cu_eo.value == pytest.approx(-1.5, abs=0.1)
@@ -216,7 +216,7 @@ class TestSmartRulesServiceFormulas:
     def test_minimalist_tighter_range_than_traditional(self) -> None:
         """Minimalist should have tighter delta ranges than traditional."""
         service = SmartRulesService()
-        intensities = {"do_rong_vai": 100.0}
+        intensities = {"shoulder_width": 100.0}
 
         trad_deltas = service.compute_deltas("traditional", intensities)
         mini_deltas = service.compute_deltas("minimalist", intensities)

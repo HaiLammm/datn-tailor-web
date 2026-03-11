@@ -29,8 +29,8 @@ class TestTranslateEndpoint:
                 json={
                     "pillar_id": "traditional",
                     "intensities": [
-                        {"key": "do_rong_vai", "value": 60.0},
-                        {"key": "do_om_than", "value": 50.0},
+                        {"key": "shoulder_width", "value": 60.0},
+                        {"key": "body_fit", "value": 50.0},
                     ],
                     "sequence_id": 1,
                 },
@@ -51,7 +51,7 @@ class TestTranslateEndpoint:
                 json={
                     "pillar_id": "minimalist",
                     "intensities": [
-                        {"key": "do_om_than", "value": 70.0},
+                        {"key": "body_fit", "value": 70.0},
                     ],
                     "sequence_id": 5,
                 },
@@ -90,7 +90,7 @@ class TestTranslateEndpoint:
                 json={
                     "pillar_id": "nonexistent_pillar",
                     "intensities": [
-                        {"key": "do_rong_vai", "value": 50.0},
+                        {"key": "shoulder_width", "value": 50.0},
                     ],
                     "sequence_id": 1,
                 },
@@ -108,7 +108,7 @@ class TestTranslateEndpoint:
                 "/api/v1/inference/translate",
                 json={
                     "intensities": [
-                        {"key": "do_rong_vai", "value": 50.0},
+                        {"key": "shoulder_width", "value": 50.0},
                     ],
                     "sequence_id": 1,
                 },
@@ -125,7 +125,7 @@ class TestTranslateEndpoint:
                 json={
                     "pillar_id": "traditional",
                     "intensities": [
-                        {"key": "do_rong_vai", "value": 50.0},
+                        {"key": "shoulder_width", "value": 50.0},
                     ],
                 },
             )
@@ -165,7 +165,7 @@ class TestTranslateEndpoint:
                 json={
                     "pillar_id": "traditional",
                     "intensities": [
-                        {"key": "do_rong_vai", "value": 55.0},
+                        {"key": "shoulder_width", "value": 55.0},
                     ],
                     "sequence_id": 123,
                 },
@@ -190,8 +190,8 @@ class TestTranslateEndpoint:
         request_body = {
             "pillar_id": "traditional",
             "intensities": [
-                {"key": "do_rong_vai", "value": 50.0},
-                {"key": "do_om_than", "value": 50.0},
+                {"key": "shoulder_width", "value": 50.0},
+                {"key": "body_fit", "value": 50.0},
             ],
             "sequence_id": 1,
         }
@@ -219,7 +219,7 @@ class TestTranslateEndpoint:
                 "/api/v1/inference/translate",
                 json={
                     "pillar_id": "traditional",
-                    "intensities": [{"key": "do_rong_vai", "value": 50.0}],
+                    "intensities": [{"key": "shoulder_width", "value": 50.0}],
                     "sequence_id": 1,
                 },
             )
@@ -227,7 +227,7 @@ class TestTranslateEndpoint:
                 "/api/v1/inference/translate",
                 json={
                     "pillar_id": "traditional",
-                    "intensities": [{"key": "do_rong_vai", "value": 60.0}],
+                    "intensities": [{"key": "shoulder_width", "value": 60.0}],
                     "sequence_id": 1,
                 },
             )
@@ -248,9 +248,9 @@ class TestTranslateEndpoint:
                 json={
                     "pillar_id": "traditional",
                     "intensities": [
-                        {"key": "do_rong_vai", "value": 60.0},
-                        {"key": "do_om_than", "value": 70.0},
-                        {"key": "chieu_dai_ao", "value": 55.0},
+                        {"key": "shoulder_width", "value": 60.0},
+                        {"key": "body_fit", "value": 70.0},
+                        {"key": "garment_length", "value": 55.0},
                         {"key": "do_rong_tay", "value": 50.0},
                     ],
                     "sequence_id": 1,
@@ -273,7 +273,7 @@ class TestTranslateEndpoint:
                 json={
                     "pillar_id": "traditional",
                     "intensities": [
-                        {"key": "do_rong_vai", "value": 60.0},
+                        {"key": "shoulder_width", "value": 60.0},
                     ],
                     "sequence_id": 1,
                 },
@@ -297,7 +297,7 @@ class TestTranslateEndpoint:
                 json={
                     "pillar_id": "traditional",
                     "intensities": [
-                        {"key": "do_rong_vai", "value": 50.0},
+                        {"key": "shoulder_width", "value": 50.0},
                     ],
                     "sequence_id": 1,
                     "base_measurement_id": "measurement_123",

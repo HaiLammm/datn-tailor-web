@@ -17,6 +17,16 @@ export enum GarmentCategory {
   AO_DAI_TE_NHI = "ao_dai_te_nhi",
 }
 
+export enum GarmentMaterial {
+  LUA = "lua",
+  GIAM = "giam",
+  NHUNG = "nhung",
+  VOAN = "voan",
+  SATIN = "satin",
+  COTTON = "cotton",
+  PHA = "pha",
+}
+
 export enum GarmentOccasion {
   LE_CUOI = "le_cuoi",
   KHAI_TRUONG = "khai_truong",
@@ -34,9 +44,14 @@ export interface Garment {
   category: string;
   color: string | null;
   occasion: string | null;
+  material: string | null;
   size_options: string[];
   rental_price: string;
+  /** Story 2.2: Giá bán (VND), null nếu chỉ có thuê */
+  sale_price: string | null;
   image_url: string | null;
+  /** Story 2.2: Danh sách URL ảnh HD (multi-image gallery) */
+  image_urls: string[];
   status: string;
   expected_return_date: string | null;
   /** Computed by backend: days until available (negative = overdue). Null if no expected_return_date. */
@@ -62,6 +77,8 @@ export interface GarmentFilter {
   occasion?: GarmentOccasion | null;
   status?: GarmentStatus | null;
   category?: GarmentCategory | null;
+  material?: GarmentMaterial | null;
+  size?: string | null;
   page?: number;
   page_size?: number;
 }

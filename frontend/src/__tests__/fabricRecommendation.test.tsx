@@ -77,7 +77,7 @@ const mockPillar: StylePillarResponse = {
   is_default: true,
   sliders: [
     {
-      key: "do_rong_vai",
+      key: "shoulder_width",
       label: "Độ rộng vai",
       description: null,
       min_value: 0,
@@ -207,7 +207,7 @@ describe("FabricRecommendationPanel (Story 2.3)", () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       "traditional",
-      expect.objectContaining({ do_rong_vai: 50 })
+      expect.objectContaining({ shoulder_width: 50 })
     );
   });
 });

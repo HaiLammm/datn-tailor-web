@@ -34,7 +34,7 @@ const testPillar: StylePillarResponse = {
   is_default: true,
   sliders: [
     {
-      key: "do_rong_vai",
+      key: "shoulder_width",
       label: "Độ rộng vai",
       description: null,
       min_value: 0,
@@ -84,7 +84,7 @@ describe("Story 4.1b: Guardrail Integration Tests", () => {
       // Setup store with pillar, values, and a warning
       useDesignStore.setState({
         selected_pillar: testPillar,
-        intensity_values: { do_rong_vai: 50, vong_nach: 37 },
+        intensity_values: { shoulder_width: 50, vong_nach: 37 },
         guardrail_warnings: [sampleWarning],
         guardrail_violations: [],
         guardrail_status: "warning",
@@ -99,7 +99,7 @@ describe("Story 4.1b: Guardrail Integration Tests", () => {
     it("displays hard constraint violations with red styling", () => {
       useDesignStore.setState({
         selected_pillar: testPillar,
-        intensity_values: { do_rong_vai: 50, vong_nach: 30 },
+        intensity_values: { shoulder_width: 50, vong_nach: 30 },
         guardrail_warnings: [],
         guardrail_violations: [sampleViolation],
         guardrail_status: "rejected",
@@ -114,7 +114,7 @@ describe("Story 4.1b: Guardrail Integration Tests", () => {
     it("shows no guardrail UI when status is passed", () => {
       useDesignStore.setState({
         selected_pillar: testPillar,
-        intensity_values: { do_rong_vai: 50, vong_nach: 50 },
+        intensity_values: { shoulder_width: 50, vong_nach: 50 },
         guardrail_warnings: [],
         guardrail_violations: [],
         guardrail_status: "passed",
@@ -132,8 +132,8 @@ describe("Story 4.1b: Guardrail Integration Tests", () => {
       // Simulate: user adjusted, got rejected, now snap back
       useDesignStore.setState({
         selected_pillar: testPillar,
-        intensity_values: { do_rong_vai: 99, vong_nach: 10 },
-        last_valid_intensity_values: { do_rong_vai: 50, vong_nach: 50 },
+        intensity_values: { shoulder_width: 99, vong_nach: 10 },
+        last_valid_intensity_values: { shoulder_width: 50, vong_nach: 50 },
         guardrail_status: "rejected",
         guardrail_violations: [sampleViolation],
         guardrail_warnings: [],
@@ -143,7 +143,7 @@ describe("Story 4.1b: Guardrail Integration Tests", () => {
       useDesignStore.getState().snapBackToSafe();
 
       const state = useDesignStore.getState();
-      expect(state.intensity_values).toEqual({ do_rong_vai: 50, vong_nach: 50 });
+      expect(state.intensity_values).toEqual({ shoulder_width: 50, vong_nach: 50 });
       expect(state.guardrail_status).toBeNull();
       expect(state.guardrail_violations).toEqual([]);
     });
@@ -151,8 +151,8 @@ describe("Story 4.1b: Guardrail Integration Tests", () => {
     it("sliders re-render with restored values after snap-back", () => {
       useDesignStore.setState({
         selected_pillar: testPillar,
-        intensity_values: { do_rong_vai: 99, vong_nach: 10 },
-        last_valid_intensity_values: { do_rong_vai: 50, vong_nach: 50 },
+        intensity_values: { shoulder_width: 99, vong_nach: 10 },
+        last_valid_intensity_values: { shoulder_width: 50, vong_nach: 50 },
         guardrail_status: "rejected",
         guardrail_violations: [sampleViolation],
       });
@@ -211,7 +211,7 @@ describe("Story 4.1b: Guardrail Integration Tests", () => {
 
   describe("Guardrail status transitions", () => {
     it("passed → warning → rejected → snap-back → null", () => {
-      useDesignStore.setState({ intensity_values: { do_rong_vai: 50 } });
+      useDesignStore.setState({ intensity_values: { shoulder_width: 50 } });
 
       // 1. Passed
       useDesignStore.getState().setGuardrailResult({
@@ -233,7 +233,7 @@ describe("Story 4.1b: Guardrail Integration Tests", () => {
       expect(useDesignStore.getState().guardrail_warnings).toHaveLength(1);
 
       // 3. Rejected
-      useDesignStore.setState({ intensity_values: { do_rong_vai: 99 } });
+      useDesignStore.setState({ intensity_values: { shoulder_width: 99 } });
       useDesignStore.getState().setGuardrailResult({
         status: "rejected",
         violations: [sampleViolation],
@@ -243,12 +243,12 @@ describe("Story 4.1b: Guardrail Integration Tests", () => {
       expect(useDesignStore.getState().guardrail_status).toBe("rejected");
       expect(useDesignStore.getState().guardrail_violations).toHaveLength(1);
       // last_valid_intensity_values was set during warning (not overwritten by rejected)
-      expect(useDesignStore.getState().last_valid_intensity_values).toEqual({ do_rong_vai: 50 });
+      expect(useDesignStore.getState().last_valid_intensity_values).toEqual({ shoulder_width: 50 });
 
       // 4. Snap back
       useDesignStore.getState().snapBackToSafe();
       expect(useDesignStore.getState().guardrail_status).toBeNull();
-      expect(useDesignStore.getState().intensity_values).toEqual({ do_rong_vai: 50 });
+      expect(useDesignStore.getState().intensity_values).toEqual({ shoulder_width: 50 });
     });
   });
 });

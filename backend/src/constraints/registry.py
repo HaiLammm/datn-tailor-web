@@ -50,7 +50,7 @@ class ConstraintRegistry:
         self._frozen = True
 
     def run_all(
-        self, measurements: dict, deltas: dict
+        self, measurements: dict, deltas: Union[dict, list[dict]]
     ) -> dict:
         """Run all registered constraints in phase order.
 
@@ -59,25 +59,32 @@ class ConstraintRegistry:
 
         Args:
             measurements: Customer body measurements dict.
-            deltas: Computed geometric deltas dict.
+            deltas: Computed geometric deltas (dict or list of dicts with 'key'/'value').
 
         Returns:
             Dict with keys: status, violations, warnings.
-            status is "rejected" if any hard violation,
-            "warning" if soft warnings only, "passed" otherwise.
         """
+        # Story 4.1a: Standardize deltas into a simple key-value dict for constraints
+        delta_map = {}
+        if isinstance(deltas, dict):
+            delta_map = deltas
+        elif isinstance(deltas, list):
+            for d in deltas:
+                if isinstance(d, dict) and "key" in d and "value" in d:
+                    delta_map[d["key"]] = d["value"]
+
         violations: list[ConstraintResult] = []
         warnings: list[ConstraintResult] = []
 
         # Phase 1: Hard Constraints
         for constraint in self._hard:
-            result = constraint.check(measurements, deltas)
+            result = constraint.check(measurements, delta_map)
             if result is not None:
                 violations.append(result)
 
         # Phase 2: Soft Constraints
         for constraint in self._soft:
-            result = constraint.check(measurements, deltas)
+            result = constraint.check(measurements, delta_map)
             if result is not None:
                 warnings.append(result)
 

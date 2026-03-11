@@ -153,9 +153,9 @@ PILLAR_FABRIC_PREFERENCES = {
 }
 
 # Intensity values ảnh hưởng fabric compatibility:
-# - do_om_than > 70 → ưu tiên vải có stretch
-# - do_rong_vai > 60 → ưu tiên vải giữ phom tốt
-# - chieu_dai_ao < 40 → vải nhẹ phù hợp hơn
+# - body_fit > 70 → ưu tiên vải có stretch
+# - shoulder_width > 60 → ưu tiên vải giữ phom tốt
+# - garment_length < 40 → vải nhẹ phù hợp hơn
 ```
 
 ### Project Structure Notes
@@ -232,7 +232,7 @@ Claude Sonnet 4.6 (claude-sonnet-4-6)
 
 2. **Frontend Implementation**: Created `fabric.ts` types with Zod schemas, extended `designStore.ts` with `fabric_recommendations`, `is_loading_fabrics` state and 3 new actions. Added `fetchFabricRecommendations` server action with AbortController timeout. Built `FabricCard.tsx` (texture placeholder, Vietnamese property tags, Heritage Gold compatibility badges) and `FabricRecommendationPanel.tsx` (fetch button, loading spinner, fabric grid, empty state). Integrated into `DesignSessionClient.tsx`.
 
-3. **Compatibility Scoring Logic**: Uses weighted Manhattan distance between fabric properties and pillar ideal values. Intensity sliders dynamically shift ideal values (e.g., high `do_om_than` → prefer stretch fabrics). Scores mapped to 3 Vietnamese labels: "Rất phù hợp" (≥75), "Phù hợp" (≥50), "Có thể dùng" (<50).
+3. **Compatibility Scoring Logic**: Uses weighted Manhattan distance between fabric properties and pillar ideal values. Intensity sliders dynamically shift ideal values (e.g., high `body_fit` → prefer stretch fabrics). Scores mapped to 3 Vietnamese labels: "Rất phù hợp" (≥75), "Phù hợp" (≥50), "Có thể dùng" (<50).
 
 4. **Test Coverage**: 16 backend tests (11 API + 5 unit), 17 frontend tests (6 FabricCard + 6 FabricRecommendationPanel + 5 store). Total: 206 backend + 85 frontend = 291 all passing.
 

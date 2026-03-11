@@ -25,6 +25,18 @@ class GarmentCategory(str, Enum):
     AO_DAI_TE_NHI = "ao_dai_te_nhi"
 
 
+class GarmentMaterial(str, Enum):
+    """Garment material enum - Vietnamese tailoring domain."""
+
+    LUA = "lua"
+    GIAM = "giam"
+    NHUNG = "nhung"
+    VOAN = "voan"
+    SATIN = "satin"
+    COTTON = "cotton"
+    PHA = "pha"
+
+
 class GarmentOccasion(str, Enum):
     """Garment occasion enum."""
 
@@ -44,9 +56,25 @@ class GarmentBase(BaseModel):
     category: GarmentCategory = Field(..., description="Loai ao dai")
     color: str | None = Field(None, max_length=50, description="Mau sac")
     occasion: GarmentOccasion | None = Field(None, description="Dip su dung")
+    material: GarmentMaterial | None = Field(None, description="Chat lieu vai")
     size_options: list[str] = Field(default_factory=list, description="Kich co co san (S/M/L/XL/XXL)")
     rental_price: Decimal = Field(..., ge=0, description="Gia thue (VND)")
-    image_url: str | None = Field(None, max_length=500, description="URL hinh anh")
+    sale_price: Decimal | None = Field(None, ge=0, description="Gia ban (VND), None neu chi co thue")
+    image_url: str | None = Field(None, max_length=500, description="URL hinh anh chinh (backward-compatible)")
+    image_urls: list[str] = Field(default_factory=list, description="Danh sach URL hinh anh HD (multi-image)")
+
+    @field_validator("image_urls")
+    @classmethod
+    def validate_image_urls(cls, v: list[str]) -> list[str]:
+        """Validate each image URL: non-empty, max_length, starts with http/https."""
+        import re
+        url_pattern = re.compile(r"^https?://\S+$")
+        for url in v:
+            if not url or len(url) > 500:
+                raise ValueError(f"URL hinh anh phai co do dai tu 1 den 500 ky tu")
+            if not url_pattern.match(url):
+                raise ValueError(f"URL hinh anh khong hop le: '{url}'. Phai bat dau bang http:// hoac https://")
+        return v
 
     @field_validator("size_options")
     @classmethod
@@ -75,9 +103,12 @@ class GarmentUpdate(BaseModel):
     category: GarmentCategory | None = None
     color: str | None = Field(None, max_length=50)
     occasion: GarmentOccasion | None = None
+    material: GarmentMaterial | None = None
     size_options: list[str] | None = None
     rental_price: Decimal | None = Field(None, ge=0)
+    sale_price: Decimal | None = Field(None, ge=0)
     image_url: str | None = Field(None, max_length=500)
+    image_urls: list[str] | None = None
     status: GarmentStatus | None = None
     expected_return_date: date | None = None
 
@@ -106,9 +137,12 @@ class GarmentResponse(BaseModel):
     category: str
     color: str | None
     occasion: str | None
+    material: str | None
     size_options: list[str]
     rental_price: Decimal
+    sale_price: Decimal | None
     image_url: str | None
+    image_urls: list[str]
     status: str
     expected_return_date: date | None
     renter_id: uuid.UUID | None = None
@@ -207,8 +241,21 @@ class GarmentFilter(BaseModel):
     occasion: str | None = Field(None, description="Filter by occasion")
     status: GarmentStatus | None = Field(None, description="Filter by status")
     category: GarmentCategory | None = Field(None, description="Filter by category")
+    material: GarmentMaterial | None = Field(None, description="Filter by material")
+    size: str | None = Field(None, description="Filter by size (matches within size_options JSON array)")
     page: int = Field(1, ge=1, description="Page number")
     page_size: int = Field(20, ge=1, le=100, description="Items per page")
+
+    @field_validator("size")
+    @classmethod
+    def validate_size_filter(cls, v: str | None) -> str | None:
+        """Whitelist validation for size filter (Review Follow-up HIGH)."""
+        if v is None:
+            return v
+        valid_sizes = {"S", "M", "L", "XL", "XXL"}
+        if v not in valid_sizes:
+            raise ValueError(f"Size filter must be one of: {', '.join(valid_sizes)}")
+        return v
 
 
 class GarmentListResponse(BaseModel):

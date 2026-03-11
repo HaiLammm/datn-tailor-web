@@ -33,17 +33,13 @@ class MockDB:
                 self.outer = outer
             
             def scalar_one_or_none(self):
-                if hasattr(self.outer, '_design') and self.outer._design:
-                    # Check if we're querying for a design
-                    if hasattr(stmt, 'where_clause'):
-                        from sqlalchemy import inspect
-                        if hasattr(stmt, 'selects'):
-                            # Check what table we're selecting from
-                            for elem in inspect(stmt).iterate:
-                                if hasattr(elem, 'table') and elem.table:
-                                    if elem.table.name == 'designs':
-                                        return self.outer._design
-                return self.outer._measurement
+                # Improved logic: check the SQL string for table names
+                sql_str = str(stmt).lower()
+                if "from designs" in sql_str or "select designs" in sql_str:
+                    return self.outer._design
+                if "from measurements" in sql_str or "join measurements" in sql_str:
+                    return self.outer._measurement
+                return self.outer._measurement  # Default fallback
             
             def scalars(self):
                 class MockScalars:
@@ -65,7 +61,14 @@ class MockDB:
         pass
     
     def add(self, obj):
+        import uuid
+        from datetime import datetime, timezone
         if hasattr(obj, 'delta_key'):
+            # Simulate DB auto-generation of ID and timestamps
+            if not hasattr(obj, 'id') or obj.id is None:
+                obj.id = uuid.uuid4()
+            if not hasattr(obj, 'created_at') or obj.created_at is None:
+                obj.created_at = datetime.now(timezone.utc)
             self._overrides.append(obj)
 
 
@@ -189,7 +192,9 @@ class TestGuardrailReValidation:
             "status": "rejected",
             "violations": [
                 {
+                    "constraint_id": "vong_eo_hard",
                     "constraint_type": "hard",
+                    "severity": "hard",
                     "message_vi": "Vòng eo không thể nhỏ hơn 50cm",
                     "violated_values": {"vong_eo": 45.0}
                 }
@@ -223,7 +228,9 @@ class TestGuardrailReValidation:
             "violations": [],
             "warnings": [
                 {
+                    "constraint_id": "vong_eo_soft",
                     "constraint_type": "soft",
+                    "severity": "soft",
                     "message_vi": "Khuyến nghị tăng thêm 0.5cm",
                     "violated_values": {"vong_eo": 68.5}
                 }

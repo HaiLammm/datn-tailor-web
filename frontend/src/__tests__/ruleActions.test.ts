@@ -55,7 +55,7 @@ const mockDetail = {
     pillar_name_vi: "Truyền thống",
     mappings: [
         {
-            slider_key: "do_rong_vai",
+            slider_key: "shoulder_width",
             delta_key: "rong_vai",
             delta_label_vi: "Rộng vai",
             delta_unit: "cm",
@@ -162,7 +162,7 @@ describe("fetchPillarDetail", () => {
 describe("updatePillarRules", () => {
     const validMappings = [
         {
-            slider_key: "do_rong_vai",
+            slider_key: "shoulder_width",
             delta_key: "rong_vai",
             delta_label_vi: "Rộng vai",
             delta_unit: "cm",

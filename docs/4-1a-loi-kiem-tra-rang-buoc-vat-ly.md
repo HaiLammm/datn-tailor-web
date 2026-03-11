@@ -61,8 +61,8 @@ so that **designs that violate mechanical/physical rules are blocked before blue
 
 - [x] **Task 3: Soft Constraint Implementations** (AC: #3)
   - [x] 3.1 Create `backend/src/constraints/soft_constraints.py` with advisory rules:
-    - `HighBodyHugWarning`: do_om_than > threshold (migrate from style_service.py)
-    - `NarrowShoulderWarning`: do_rong_vai < threshold (migrate from style_service.py)
+    - `HighBodyHugWarning`: body_fit > threshold (migrate from style_service.py)
+    - `NarrowShoulderWarning`: shoulder_width < threshold (migrate from style_service.py)
     - `AsymmetryWarning`: do_bat_doi_xung > threshold (migrate from style_service.py)
     - `DangerZoneProximityWarning`: values within X% of hard constraint limits
   - [x] 3.2 Migrate existing soft constraint logic from `style_service.py` to use the new Registry

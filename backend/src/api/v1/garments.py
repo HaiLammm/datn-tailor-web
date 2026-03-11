@@ -17,6 +17,7 @@ from src.models.garment import (
     GarmentCreate,
     GarmentFilter,
     GarmentListResponse,
+    GarmentMaterial,
     GarmentOccasion,
     GarmentResponse,
     GarmentStatus,
@@ -50,6 +51,8 @@ async def list_garments_endpoint(
     occasion: GarmentOccasion | None = Query(None, description="Filter by occasion"),
     status: GarmentStatus | None = Query(None, description="Filter by status"),
     category: GarmentCategory | None = Query(None, description="Filter by category"),
+    material: GarmentMaterial | None = Query(None, description="Filter by material"),
+    size: str | None = Query(None, description="Filter by size (matches within size_options)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     sort_by_status: bool = Query(False, description="Sort by status: Rented -> Maintenance -> Available"),
@@ -69,6 +72,8 @@ async def list_garments_endpoint(
         occasion=occasion,
         status=status,
         category=category,
+        material=material,
+        size=size,
         page=page,
         page_size=page_size,
     )
@@ -95,6 +100,28 @@ async def list_garments_endpoint(
             "page_size": page_size,
             "total_pages": total_pages,
         },
+    }
+
+
+@router.get(
+    "/colors",
+    response_model=dict,
+    summary="Get unique colors (Public)",
+    description="Get a list of all unique color values present in the showroom. Public endpoint.",
+)
+async def list_garment_colors_endpoint(
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Get unique garment colors.
+    
+    Returns:
+        API Response Wrapper: {"data": [...]}
+    """
+    tenant_id = get_default_tenant_id()
+    colors = await garment_service.list_unique_colors(db, tenant_id)
+    
+    return {
+        "data": colors,
     }
 
 

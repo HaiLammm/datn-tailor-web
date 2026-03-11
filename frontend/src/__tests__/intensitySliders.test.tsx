@@ -32,7 +32,7 @@ const mockPillarWithGoldenPoints: StylePillarResponse = {
   is_default: true,
   sliders: [
     {
-      key: "do_rong_vai",
+      key: "shoulder_width",
       label: "Độ rộng vai",
       description: "Điều chỉnh độ rộng phần vai",
       min_value: 0,
@@ -43,7 +43,7 @@ const mockPillarWithGoldenPoints: StylePillarResponse = {
       golden_points: [38.2, 61.8],
     },
     {
-      key: "do_om_than",
+      key: "body_fit",
       label: "Độ ôm thân",
       description: null,
       min_value: 0,
@@ -73,21 +73,21 @@ describe("IntensitySliders (Story 2.2)", () => {
       useDesignStore.getState().selectPillar(mockPillarWithGoldenPoints);
     });
 
-    it("should render golden point markers for do_rong_vai slider", () => {
+    it("should render golden point markers for shoulder_width slider", () => {
       render(<IntensitySliders />);
 
-      // Slider do_rong_vai has 2 golden points: 38.2 and 61.8
-      const marker1 = screen.getByTestId("golden-point-do_rong_vai-38.2");
-      const marker2 = screen.getByTestId("golden-point-do_rong_vai-61.8");
+      // Slider shoulder_width has 2 golden points: 38.2 and 61.8
+      const marker1 = screen.getByTestId("golden-point-shoulder_width-38.2");
+      const marker2 = screen.getByTestId("golden-point-shoulder_width-61.8");
       expect(marker1).toBeTruthy();
       expect(marker2).toBeTruthy();
     });
 
-    it("should render golden point marker for do_om_than slider", () => {
+    it("should render golden point marker for body_fit slider", () => {
       render(<IntensitySliders />);
 
-      // Slider do_om_than has 1 golden point: 50.0
-      const marker = screen.getByTestId("golden-point-do_om_than-50");
+      // Slider body_fit has 1 golden point: 50.0
+      const marker = screen.getByTestId("golden-point-body_fit-50");
       expect(marker).toBeTruthy();
     });
 
@@ -123,7 +123,7 @@ describe("IntensitySliders (Story 2.2)", () => {
     it("should display inline warning for slider with soft constraint", () => {
       const warnings: IntensityWarning[] = [
         {
-          slider_key: "do_om_than",
+          slider_key: "body_fit",
           message: "Độ ôm thân quá cao có thể gây hạn chế vận động khi mặc",
           severity: "soft",
         },
@@ -132,7 +132,7 @@ describe("IntensitySliders (Story 2.2)", () => {
 
       render(<IntensitySliders />);
 
-      const warningEl = screen.getByTestId("warning-do_om_than");
+      const warningEl = screen.getByTestId("warning-body_fit");
       expect(warningEl).toBeTruthy();
       expect(warningEl.textContent).toContain(
         "Độ ôm thân quá cao có thể gây hạn chế vận động khi mặc"
@@ -142,7 +142,7 @@ describe("IntensitySliders (Story 2.2)", () => {
     it("should not display warning for slider without violation", () => {
       const warnings: IntensityWarning[] = [
         {
-          slider_key: "do_om_than",
+          slider_key: "body_fit",
           message: "Cảnh báo",
           severity: "soft",
         },
@@ -151,8 +151,8 @@ describe("IntensitySliders (Story 2.2)", () => {
 
       render(<IntensitySliders />);
 
-      // do_rong_vai has no warning
-      const warningEl = screen.queryByTestId("warning-do_rong_vai");
+      // shoulder_width has no warning
+      const warningEl = screen.queryByTestId("warning-shoulder_width");
       expect(warningEl).toBeNull();
     });
 
@@ -247,7 +247,7 @@ describe("IntensitySliders (Story 2.2)", () => {
       await act(async () => {});
       expect(mockSubmit).toHaveBeenCalledWith(
         "traditional",
-        expect.arrayContaining([expect.objectContaining({ key: "do_rong_vai" })]),
+        expect.arrayContaining([expect.objectContaining({ key: "shoulder_width" })]),
         expect.any(Number)
       );
     });

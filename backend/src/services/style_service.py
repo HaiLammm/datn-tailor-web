@@ -57,7 +57,7 @@ class StyleService:
                 is_default=True,
                 sliders=[
                     IntensitySlider(
-                        key="do_rong_vai",
+                        key="shoulder_width",
                         label="Độ rộng vai",
                         description="Điều chỉnh độ rộng phần vai so với số đo chuẩn",
                         min_value=0,
@@ -68,7 +68,7 @@ class StyleService:
                         golden_points=[38.2, 61.8],  # Fibonacci golden ratio
                     ),
                     IntensitySlider(
-                        key="do_om_than",
+                        key="body_fit",
                         label="Độ ôm thân",
                         description="Mức độ ôm sát của thân áo/quần",
                         min_value=0,
@@ -79,7 +79,7 @@ class StyleService:
                         golden_points=[50.0, 61.8],  # Chuẩn & phối vải lụa
                     ),
                     IntensitySlider(
-                        key="chieu_dai_ao",
+                        key="garment_length",
                         label="Chiều dài áo",
                         description="Điều chỉnh độ dài áo so với chuẩn",
                         min_value=0,
@@ -110,7 +110,7 @@ class StyleService:
                 is_default=False,
                 sliders=[
                     IntensitySlider(
-                        key="do_rong_vai",
+                        key="shoulder_width",
                         label="Độ rộng vai",
                         description="Điều chỉnh độ rộng phần vai so với số đo chuẩn",
                         min_value=0,
@@ -121,7 +121,7 @@ class StyleService:
                         golden_points=[38.2, 50.0],
                     ),
                     IntensitySlider(
-                        key="do_om_than",
+                        key="body_fit",
                         label="Độ ôm thân",
                         description="Mức độ ôm sát của thân áo/quần",
                         min_value=0,
@@ -132,7 +132,7 @@ class StyleService:
                         golden_points=[61.8, 70.0],  # Tối giản đòi hỏi ôm vừa phải
                     ),
                     IntensitySlider(
-                        key="chieu_dai_ao",
+                        key="garment_length",
                         label="Chiều dài áo",
                         description="Điều chỉnh độ dài áo so với chuẩn",
                         min_value=0,
@@ -163,7 +163,7 @@ class StyleService:
                 is_default=False,
                 sliders=[
                     IntensitySlider(
-                        key="do_rong_vai",
+                        key="shoulder_width",
                         label="Độ rộng vai",
                         description="Điều chỉnh độ rộng phần vai so với số đo chuẩn",
                         min_value=0,
@@ -174,7 +174,7 @@ class StyleService:
                         golden_points=[61.8, 76.4],  # Tiên phong cho phép vai rộng hơn
                     ),
                     IntensitySlider(
-                        key="do_om_than",
+                        key="body_fit",
                         label="Độ ôm thân",
                         description="Mức độ ôm sát của thân áo/quần",
                         min_value=0,

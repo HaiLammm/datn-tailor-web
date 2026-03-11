@@ -1,18 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { OverrideRequest, OverrideResponse, OverrideHistoryItem, OverrideHistoryResponse } from "@/types/override";
-
-export class OverrideError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-    public readonly violations?: Array<{ message: string; violated_values: Record<string, number> }>
-  ) {
-    super(message);
-    this.name = "OverrideError";
-  }
-}
+import { OverrideRequest, OverrideResponse, OverrideHistoryItem, OverrideHistoryResponse, OverrideError } from "@/types/override";
 
 async function getAuthToken(): Promise<string | null> {
   const session = await auth();

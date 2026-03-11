@@ -106,7 +106,6 @@ export function DesignSessionClient({
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   // Initialize current pattern from server (Story 3.1)
-...
   useEffect(() => {
     if (initialGeometry && !currentPattern) {
       setCurrentPattern(initialGeometry);

@@ -103,8 +103,8 @@ class TestFabricRecommendationsAPI:
             "/api/v1/fabrics/recommendations",
             params={"pillar_id": "traditional"},
         )
-        # With intensities that favor stretch (do_om_than high)
-        intensities = json.dumps({"do_om_than": 90, "do_rong_vai": 30})
+        # With intensities that favor stretch (body_fit high)
+        intensities = json.dumps({"body_fit": 90, "shoulder_width": 30})
         resp_intensity = await client.get(
             "/api/v1/fabrics/recommendations",
             params={"pillar_id": "traditional", "intensities": intensities},
@@ -242,7 +242,7 @@ class TestFabricService:
         service = FabricService()
         base = service.get_recommendations("traditional")
         with_intensity = service.get_recommendations(
-            "traditional", {"do_om_than": 95, "do_rong_vai": 10}
+            "traditional", {"body_fit": 95, "shoulder_width": 10}
         )
 
         assert base is not None

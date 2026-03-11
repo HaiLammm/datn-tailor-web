@@ -332,11 +332,15 @@ async def sanity_check(
                 body_value=body_value,
                 base_value=base_value,
                 suggested_value=suggested_value,
+                overridden_value=None,  # Not overridden initially
                 delta=delta,
                 unit="cm",
                 severity=severity,
             )
         )
+
+    # Default guardrail status
+    guardrail_status = "passed"
 
     # Run guardrail check if we have measurements
     if body_measurements:

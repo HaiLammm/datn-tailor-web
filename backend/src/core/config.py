@@ -15,7 +15,7 @@ class Settings:
     VIETNAM_TZ_OFFSET: timezone = timezone(timedelta(hours=7))
 
     DATABASE_URL: str = os.getenv(
-        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/tailor_project"
+        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/tailor_db"
     )
     OWNER_EMAIL: str = os.getenv("OWNER_EMAIL", "admin@tailor.local")
 

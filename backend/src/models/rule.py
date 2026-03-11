@@ -18,7 +18,7 @@ class DeltaMappingDetail(BaseModel):
 
     slider_key: str = Field(
         ...,
-        description="Slider identifier (e.g., 'do_rong_vai')",
+        description="Slider identifier (e.g., 'shoulder_width')",
     )
     delta_key: str = Field(
         ...,

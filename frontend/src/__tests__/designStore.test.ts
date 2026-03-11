@@ -18,7 +18,7 @@ const mockTraditionalPillar: StylePillarResponse = {
   is_default: true,
   sliders: [
     {
-      key: "do_rong_vai",
+      key: "shoulder_width",
       label: "Độ rộng vai",
       description: "Điều chỉnh độ rộng phần vai",
       min_value: 0,
@@ -29,7 +29,7 @@ const mockTraditionalPillar: StylePillarResponse = {
       golden_points: [38.2, 61.8],
     },
     {
-      key: "do_om_than",
+      key: "body_fit",
       label: "Độ ôm thân",
       description: "Mức độ ôm sát của thân áo",
       min_value: 0,
@@ -50,7 +50,7 @@ const mockMinimalistPillar: StylePillarResponse = {
   is_default: false,
   sliders: [
     {
-      key: "do_rong_vai",
+      key: "shoulder_width",
       label: "Độ rộng vai",
       description: "Điều chỉnh độ rộng phần vai",
       min_value: 0,
@@ -61,7 +61,7 @@ const mockMinimalistPillar: StylePillarResponse = {
       golden_points: [38.2, 50.0],
     },
     {
-      key: "do_om_than",
+      key: "body_fit",
       label: "Độ ôm thân",
       description: "Mức độ ôm sát của thân áo",
       min_value: 0,
@@ -117,8 +117,8 @@ describe("useDesignStore", () => {
 
       const { intensity_values } = useDesignStore.getState();
       expect(intensity_values).toEqual({
-        do_rong_vai: 50,
-        do_om_than: 60,
+        shoulder_width: 50,
+        body_fit: 60,
       });
     });
 
@@ -126,15 +126,15 @@ describe("useDesignStore", () => {
       // Select traditional pillar first
       useDesignStore.getState().selectPillar(mockTraditionalPillar);
       expect(useDesignStore.getState().intensity_values).toEqual({
-        do_rong_vai: 50,
-        do_om_than: 60,
+        shoulder_width: 50,
+        body_fit: 60,
       });
 
       // Select minimalist pillar - should update to new defaults
       useDesignStore.getState().selectPillar(mockMinimalistPillar);
       expect(useDesignStore.getState().intensity_values).toEqual({
-        do_rong_vai: 45,
-        do_om_than: 70,
+        shoulder_width: 45,
+        body_fit: 70,
       });
     });
   });
@@ -145,25 +145,25 @@ describe("useDesignStore", () => {
     });
 
     it("should update single slider value", () => {
-      useDesignStore.getState().updateIntensity("do_rong_vai", 75);
+      useDesignStore.getState().updateIntensity("shoulder_width", 75);
 
       const { intensity_values } = useDesignStore.getState();
-      expect(intensity_values.do_rong_vai).toBe(75);
-      expect(intensity_values.do_om_than).toBe(60); // Unchanged
+      expect(intensity_values.shoulder_width).toBe(75);
+      expect(intensity_values.body_fit).toBe(60); // Unchanged
     });
 
     it("should clamp value to max when exceeding range", () => {
-      useDesignStore.getState().updateIntensity("do_rong_vai", 150);
+      useDesignStore.getState().updateIntensity("shoulder_width", 150);
 
       const { intensity_values } = useDesignStore.getState();
-      expect(intensity_values.do_rong_vai).toBe(100); // Clamped to max
+      expect(intensity_values.shoulder_width).toBe(100); // Clamped to max
     });
 
     it("should clamp value to min when below range", () => {
-      useDesignStore.getState().updateIntensity("do_rong_vai", -50);
+      useDesignStore.getState().updateIntensity("shoulder_width", -50);
 
       const { intensity_values } = useDesignStore.getState();
-      expect(intensity_values.do_rong_vai).toBe(0); // Clamped to min
+      expect(intensity_values.shoulder_width).toBe(0); // Clamped to min
     });
 
     it("should not update for unknown slider key", () => {
@@ -176,7 +176,7 @@ describe("useDesignStore", () => {
 
     it("should not update when no pillar is selected", () => {
       useDesignStore.getState().clearSession();
-      useDesignStore.getState().updateIntensity("do_rong_vai", 75);
+      useDesignStore.getState().updateIntensity("shoulder_width", 75);
 
       const { intensity_values } = useDesignStore.getState();
       expect(intensity_values).toEqual({});
@@ -190,16 +190,16 @@ describe("useDesignStore", () => {
 
     it("should reset all values to defaults", () => {
       // Modify values
-      useDesignStore.getState().updateIntensity("do_rong_vai", 80);
-      useDesignStore.getState().updateIntensity("do_om_than", 30);
+      useDesignStore.getState().updateIntensity("shoulder_width", 80);
+      useDesignStore.getState().updateIntensity("body_fit", 30);
 
       // Reset
       useDesignStore.getState().resetToDefaults();
 
       const { intensity_values } = useDesignStore.getState();
       expect(intensity_values).toEqual({
-        do_rong_vai: 50,
-        do_om_than: 60,
+        shoulder_width: 50,
+        body_fit: 60,
       });
     });
 
@@ -215,7 +215,7 @@ describe("useDesignStore", () => {
   describe("clearSession", () => {
     it("should reset all state to initial values", () => {
       useDesignStore.getState().selectPillar(mockTraditionalPillar);
-      useDesignStore.getState().updateIntensity("do_rong_vai", 80);
+      useDesignStore.getState().updateIntensity("shoulder_width", 80);
 
       useDesignStore.getState().clearSession();
 
@@ -272,7 +272,7 @@ describe("useDesignStore", () => {
     it("should store submission warnings from backend", () => {
       const mockWarnings = [
         {
-          slider_key: "do_om_than",
+          slider_key: "body_fit",
           message: "Độ ôm thân quá cao có thể gây hạn chế vận động",
           severity: "soft",
         },
@@ -281,12 +281,12 @@ describe("useDesignStore", () => {
 
       const { submission_warnings } = useDesignStore.getState();
       expect(submission_warnings).toHaveLength(1);
-      expect(submission_warnings[0].slider_key).toBe("do_om_than");
+      expect(submission_warnings[0].slider_key).toBe("body_fit");
     });
 
     it("should clear warnings on selectPillar", () => {
       const mockWarnings = [
-        { slider_key: "do_om_than", message: "Warning", severity: "soft" },
+        { slider_key: "body_fit", message: "Warning", severity: "soft" },
       ];
       useDesignStore.getState().setSubmissionResult(1, mockWarnings);
       useDesignStore.getState().selectPillar(mockTraditionalPillar);
@@ -297,7 +297,7 @@ describe("useDesignStore", () => {
     it("should clear warnings on resetToDefaults", () => {
       useDesignStore.getState().selectPillar(mockTraditionalPillar);
       const mockWarnings = [
-        { slider_key: "do_om_than", message: "Warning", severity: "soft" },
+        { slider_key: "body_fit", message: "Warning", severity: "soft" },
       ];
       useDesignStore.getState().setSubmissionResult(1, mockWarnings);
       useDesignStore.getState().resetToDefaults();
@@ -308,7 +308,7 @@ describe("useDesignStore", () => {
     it("should reset all submission state on clearSession", () => {
       useDesignStore.getState().setSubmitting(true);
       useDesignStore.getState().setSubmissionResult(5, [
-        { slider_key: "do_om_than", message: "Warning", severity: "soft" },
+        { slider_key: "body_fit", message: "Warning", severity: "soft" },
       ]);
 
       useDesignStore.getState().clearSession();

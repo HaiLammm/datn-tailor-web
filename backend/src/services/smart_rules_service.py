@@ -96,7 +96,7 @@ class SmartRulesService:
         return [
             SmartRule(
                 pillar_id="traditional",
-                slider_key="do_rong_vai",
+                slider_key="shoulder_width",
                 mappings=[
                     DeltaMapping(
                         slider_range=(0.0, 100.0),
@@ -110,7 +110,7 @@ class SmartRulesService:
             ),
             SmartRule(
                 pillar_id="traditional",
-                slider_key="do_om_than",
+                slider_key="body_fit",
                 mappings=[
                     DeltaMapping(
                         slider_range=(0.0, 100.0),
@@ -133,7 +133,7 @@ class SmartRulesService:
             ),
             SmartRule(
                 pillar_id="traditional",
-                slider_key="chieu_dai_ao",
+                slider_key="garment_length",
                 mappings=[
                     DeltaMapping(
                         slider_range=(0.0, 100.0),
@@ -180,7 +180,7 @@ class SmartRulesService:
         return [
             SmartRule(
                 pillar_id="minimalist",
-                slider_key="do_rong_vai",
+                slider_key="shoulder_width",
                 mappings=[
                     DeltaMapping(
                         slider_range=(0.0, 100.0),
@@ -194,7 +194,7 @@ class SmartRulesService:
             ),
             SmartRule(
                 pillar_id="minimalist",
-                slider_key="do_om_than",
+                slider_key="body_fit",
                 mappings=[
                     DeltaMapping(
                         slider_range=(0.0, 100.0),
@@ -215,7 +215,7 @@ class SmartRulesService:
             ),
             SmartRule(
                 pillar_id="minimalist",
-                slider_key="chieu_dai_ao",
+                slider_key="garment_length",
                 mappings=[
                     DeltaMapping(
                         slider_range=(0.0, 100.0),
@@ -254,7 +254,7 @@ class SmartRulesService:
         return [
             SmartRule(
                 pillar_id="avant_garde",
-                slider_key="do_rong_vai",
+                slider_key="shoulder_width",
                 mappings=[
                     DeltaMapping(
                         slider_range=(0.0, 100.0),
@@ -268,7 +268,7 @@ class SmartRulesService:
             ),
             SmartRule(
                 pillar_id="avant_garde",
-                slider_key="do_om_than",
+                slider_key="body_fit",
                 mappings=[
                     DeltaMapping(
                         slider_range=(0.0, 100.0),
@@ -289,7 +289,7 @@ class SmartRulesService:
             ),
             SmartRule(
                 pillar_id="avant_garde",
-                slider_key="chieu_dai_ao",
+                slider_key="garment_length",
                 mappings=[
                     DeltaMapping(
                         slider_range=(0.0, 100.0),

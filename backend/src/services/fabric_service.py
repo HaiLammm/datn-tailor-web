@@ -35,12 +35,12 @@ _PILLAR_PREFERENCES: dict[str, dict[str, dict[str, float]]] = {
 # ===== Intensity influence on fabric scoring =====
 # Maps slider keys to fabric property adjustments
 _INTENSITY_ADJUSTMENTS: dict[str, dict[str, float]] = {
-    # do_om_than > 70 → ưu tiên vải có stretch
-    "do_om_than": {"do_co_dan": 0.02},
-    # do_rong_vai > 60 → ưu tiên vải giữ phom tốt
-    "do_rong_vai": {"kha_nang_giu_phom": 0.015},
-    # chieu_dai_ao < 50 → vải nhẹ phù hợp hơn (negative means prefer lower thickness)
-    "chieu_dai_ao": {"do_day": -0.01},
+    # body_fit > 70 → ưu tiên vải có stretch
+    "body_fit": {"do_co_dan": 0.02},
+    # shoulder_width > 60 → ưu tiên vải giữ phom tốt
+    "shoulder_width": {"kha_nang_giu_phom": 0.015},
+    # garment_length < 50 → vải nhẹ phù hợp hơn (negative means prefer lower thickness)
+    "garment_length": {"do_day": -0.01},
 }
 
 

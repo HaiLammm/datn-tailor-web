@@ -34,7 +34,7 @@ async def get_fabric_recommendations(
     pillar_id: str = Query(..., description="ID phong cách đã chọn"),
     intensities: str | None = Query(
         None,
-        description='JSON-encoded intensity values, e.g. {"do_rong_vai": 50, "do_om_than": 60}',
+        description='JSON-encoded intensity values, e.g. {"shoulder_width": 50, "body_fit": 60}',
     ),
 ) -> FabricRecommendationResponse:
     """Get fabric recommendations based on style pillar and intensity values.

@@ -107,12 +107,13 @@ async def seed_garments(test_db_session: AsyncSession, seed_test_users: dict) ->
         category="ao_dai_truyen_thong",
         color="Đỏ",
         occasion="le_cuoi",
+        material="lua",
         size_options=["S", "M", "L"],
         rental_price=Decimal("500000"),
         image_url="https://example.com/red.jpg",
         status="available",
     )
-    
+
     garment2 = GarmentDB(
         id=uuid.uuid4(),
         tenant_id=tenant_id,
@@ -121,6 +122,7 @@ async def seed_garments(test_db_session: AsyncSession, seed_test_users: dict) ->
         category="ao_dai_cach_tan",
         color="Xanh",
         occasion="cong_so",
+        material="giam",
         size_options=["M", "L"],
         rental_price=Decimal("400000"),
         status="rented",
@@ -1436,3 +1438,307 @@ async def test_all_existing_garment_tests_pass(
     data = response.json()["data"]
     assert "reminder_sent" in data  # New field present
     assert data["reminder_sent"] is False  # Available garment not reminded
+
+
+# ===== Story 2.2: Multi-Image & Sale Price Tests =====
+
+
+@pytest.mark.asyncio
+async def test_garment_detail_response_includes_image_urls_field(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.2: Garment detail response includes image_urls list field."""
+    garment_id = seed_garments["garment1"].id
+
+    response = await client.get(f"/api/v1/garments/{garment_id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "image_urls" in data
+    assert isinstance(data["image_urls"], list)
+
+
+@pytest.mark.asyncio
+async def test_garment_detail_response_includes_sale_price_field(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.2: Garment detail response includes sale_price field (nullable)."""
+    garment_id = seed_garments["garment1"].id
+
+    response = await client.get(f"/api/v1/garments/{garment_id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "sale_price" in data
+    # Default is null (no sale price set)
+    assert data["sale_price"] is None
+
+
+@pytest.mark.asyncio
+async def test_create_garment_with_image_urls_and_sale_price(
+    seed_test_users: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """Story 2.2: Owner can create garment with image_urls list and sale_price."""
+    response = await client.post(
+        "/api/v1/garments",
+        json={
+            "name": "Áo dài HD multi-ảnh",
+            "category": "ao_dai_cuoi",
+            "size_options": ["S", "M", "L"],
+            "rental_price": "600000",
+            "sale_price": "2500000",
+            "image_url": "https://example.com/main.jpg",
+            "image_urls": [
+                "https://example.com/img1.jpg",
+                "https://example.com/img2.jpg",
+                "https://example.com/img3.jpg",
+            ],
+        },
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 201
+    data = response.json()["data"]
+    assert data["image_urls"] == [
+        "https://example.com/img1.jpg",
+        "https://example.com/img2.jpg",
+        "https://example.com/img3.jpg",
+    ]
+    assert data["sale_price"] == "2500000.00"
+
+
+@pytest.mark.asyncio
+async def test_create_garment_without_image_urls_defaults_to_empty_list(
+    seed_test_users: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """Story 2.2: Creating garment without image_urls defaults to empty list (backward-compat)."""
+    response = await client.post(
+        "/api/v1/garments",
+        json={
+            "name": "Áo dài không ảnh HD",
+            "category": "ao_dai_truyen_thong",
+            "size_options": ["M"],
+            "rental_price": "300000",
+        },
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 201
+    data = response.json()["data"]
+    assert data["image_urls"] == []
+    assert data["sale_price"] is None
+
+
+@pytest.mark.asyncio
+async def test_list_garments_response_includes_image_urls_and_sale_price(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.2: List endpoint response includes image_urls and sale_price for all items."""
+    response = await client.get("/api/v1/garments")
+
+    assert response.status_code == 200
+    items = response.json()["data"]["items"]
+    assert len(items) > 0
+    for item in items:
+        assert "image_urls" in item
+        assert "sale_price" in item
+        assert isinstance(item["image_urls"], list)
+
+
+# ===== Story 2.3: Multi-Dimensional Filter Tests =====
+
+
+@pytest.mark.asyncio
+async def test_list_garments_with_material_filter(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Filter garments by material returns only matching items."""
+    response = await client.get("/api/v1/garments", params={"material": "lua"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["total"] == 1
+    assert data["data"]["items"][0]["material"] == "lua"
+    assert data["data"]["items"][0]["name"] == "Áo dài đỏ"
+
+
+@pytest.mark.asyncio
+async def test_list_garments_with_material_filter_no_results(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Filter by material that no garment has returns empty list."""
+    response = await client.get("/api/v1/garments", params={"material": "nhung"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["total"] == 0
+    assert data["data"]["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_list_garments_with_size_filter(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Filter garments by size matches within size_options JSON array."""
+    response = await client.get("/api/v1/garments", params={"size": "S"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["total"] == 1
+    assert "S" in data["data"]["items"][0]["size_options"]
+
+
+@pytest.mark.asyncio
+async def test_list_garments_with_size_filter_multiple_matches(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Size filter 'M' matches both garments that include M."""
+    response = await client.get("/api/v1/garments", params={"size": "M"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["total"] == 2
+
+
+@pytest.mark.asyncio
+async def test_list_garments_combined_material_and_size_filter(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Combined material + size filter uses AND logic."""
+    response = await client.get(
+        "/api/v1/garments", params={"material": "lua", "size": "S"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["total"] == 1
+    assert data["data"]["items"][0]["material"] == "lua"
+    assert "S" in data["data"]["items"][0]["size_options"]
+
+
+@pytest.mark.asyncio
+async def test_list_garments_combined_material_and_color_filter(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Combined material + color filter uses AND logic."""
+    response = await client.get(
+        "/api/v1/garments", params={"material": "lua", "color": "Đỏ"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["total"] == 1
+    assert data["data"]["items"][0]["material"] == "lua"
+    assert data["data"]["items"][0]["color"] == "Đỏ"
+
+
+@pytest.mark.asyncio
+async def test_list_garments_combined_material_color_size_filter(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Triple filter (material + color + size) uses AND logic correctly."""
+    response = await client.get(
+        "/api/v1/garments",
+        params={"material": "giam", "color": "Xanh", "size": "L"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["total"] == 1
+    assert data["data"]["items"][0]["material"] == "giam"
+    assert data["data"]["items"][0]["color"] == "Xanh"
+
+
+@pytest.mark.asyncio
+async def test_list_garments_combined_filters_no_match(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Combined filters with contradicting criteria returns empty."""
+    response = await client.get(
+        "/api/v1/garments", params={"material": "lua", "color": "Xanh"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["total"] == 0
+    assert data["data"]["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_material_field_in_garment_response(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Material field is included in garment response."""
+    garment_id = seed_garments["garment1"].id
+    response = await client.get(f"/api/v1/garments/{garment_id}")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert "material" in data
+    assert data["material"] == "lua"
+
+
+@pytest.mark.asyncio
+async def test_create_garment_with_material(
+    seed_test_users: dict,
+    owner_token: str,
+    client: AsyncClient,
+):
+    """Story 2.3: Create garment with material field."""
+    response = await client.post(
+        "/api/v1/garments",
+        json={
+            "name": "Áo dài nhung",
+            "category": "ao_dai_truyen_thong",
+            "material": "nhung",
+            "size_options": ["M", "L"],
+            "rental_price": 600000,
+        },
+        headers={"Authorization": f"Bearer {owner_token}"},
+    )
+
+    assert response.status_code == 201
+    data = response.json()["data"]
+    assert data["material"] == "nhung"
+
+
+@pytest.mark.asyncio
+async def test_size_filter_no_partial_match(
+    seed_test_users: dict,
+    seed_garments: dict,
+    client: AsyncClient,
+):
+    """Story 2.3: Size filter 'XL' does not match garments with only S/M/L sizes."""
+    response = await client.get("/api/v1/garments", params={"size": "XL"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data"]["total"] == 0

@@ -52,9 +52,9 @@ development_status:
 
   epic-2: in-progress
   2-1-hien-thi-listing-grid-san-pham: done
-  2-2-tuong-tac-view-chi-tiet-zoom-anh: backlog
-  2-3-he-thong-loc-san-pham-da-chieu: backlog
-  2-4-dashboard-owner-crud-san-pham-ao-dai: backlog
+  2-2-tuong-tac-view-chi-tiet-zoom-anh: done
+  2-3-he-thong-loc-san-pham-da-chieu: done  # Code Review passed (3 rounds)
+  2-4-dashboard-owner-crud-san-pham-ao-dai: ready-for-dev
   2-5-tracker-trang-thai-2-cham: done
   2-6-timeline-tracking-automated-email-reminders: done
   epic-2-retrospective: optional
@@ -97,7 +97,7 @@ development_status:
   epic-8: in-progress
   8-1-api-hinh-hoc-can-ban-sinh-json-cot-so: done
   8-2-base-render-2d-svg-cat-path-kich-co-mo: done
-  8-3-noi-moc-morphing-effect-truot-thanh-so-slider: backlog
+  8-3-noi-moc-morphing-effect-truot-thanh-so-slider: done # FIXED: Removed invalid placeholder in DesignSessionClient
   8-4-layer-bong-mo-so-sanh-cham-comparison-dau-lech: done
   epic-8-retrospective: optional
 
@@ -105,6 +105,6 @@ development_status:
   9-1-hard-constraints: done
   9-2-hintsui-truc-tiep-nhay-vi-pham-kheo-nho-cui-soft: done
   9-3-chuc-nang-bang-sanity-check-3-cot-khao-sat-tho: done
-  9-4-manual-override: done
+  9-4-manual-override: done # FIXED: Moved OverrideError to types/override.ts to fix Server Actions build
   9-5-cat-export-ban-thiet-ke-so: done
   epic-9-retrospective: optional

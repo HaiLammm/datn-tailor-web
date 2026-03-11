@@ -29,7 +29,7 @@ so that **tôi có thể tinh chỉnh thiết kế theo đúng cảm xúc cá nh
   - [x] Validate từng intensity value nằm trong `[min_value, max_value]` của slider tương ứng
   - [x] Kiểm tra `sequence_id` — chỉ xử lý nếu >= sequence đã lưu trong session state (hoặc luôn chấp nhận ở MVP vì không có session persistence chính thức trong story này)
   - [x] Trả về `IntensitySubmitResponse` gồm: `success`, `sequence_id`, `warnings: list[IntensityWarning]`
-  - [x] Soft constraint: Warning nếu `do_om_than > 85` (quá ôm, có thể gây hạn chế vận động)
+  - [x] Soft constraint: Warning nếu `body_fit > 85` (quá ôm, có thể gây hạn chế vận động)
   - [x] Viết tests: `backend/tests/test_styles_intensity_api.py`
 
 - [x] **Frontend: Cập nhật Types** (AC: 2, 4)
@@ -173,14 +173,14 @@ None — implementation completed without errors.
    - Used `_SOFT_CONSTRAINTS` registry pattern in `StyleService` for clean extensibility
 
 2. **Backend: LKB Golden Points**
-   - Added Fibonacci-based golden points (38.2, 61.8) to `do_rong_vai` sliders
+   - Added Fibonacci-based golden points (38.2, 61.8) to `shoulder_width` sliders
    - Traditional pillar: 4 sliders × 1-2 golden points each
    - Minimalist pillar: 4 sliders with modernist ratios
    - Avant-garde pillar: 4 sliders with creative ratio points
 
 3. **Backend: POST /submit-intensity**
    - Validates slider bounds (422 for out-of-range, 404 for unknown pillar)
-   - 3 soft constraint rules: do_om_than > 85, do_rong_vai < 30, do_bat_doi_xung > 70
+   - 3 soft constraint rules: body_fit > 85, shoulder_width < 30, do_bat_doi_xung > 70
    - Unknown slider keys ignored gracefully (no error)
    - Used `HTTP_422_UNPROCESSABLE_CONTENT` (corrected from deprecated `HTTP_422_UNPROCESSABLE_ENTITY`)
 

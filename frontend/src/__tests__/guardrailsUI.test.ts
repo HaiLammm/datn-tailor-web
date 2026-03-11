@@ -41,7 +41,7 @@ describe("Story 4.1b: Guardrail Store Actions", () => {
   describe("setGuardrailResult", () => {
     it("stores passed result and snapshots intensity values", () => {
       // Set some intensity values first
-      useDesignStore.setState({ intensity_values: { do_rong_vai: 50 } });
+      useDesignStore.setState({ intensity_values: { shoulder_width: 50 } });
 
       useDesignStore.getState().setGuardrailResult({
         status: "passed",
@@ -54,11 +54,11 @@ describe("Story 4.1b: Guardrail Store Actions", () => {
       expect(state.guardrail_status).toBe("passed");
       expect(state.guardrail_violations).toEqual([]);
       expect(state.guardrail_warnings).toEqual([]);
-      expect(state.last_valid_intensity_values).toEqual({ do_rong_vai: 50 });
+      expect(state.last_valid_intensity_values).toEqual({ shoulder_width: 50 });
     });
 
     it("stores warning result with warnings array", () => {
-      useDesignStore.setState({ intensity_values: { do_rong_vai: 50 } });
+      useDesignStore.setState({ intensity_values: { shoulder_width: 50 } });
 
       useDesignStore.getState().setGuardrailResult({
         status: "warning",
@@ -72,13 +72,13 @@ describe("Story 4.1b: Guardrail Store Actions", () => {
       expect(state.guardrail_warnings).toHaveLength(1);
       expect(state.guardrail_warnings[0].constraint_id).toBe("danger_zone_proximity");
       // Warning also snapshots intensity values
-      expect(state.last_valid_intensity_values).toEqual({ do_rong_vai: 50 });
+      expect(state.last_valid_intensity_values).toEqual({ shoulder_width: 50 });
     });
 
     it("stores rejected result with violations and does NOT snapshot", () => {
       useDesignStore.setState({
-        intensity_values: { do_rong_vai: 99 },
-        last_valid_intensity_values: { do_rong_vai: 50 },
+        intensity_values: { shoulder_width: 99 },
+        last_valid_intensity_values: { shoulder_width: 50 },
       });
 
       useDesignStore.getState().setGuardrailResult({
@@ -93,15 +93,15 @@ describe("Story 4.1b: Guardrail Store Actions", () => {
       expect(state.guardrail_violations).toHaveLength(1);
       expect(state.last_valid_sequence_id).toBe("uuid-abc");
       // Should NOT have overwritten last_valid_intensity_values
-      expect(state.last_valid_intensity_values).toEqual({ do_rong_vai: 50 });
+      expect(state.last_valid_intensity_values).toEqual({ shoulder_width: 50 });
     });
   });
 
   describe("snapBackToSafe", () => {
     it("restores intensity values from last valid snapshot", () => {
       useDesignStore.setState({
-        intensity_values: { do_rong_vai: 99 },
-        last_valid_intensity_values: { do_rong_vai: 50 },
+        intensity_values: { shoulder_width: 99 },
+        last_valid_intensity_values: { shoulder_width: 50 },
         guardrail_status: "rejected",
         guardrail_violations: [sampleViolation],
       });
@@ -109,7 +109,7 @@ describe("Story 4.1b: Guardrail Store Actions", () => {
       useDesignStore.getState().snapBackToSafe();
 
       const state = useDesignStore.getState();
-      expect(state.intensity_values).toEqual({ do_rong_vai: 50 });
+      expect(state.intensity_values).toEqual({ shoulder_width: 50 });
       expect(state.guardrail_status).toBeNull();
       expect(state.guardrail_violations).toEqual([]);
       expect(state.guardrail_warnings).toEqual([]);
@@ -117,14 +117,14 @@ describe("Story 4.1b: Guardrail Store Actions", () => {
 
     it("does nothing if no last valid snapshot exists", () => {
       useDesignStore.setState({
-        intensity_values: { do_rong_vai: 99 },
+        intensity_values: { shoulder_width: 99 },
         last_valid_intensity_values: null,
       });
 
       useDesignStore.getState().snapBackToSafe();
 
       const state = useDesignStore.getState();
-      expect(state.intensity_values).toEqual({ do_rong_vai: 99 });
+      expect(state.intensity_values).toEqual({ shoulder_width: 99 });
     });
   });
 
@@ -135,7 +135,7 @@ describe("Story 4.1b: Guardrail Store Actions", () => {
         guardrail_violations: [sampleViolation],
         guardrail_warnings: [sampleWarning],
         last_valid_sequence_id: "uuid-123",
-        last_valid_intensity_values: { do_rong_vai: 50 },
+        last_valid_intensity_values: { shoulder_width: 50 },
       });
 
       useDesignStore.getState().clearGuardrailState();
@@ -155,7 +155,7 @@ describe("Story 4.1b: Guardrail Store Actions", () => {
         guardrail_status: "warning",
         guardrail_warnings: [sampleWarning],
         last_valid_sequence_id: "uuid-456",
-        last_valid_intensity_values: { do_rong_vai: 50 },
+        last_valid_intensity_values: { shoulder_width: 50 },
       });
 
       useDesignStore.getState().clearSession();

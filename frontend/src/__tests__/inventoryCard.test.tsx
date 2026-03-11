@@ -27,6 +27,8 @@ const mockGarment = {
     rental_price: "600000",
     size_options: ["M"],
     image_url: "/test-image.jpg",
+    image_urls: [],
+    sale_price: null,
     expected_return_date: null,
     days_until_available: null,
     is_overdue: false,

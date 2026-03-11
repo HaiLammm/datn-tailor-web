@@ -273,9 +273,12 @@ class GarmentDB(Base):
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     color: Mapped[str | None] = mapped_column(String(50), nullable=True)
     occasion: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    material: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     size_options: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     rental_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    sale_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    image_urls: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="available", index=True)
     expected_return_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     renter_id: Mapped[uuid.UUID | None] = mapped_column(

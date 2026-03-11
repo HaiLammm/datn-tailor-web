@@ -47,6 +47,7 @@ This file provides critical context, architectural rules, and development guidel
 - The Frontend is responsible for rendering (SVG Morphing) and user interaction only.
 
 ### 2. Naming Conventions
+- **Language Rule:** BẮT BUỘC sử dụng 100% Tiếng Anh cho mọi tên biến (variables), hàm (functions), lớp (classes), bảng database, và endpoints. KHÔNG sử dụng tiếng Việt có dấu hoặc không dấu để đặt tên biến.
 - **Backend (Python):**
   - Database fields, API endpoints, Variables, Functions: `snake_case`.
   - Classes, Pydantic Models: `PascalCase`.

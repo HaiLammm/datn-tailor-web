@@ -11,7 +11,7 @@ from src.constraints.base import ConstraintResult, ConstraintSeverity, SoftConst
 
 
 class HighBodyHugWarning(SoftConstraint):
-    """do_om_than > threshold: body too tight, may restrict movement.
+    """body_fit > threshold: body too tight, may restrict movement.
 
     Migrated from style_service.py _SOFT_CONSTRAINTS[0].
     """
@@ -24,7 +24,7 @@ class HighBodyHugWarning(SoftConstraint):
     def check(
         self, measurements: dict, deltas: dict
     ) -> Optional[ConstraintResult]:
-        val = deltas.get("do_om_than")
+        val = deltas.get("body_fit")
         if val is None or val <= self.THRESHOLD:
             return None
 
@@ -32,13 +32,13 @@ class HighBodyHugWarning(SoftConstraint):
             constraint_id=self.constraint_id,
             severity=ConstraintSeverity.SOFT,
             message_vi="Độ ôm thân quá cao có thể gây hạn chế vận động khi mặc",
-            violated_values={"do_om_than": val},
+            violated_values={"body_fit": val},
             safe_suggestion=None,
         )
 
 
 class NarrowShoulderWarning(SoftConstraint):
-    """do_rong_vai < threshold: shoulders too narrow, may cause armhole issues.
+    """shoulder_width < threshold: shoulders too narrow, may cause armhole issues.
 
     Migrated from style_service.py _SOFT_CONSTRAINTS[1].
     """
@@ -51,7 +51,7 @@ class NarrowShoulderWarning(SoftConstraint):
     def check(
         self, measurements: dict, deltas: dict
     ) -> Optional[ConstraintResult]:
-        val = deltas.get("do_rong_vai")
+        val = deltas.get("shoulder_width")
         if val is None or val >= self.THRESHOLD:
             return None
 
@@ -59,7 +59,7 @@ class NarrowShoulderWarning(SoftConstraint):
             constraint_id=self.constraint_id,
             severity=ConstraintSeverity.SOFT,
             message_vi="Vai quá hẹp so với tỷ lệ cơ thể — có thể gây cấn ở vùng nách",
-            violated_values={"do_rong_vai": val},
+            violated_values={"shoulder_width": val},
             safe_suggestion=None,
         )
 
