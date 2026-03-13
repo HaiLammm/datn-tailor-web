@@ -16,6 +16,9 @@ from src.api.v1.export import router as export_router
 from src.api.v1.guardrails import router as guardrails_router
 from src.api.v1.fabrics import router as fabrics_router
 from src.api.v1.garments import router as garments_router
+from src.api.v1.appointments import router as appointments_router
+from src.api.v1.orders import router as orders_router
+from src.api.v1.payments import router as payments_router
 from src.api.v1.geometry import router as geometry_router
 from src.api.v1.inference import router as inference_router
 from src.api.v1.notifications import router as notifications_router
@@ -75,6 +78,9 @@ app.include_router(overrides_router)
 app.include_router(export_router)
 app.include_router(fabrics_router)
 app.include_router(garments_router)
+app.include_router(appointments_router)
+app.include_router(orders_router)
+app.include_router(payments_router)
 app.include_router(geometry_router)
 app.include_router(guardrails_router)
 app.include_router(inference_router)

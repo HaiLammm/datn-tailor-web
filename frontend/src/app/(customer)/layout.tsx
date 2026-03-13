@@ -1,18 +1,24 @@
 /**
  * Customer Route Group Layout
  * Story 2.1: Lựa chọn Trụ cột Phong cách
+ * Story 4.4a: Profile Icon added to navbar
  *
  * Layout for customer-facing design pages.
- * Authentication can be added in later stories.
  */
 
 import type { ReactNode } from "react";
+import { auth } from "@/auth";
+import { CartBadge } from "@/components/client/cart/CartBadge";
+import { ProfileIcon } from "@/components/client/profile/ProfileIcon";
 
 interface CustomerLayoutProps {
   children: ReactNode;
 }
 
-export default function CustomerLayout({ children }: CustomerLayoutProps) {
+export default async function CustomerLayout({ children }: CustomerLayoutProps) {
+  const session = await auth();
+  const userName = session?.user?.name ?? null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation header placeholder */}
@@ -44,6 +50,8 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
               >
                 Trang chủ
               </a>
+              <CartBadge />
+              <ProfileIcon userName={userName} />
             </nav>
           </div>
         </div>

@@ -11,6 +11,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Garment } from "@/types/garment";
 import { StatusBadge } from "./StatusBadge";
+import { AddToCartButton } from "./AddToCartButton";
 
 interface GarmentCardProps {
   garment: Garment;
@@ -106,19 +107,30 @@ export function GarmentCard({ garment }: GarmentCardProps) {
           </div>
         </div>
 
-        {/* Price + View Button */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-          <div>
-            <p className="text-xs text-gray-500">Giá thuê</p>
-            <p className="text-lg font-bold text-[#D4AF37]">{priceFormatted}</p>
+        {/* Price + Action Buttons */}
+        <div className="pt-3 border-t border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-xs text-gray-500">Giá thuê</p>
+              <p className="text-lg font-bold text-[#D4AF37]">{priceFormatted}</p>
+            </div>
+            <Link
+              href={`/showroom/${garment.id}`}
+              className="px-3 py-2 bg-[#1A2B4C] text-white text-sm font-medium rounded hover:bg-[#2A3B5C] transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
+              aria-label={`Xem chi tiết ${garment.name}`}
+            >
+              Xem
+            </Link>
           </div>
-          <Link
-            href={`/showroom/${garment.id}`}
-            className="px-4 py-2 bg-[#1A2B4C] text-white text-sm font-medium rounded hover:bg-[#2A3B5C] transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
-            aria-label={`Xem chi tiết ${garment.name}`}
-          >
-            Xem
-          </Link>
+          {/* Cart action buttons - compact for card grid */}
+          {garment.status === "available" && (
+            <div className="flex gap-1">
+              <AddToCartButton garment={garment} mode="rent" className="flex-1 text-xs py-1" />
+              {garment.sale_price && (
+                <AddToCartButton garment={garment} mode="buy" className="flex-1 text-xs py-1" />
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

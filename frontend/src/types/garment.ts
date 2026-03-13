@@ -79,6 +79,8 @@ export interface GarmentFilter {
   category?: GarmentCategory | null;
   material?: GarmentMaterial | null;
   size?: string | null;
+  /** Story 2.4: Tìm kiếm theo tên sản phẩm */
+  name?: string | null;
   page?: number;
   page_size?: number;
 }

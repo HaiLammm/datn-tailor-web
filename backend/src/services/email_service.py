@@ -662,3 +662,400 @@ Tailor Project - Hệ thống May Đo Thông Minh
         logger.error(f"Failed to send return reminder email to {email}: {e}")
         return False
 
+
+# ---------------------------------------------------------------------------
+# Story 3.4: Booking Confirmation & Reminder Emails
+# ---------------------------------------------------------------------------
+
+def _slot_label(slot: str) -> str:
+    """Convert slot key to Vietnamese display label."""
+    return "Buổi Sáng (9:00 - 12:00)" if slot == "morning" else "Buổi Chiều (13:00 - 17:00)"
+
+
+async def send_booking_confirmation_email(
+    email: str,
+    customer_name: str,
+    appointment_date: "date",
+    slot: str,
+) -> bool:
+    """Send booking confirmation email to customer after successful appointment creation.
+
+    Story 3.4 AC #4-5 — FR44: Send Booking Confirmation (Email).
+
+    Args:
+        email: Customer email address
+        customer_name: Customer's full name
+        appointment_date: The booked appointment date
+        slot: 'morning' or 'afternoon'
+
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        formatted_date = appointment_date.strftime("%d/%m/%Y")
+        slot_display = _slot_label(slot)
+
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"Xác nhận đặt lịch tư vấn - {formatted_date} {slot_display}"
+        message["From"] = settings.FROM_EMAIL
+        message["To"] = email
+
+        text_content = f"""
+Xin chào {customer_name},
+
+Chúng tôi xác nhận đã nhận được yêu cầu đặt lịch tư vấn Bespoke của bạn.
+
+Ngày hẹn: {formatted_date}
+Khung giờ: {slot_display}
+Địa chỉ tiệm: {settings.SHOP_ADDRESS or "Vui lòng liên hệ tiệm để biết địa chỉ"}
+
+Chúng tôi sẽ liên hệ xác nhận lịch hẹn trong thời gian sớm nhất.
+Nếu cần thay đổi, vui lòng liên hệ tiệm trước 24 giờ.
+
+Trân trọng,
+Tailor Project Team
+        """.strip()
+
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Xác nhận đặt lịch</title>
+</head>
+<body style="margin:0;padding:0;font-family:'Georgia',serif;background-color:#F9F7F2;">
+    <table role="presentation" style="width:100%;border-collapse:collapse;">
+        <tr>
+            <td align="center" style="padding:40px 0;">
+                <table role="presentation" style="width:600px;border-collapse:collapse;background:#ffffff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="padding:40px 40px 30px 40px;background:linear-gradient(135deg,#1A2B4C 0%,#2d4a7a 100%);border-radius:8px 8px 0 0;">
+                            <h1 style="margin:0;color:#D4AF37;font-size:28px;font-weight:600;text-align:center;">Tailor Project</h1>
+                            <p style="margin:10px 0 0 0;color:#e0e7ff;font-size:14px;text-align:center;">Xác nhận đặt lịch tư vấn Bespoke</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:40px;">
+                            <p style="margin:0 0 20px 0;color:#1A1A2E;font-size:16px;">Xin chào <strong>{customer_name}</strong>,</p>
+                            <p style="margin:0 0 20px 0;color:#4b5563;font-size:15px;line-height:1.6;">
+                                Chúng tôi xác nhận đã nhận được yêu cầu đặt lịch tư vấn Bespoke của bạn.
+                            </p>
+                            <table role="presentation" style="width:100%;border-collapse:collapse;background:#F9F7F2;border-radius:6px;padding:20px;margin:20px 0;">
+                                <tr><td style="padding:12px 20px;border-bottom:1px solid #e5e7eb;">
+                                    <span style="color:#6B7280;font-size:13px;">Ngày hẹn</span><br>
+                                    <strong style="color:#1A1A2E;font-size:16px;">{formatted_date}</strong>
+                                </td></tr>
+                                <tr><td style="padding:12px 20px;border-bottom:1px solid #e5e7eb;">
+                                    <span style="color:#6B7280;font-size:13px;">Khung giờ</span><br>
+                                    <strong style="color:#1A1A2E;font-size:16px;">{slot_display}</strong>
+                                </td></tr>
+                                <tr><td style="padding:12px 20px;">
+                                    <span style="color:#6B7280;font-size:13px;">Địa chỉ tiệm</span><br>
+                                    <strong style="color:#1A1A2E;font-size:15px;">{settings.SHOP_ADDRESS or "Liên hệ tiệm để biết địa chỉ"}</strong>
+                                </td></tr>
+                            </table>
+                            <p style="margin:0;color:#6B7280;font-size:13px;line-height:1.6;">
+                                Chúng tôi sẽ liên hệ xác nhận lịch hẹn. Nếu cần thay đổi, vui lòng liên hệ trước 24 giờ.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:30px 40px;background-color:#F9F7F2;border-radius:0 0 8px 8px;border-top:1px solid #e5e7eb;">
+                            <p style="margin:0;color:#6b7280;font-size:13px;text-align:center;">
+                                &copy; 2026 Tailor Project - Hệ thống May Đo Thông Minh
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+        """.strip()
+
+        part1 = MIMEText(text_content, "plain", "utf-8")
+        part2 = MIMEText(html_content, "html", "utf-8")
+        message.attach(part1)
+        message.attach(part2)
+
+        await aiosmtplib.send(
+            message,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+
+        logger.info("Booking confirmation email sent to %s", email)
+        return True
+
+    except Exception as e:
+        logger.error("Failed to send booking confirmation email to %s: %s", email, e)
+        return False
+
+
+async def send_booking_reminder_email(
+    email: str,
+    customer_name: str,
+    appointment_date: "date",
+    slot: str,
+) -> bool:
+    """Send 1-day-before reminder email for upcoming appointment.
+
+    Story 3.4 AC #6 — FR44: Automated booking reminder.
+
+    Args:
+        email: Customer email address
+        customer_name: Customer's full name
+        appointment_date: The appointment date (tomorrow)
+        slot: 'morning' or 'afternoon'
+
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        formatted_date = appointment_date.strftime("%d/%m/%Y")
+        slot_display = _slot_label(slot)
+
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"Nhắc nhở lịch hẹn ngày mai - {formatted_date}"
+        message["From"] = settings.FROM_EMAIL
+        message["To"] = email
+
+        text_content = f"""
+Xin chào {customer_name},
+
+Đây là thư nhắc nhở lịch hẹn tư vấn Bespoke vào ngày mai.
+
+Ngày hẹn: {formatted_date}
+Khung giờ: {slot_display}
+Địa chỉ tiệm: {settings.SHOP_ADDRESS or "Vui lòng liên hệ tiệm để biết địa chỉ"}
+
+Chúng tôi mong được gặp bạn. Nếu có sự cố, vui lòng liên hệ tiệm sớm.
+
+Trân trọng,
+Tailor Project Team
+        """.strip()
+
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Nhắc nhở lịch hẹn</title>
+</head>
+<body style="margin:0;padding:0;font-family:'Georgia',serif;background-color:#F9F7F2;">
+    <table role="presentation" style="width:100%;border-collapse:collapse;">
+        <tr>
+            <td align="center" style="padding:40px 0;">
+                <table role="presentation" style="width:600px;border-collapse:collapse;background:#ffffff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="padding:40px 40px 30px 40px;background:linear-gradient(135deg,#1A2B4C 0%,#2d4a7a 100%);border-radius:8px 8px 0 0;">
+                            <h1 style="margin:0;color:#D4AF37;font-size:28px;font-weight:600;text-align:center;">Tailor Project</h1>
+                            <p style="margin:10px 0 0 0;color:#e0e7ff;font-size:14px;text-align:center;">Nhắc nhở lịch hẹn ngày mai</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:40px;">
+                            <p style="margin:0 0 20px 0;color:#1A1A2E;font-size:16px;">Xin chào <strong>{customer_name}</strong>,</p>
+                            <p style="margin:0 0 20px 0;color:#4b5563;font-size:15px;line-height:1.6;">
+                                Bạn có lịch hẹn tư vấn Bespoke vào <strong>ngày mai</strong>. Chúng tôi mong được gặp bạn!
+                            </p>
+                            <table role="presentation" style="width:100%;border-collapse:collapse;background:#F9F7F2;border-radius:6px;padding:20px;margin:20px 0;">
+                                <tr><td style="padding:12px 20px;border-bottom:1px solid #e5e7eb;">
+                                    <span style="color:#6B7280;font-size:13px;">Ngày hẹn</span><br>
+                                    <strong style="color:#D4AF37;font-size:18px;">{formatted_date}</strong>
+                                </td></tr>
+                                <tr><td style="padding:12px 20px;border-bottom:1px solid #e5e7eb;">
+                                    <span style="color:#6B7280;font-size:13px;">Khung giờ</span><br>
+                                    <strong style="color:#1A1A2E;font-size:16px;">{slot_display}</strong>
+                                </td></tr>
+                                <tr><td style="padding:12px 20px;">
+                                    <span style="color:#6B7280;font-size:13px;">Địa chỉ tiệm</span><br>
+                                    <strong style="color:#1A1A2E;font-size:15px;">{settings.SHOP_ADDRESS or "Liên hệ tiệm để biết địa chỉ"}</strong>
+                                </td></tr>
+                            </table>
+                            <p style="margin:0;color:#6B7280;font-size:13px;">
+                                Nếu có sự cố, vui lòng liên hệ tiệm sớm để điều chỉnh lịch hẹn.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:30px 40px;background-color:#F9F7F2;border-radius:0 0 8px 8px;border-top:1px solid #e5e7eb;">
+                            <p style="margin:0;color:#6b7280;font-size:13px;text-align:center;">
+                                &copy; 2026 Tailor Project - Hệ thống May Đo Thông Minh
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+        """.strip()
+
+        part1 = MIMEText(text_content, "plain", "utf-8")
+        part2 = MIMEText(html_content, "html", "utf-8")
+        message.attach(part1)
+        message.attach(part2)
+
+        await aiosmtplib.send(
+            message,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+
+        logger.info("Booking reminder email sent to %s", email)
+        return True
+
+    except Exception as e:
+        logger.error("Failed to send booking reminder email to %s: %s", email, e)
+        return False
+
+
+def _create_order_confirmation_email_html(order) -> str:
+    """Generate HTML email template for order confirmation (Story 4.1).
+
+    Heritage branding: Indigo #4f46e5, Gold #D4AF37.
+    """
+    # Build items table rows
+    items_html = ""
+    if hasattr(order, "items") and order.items:
+        for item in order.items:
+            garment_name = item.garment.name if hasattr(item, "garment") and item.garment else "San pham"
+            items_html += f"""
+            <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">{garment_name}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">{item.transaction_type}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">{item.size or '-'}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">{item.total_price:,.0f}₫</td>
+            </tr>"""
+
+    # Build shipping address
+    shipping = ""
+    if hasattr(order, "shipping_address") and order.shipping_address:
+        addr = order.shipping_address
+        if isinstance(addr, dict):
+            shipping = f"{addr.get('address_detail', '')}, {addr.get('ward', '')}, {addr.get('district', '')}, {addr.get('province', '')}"
+        else:
+            shipping = str(addr)
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="margin:0; padding:0; background-color:#F9F7F2; font-family: 'Segoe UI', Arial, sans-serif;">
+        <div style="max-width:600px; margin:0 auto; padding:20px;">
+            <div style="background-color:#1A2B4C; padding:24px; text-align:center; border-radius:8px 8px 0 0;">
+                <h1 style="color:#D4AF37; margin:0; font-size:24px;">Tailor Project</h1>
+                <p style="color:#ffffff; margin:8px 0 0; font-size:14px;">Xác Nhận Đơn Hàng</p>
+            </div>
+            <div style="background-color:#ffffff; padding:32px; border-radius:0 0 8px 8px;">
+                <h2 style="color:#1A2B4C; margin:0 0 16px;">Cảm ơn bạn đã đặt hàng!</h2>
+                <p style="color:#374151; font-size:14px;">
+                    Xin chào <strong>{order.customer_name}</strong>, đơn hàng của bạn đã được xác nhận thành công.
+                </p>
+
+                <div style="background-color:#F9F7F2; padding:16px; border-radius:8px; margin:16px 0;">
+                    <p style="margin:0 0 8px; font-size:14px;"><strong>Mã đơn hàng:</strong> {str(order.id)[:8].upper()}</p>
+                    <p style="margin:0 0 8px; font-size:14px;"><strong>Phương thức:</strong> {order.payment_method.upper()}</p>
+                    <p style="margin:0; font-size:14px;"><strong>Địa chỉ giao:</strong> {shipping}</p>
+                </div>
+
+                <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+                    <thead>
+                        <tr style="background-color:#1A2B4C;">
+                            <th style="padding:8px 12px; color:#fff; text-align:left; font-size:13px;">Sản phẩm</th>
+                            <th style="padding:8px 12px; color:#fff; text-align:center; font-size:13px;">Loại</th>
+                            <th style="padding:8px 12px; color:#fff; text-align:center; font-size:13px;">Size</th>
+                            <th style="padding:8px 12px; color:#fff; text-align:right; font-size:13px;">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>{items_html}</tbody>
+                </table>
+
+                <div style="text-align:right; padding:12px 0; border-top:2px solid #D4AF37;">
+                    <p style="font-size:18px; color:#1A2B4C; margin:0;">
+                        <strong>Tổng cộng: {order.total_amount:,.0f}₫</strong>
+                    </p>
+                </div>
+
+                <p style="color:#6b7280; font-size:12px; margin:24px 0 0; text-align:center;">
+                    Tailor Project - Hệ thống May Đo Thông Minh © 2026
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>"""
+
+
+async def send_order_confirmation_email(order, customer_email: str | None = None) -> bool:
+    """Send order confirmation email after successful payment (Story 4.1).
+
+    Non-blocking: caller wraps in try/except, never blocks main flow.
+
+    Args:
+        order: OrderDB instance with items loaded.
+        customer_email: Recipient email address (looked up from UserDB by caller).
+
+    Returns:
+        bool: True if sent, False otherwise.
+    """
+    email = customer_email
+    if not email:
+        logger.info(
+            "No email for order %s (guest checkout) — skipping confirmation email",
+            order.id,
+        )
+        return False
+
+    try:
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"Xác nhận đơn hàng #{str(order.id)[:8].upper()} - Tailor Project"
+        message["From"] = settings.FROM_EMAIL
+        message["To"] = email
+
+        text_content = f"""
+Xin chào {order.customer_name},
+
+Đơn hàng #{str(order.id)[:8].upper()} đã được xác nhận thành công.
+
+Tổng tiền: {order.total_amount:,.0f}₫
+Phương thức thanh toán: {order.payment_method.upper()}
+
+Cảm ơn bạn đã mua sắm tại Tailor Project!
+
+---
+Tailor Project - Hệ thống May Đo Thông Minh
+© 2026
+        """.strip()
+
+        html_content = _create_order_confirmation_email_html(order)
+
+        part1 = MIMEText(text_content, "plain", "utf-8")
+        part2 = MIMEText(html_content, "html", "utf-8")
+        message.attach(part1)
+        message.attach(part2)
+
+        await aiosmtplib.send(
+            message,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+
+        logger.info("Order confirmation email sent for order %s to %s", order.id, email)
+        return True
+
+    except Exception as e:
+        logger.error("Failed to send order confirmation email for order %s: %s", order.id, e)
+        return False
+

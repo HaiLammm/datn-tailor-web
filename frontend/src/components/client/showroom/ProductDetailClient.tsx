@@ -15,6 +15,7 @@ import { ReturnTimeline } from "./ReturnTimeline";
 import { ProductImageGallery } from "./ProductImageGallery";
 import { SizeChartAccordion } from "./SizeChartAccordion";
 import { BuyRentToggle } from "./BuyRentToggle";
+import { AddToCartButton } from "./AddToCartButton";
 import { CATEGORY_LABEL } from "./garmentConstants";
 
 const OCCASION_LABEL: Record<string, string> = {
@@ -76,6 +77,16 @@ export function ProductDetailClient({ garment }: ProductDetailClientProps) {
               isAvailable={isAvailable}
               supportsBespoke={true}
             />
+
+            {/* Add to Cart buttons */}
+            {isAvailable && (
+              <div className="flex gap-3">
+                <AddToCartButton garment={garment} mode="rent" className="flex-1" />
+                {garment.sale_price && (
+                  <AddToCartButton garment={garment} mode="buy" className="flex-1" />
+                )}
+              </div>
+            )}
 
             {/* Mô tả */}
             {garment.description && (

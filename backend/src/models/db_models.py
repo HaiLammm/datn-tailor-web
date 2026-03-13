@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -253,6 +253,140 @@ class DesignOverrideDB(Base):
     # Relationships
     design: Mapped["DesignDB"] = relationship("DesignDB", back_populates="overrides")
     tailor: Mapped["UserDB"] = relationship("UserDB")
+
+
+class OrderDB(Base):
+    """ORM model for the `orders` table (Story 3.3).
+
+    E-commerce orders with shipping and payment info.
+    Multi-tenant isolated by tenant_id.
+    """
+
+    __tablename__ = "orders"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    customer_phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    shipping_address: Mapped[dict] = mapped_column(JSON, nullable=False)
+    shipping_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False, default="cod")
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending", index=True
+    )
+    payment_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending", index=True
+    )
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    items: Mapped[list["OrderItemDB"]] = relationship(
+        "OrderItemDB", back_populates="order", cascade="all, delete-orphan"
+    )
+    payment_transactions: Mapped[list["PaymentTransactionDB"]] = relationship(
+        "PaymentTransactionDB", back_populates="order", cascade="all, delete-orphan"
+    )
+
+
+class OrderItemDB(Base):
+    """ORM model for the `order_items` table (Story 3.3).
+
+    Individual items within an order, linked to garments.
+    """
+
+    __tablename__ = "order_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    garment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("garments.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    transaction_type: Mapped[str] = mapped_column(String(10), nullable=False, default="buy")
+    size: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    rental_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    total_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    order: Mapped["OrderDB"] = relationship("OrderDB", back_populates="items")
+    garment: Mapped["GarmentDB"] = relationship("GarmentDB")
+
+
+class PaymentTransactionDB(Base):
+    """ORM model for the `payment_transactions` table (Story 4.1).
+
+    Stores payment gateway webhook callback records for audit and idempotency.
+    """
+
+    __tablename__ = "payment_transactions"
+    __table_args__ = (
+        UniqueConstraint("provider", "transaction_id", name="uq_payment_tx_provider_txid"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    provider: Mapped[str] = mapped_column(String(20), nullable=False)
+    transaction_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    order: Mapped["OrderDB"] = relationship("OrderDB", back_populates="payment_transactions")
+
+
+class AppointmentDB(Base):
+    """ORM model for the `appointments` table (Story 3.4).
+
+    Stores Bespoke consultation appointment bookings.
+    Slots: morning (9:00-12:00) or afternoon (13:00-17:00).
+    Max 3 bookings per slot per day (enforced in service layer).
+    """
+
+    __tablename__ = "appointments"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    customer_phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    customer_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    appointment_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    slot: Mapped[str] = mapped_column(String(20), nullable=False, default="morning")
+    special_requests: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
+    reminder_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
 
 
 class GarmentDB(Base):

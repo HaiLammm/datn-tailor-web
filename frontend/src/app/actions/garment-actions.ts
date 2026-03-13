@@ -41,6 +41,7 @@ export async function fetchGarments(
     if (filters?.category) params.append("category", filters.category);
     if (filters?.material) params.append("material", filters.material);
     if (filters?.size) params.append("size", filters.size);
+    if (filters?.name) params.append("name", filters.name);
     if (filters?.page) params.append("page", filters.page.toString());
     if (filters?.page_size) params.append("page_size", filters.page_size.toString());
 
@@ -130,9 +131,12 @@ export async function createGarment(
     category: string;
     color?: string | null;
     occasion?: string | null;
+    material?: string | null;
     size_options: string[];
     rental_price: string;
+    sale_price?: string | null;
     image_url?: string | null;
+    image_urls?: string[];
   }
 ): Promise<{ success: boolean; garment?: Garment; error?: string }> {
   try {
@@ -179,6 +183,8 @@ export async function createGarment(
     }
 
     const result: GarmentDetailApiResponse = await response.json();
+    revalidatePath("/owner/products");
+    revalidatePath("/showroom");
     return { success: true, garment: result.data };
   } catch (error) {
     if (error instanceof Error) {
@@ -205,9 +211,12 @@ export async function updateGarment(
     category: string;
     color: string | null;
     occasion: string | null;
+    material: string | null;
     size_options: string[];
     rental_price: string;
+    sale_price: string | null;
     image_url: string | null;
+    image_urls: string[];
     status: string;
     expected_return_date: string | null;
   }>
@@ -261,6 +270,9 @@ export async function updateGarment(
     }
 
     const result: GarmentDetailApiResponse = await response.json();
+    revalidatePath("/owner/products");
+    revalidatePath("/showroom");
+    revalidatePath(`/showroom/${id}`);
     return { success: true, garment: result.data };
   } catch (error) {
     if (error instanceof Error) {
@@ -322,6 +334,8 @@ export async function deleteGarment(
       return { success: false, error: `HTTP ${response.status}` };
     }
 
+    revalidatePath("/owner/products");
+    revalidatePath("/showroom");
     return { success: true };
   } catch (error) {
     if (error instanceof Error) {

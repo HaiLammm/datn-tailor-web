@@ -39,6 +39,11 @@ class Settings:
     REMINDER_HOUR: int = int(os.getenv("REMINDER_HOUR", "8"))
     SHOP_ADDRESS: str = os.getenv("SHOP_ADDRESS", "")
 
+    # Payment Webhook Secrets (Story 4.1)
+    VNPAY_WEBHOOK_SECRET: str = os.getenv("VNPAY_WEBHOOK_SECRET", "")
+    MOMO_WEBHOOK_SECRET: str = os.getenv("MOMO_WEBHOOK_SECRET", "")
+    PAYMENT_PROVIDERS: list[str] = ["vnpay", "momo"]
+
     def __post_init__(self) -> None:
         """Validate critical settings after initialization."""
         if not self.JWT_SECRET_KEY:

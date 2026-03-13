@@ -50,27 +50,33 @@ development_status:
   1-7-quan-ly-ho-so-so-do-khach-hang: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-hien-thi-listing-grid-san-pham: done
   2-2-tuong-tac-view-chi-tiet-zoom-anh: done
   2-3-he-thong-loc-san-pham-da-chieu: done  # Code Review passed (3 rounds)
-  2-4-dashboard-owner-crud-san-pham-ao-dai: ready-for-dev
+  2-4-dashboard-owner-crud-san-pham-ao-dai: done
   2-5-tracker-trang-thai-2-cham: done
   2-6-timeline-tracking-automated-email-reminders: done
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-cart-state-management: backlog
-  3-2-render-cart-checkout-details: backlog
-  3-3-checkout-information-payment-gateway: backlog
-  3-4-lich-book-appointments-tiem-khach: backlog
+  epic-3: done 
+  3-1-cart-state-management: done
+  3-2-render-cart-checkout-details: done
+  3-3-checkout-information-payment-gateway: done
+  3-4-lich-book-appointments-tiem-khach: done
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-xu-ly-state-thanh-toan-qua-webhook: backlog
+  epic-4: in-progress
+  4-1-xu-ly-state-thanh-toan-qua-webhook: review
   4-2-visual-bang-don-hang-owner-host: backlog
   4-3-owner-theo-doi-thuemuon-dai-han: backlog
-  4-4-view-orders-lich-su-mua-hang-khach-le: backlog
+  4-4a-customer-profile-layout-navbar-icon: done  # P0 - Thay thế story 4.4 gốc, tách thành 7 sub-stories (Sprint Change 2026-03-12)
+  4-4b-thong-tin-ca-nhan-bao-mat: backlog  # P0
+  4-4c-lich-su-mua-hang-trang-thai-don: backlog  # P0
+  4-4d-so-do-co-the: backlog  # P1
+  4-4e-lich-hen-sap-toi: backlog  # P1
+  4-4f-thong-bao-notifications: backlog  # P2
+  4-4g-kho-voucher: backlog  # P2
   epic-4-retrospective: optional
 
   epic-5: backlog

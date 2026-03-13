@@ -21,12 +21,13 @@ async def _run_daily_reminders() -> None:
     """Run reminder process for all tenants.
 
     Opens a fresh DB session, queries all tenants, and processes
-    return reminders for each independently.
+    return reminders and booking reminders for each independently.
     """
     from sqlalchemy import select
 
     from src.models.db_models import TenantDB
     from src.services.notification_service import process_return_reminders
+    from src.services.appointment_service import send_booking_reminders
 
     async with async_session_factory() as db:
         try:
@@ -44,6 +45,16 @@ async def _run_daily_reminders() -> None:
                     )
                 except Exception as e:
                     logger.error(f"Reminder error for tenant {tenant.id}: {e}")
+
+                # Story 3.4: Send booking reminders for tomorrow's appointments
+                try:
+                    booking_sent = await send_booking_reminders(db, tenant.id)
+                    logger.info(
+                        f"Tenant {tenant.id} ({tenant.name}): "
+                        f"Booking reminders sent={booking_sent}"
+                    )
+                except Exception as e:
+                    logger.error(f"Booking reminder error for tenant {tenant.id}: {e}")
 
         except Exception as e:
             logger.error(f"Failed to run daily reminders: {e}")
