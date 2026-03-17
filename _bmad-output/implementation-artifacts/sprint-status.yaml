@@ -69,7 +69,7 @@ development_status:
   epic-4: in-progress
   4-1-xu-ly-state-thanh-toan-qua-webhook: review
   4-2-visual-bang-don-hang-owner-host: done
-  4-3-owner-theo-doi-thuemuon-dai-han: backlog
+  4-3-owner-theo-doi-thuemuon-dai-han: review
   4-4a-customer-profile-layout-navbar-icon: done  # P0 - Thay thế story 4.4 gốc, tách thành 7 sub-stories (Sprint Change 2026-03-12)
   4-4b-thong-tin-ca-nhan-bao-mat: backlog  # P0
   4-4c-lich-su-mua-hang-trang-thai-don: backlog  # P0

@@ -314,11 +314,13 @@ class OrderItemDB(Base):
     garment_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("garments.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    transaction_type: Mapped[str] = mapped_column(String(10), nullable=False, default="buy")
+    transaction_type: Mapped[str] = mapped_column(String(10), nullable=False, default="buy", index=True)
     size: Mapped[str | None] = mapped_column(String(10), nullable=True)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     rental_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rental_status: Mapped[str | None] = mapped_column(String(20), nullable=True)  # 'active', 'overdue', 'returned'
+    deposit_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     total_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -483,4 +485,42 @@ class TailorTaskDB(Base):
     assignee: Mapped["UserDB"] = relationship("UserDB", foreign_keys=[assigned_to])
     assigner: Mapped["UserDB"] = relationship("UserDB", foreign_keys=[assigned_by])
     design: Mapped["DesignDB | None"] = relationship("DesignDB")
+
+
+class RentalReturnDB(Base):
+    """ORM model for the `rental_returns` table (Story 4.3).
+
+    Tracks rental returns with condition assessment and deposit deduction.
+    Linked to order_items for rental processing.
+    """
+
+    __tablename__ = "rental_returns"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_item_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("order_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    garment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("garments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    return_condition: Mapped[str] = mapped_column(String(20), nullable=False)  # 'good', 'damaged', 'lost'
+    damage_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deposit_deduction: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    processed_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    returned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    order_item: Mapped["OrderItemDB"] = relationship("OrderItemDB")
+    garment: Mapped["GarmentDB"] = relationship("GarmentDB")
+    processor: Mapped["UserDB | None"] = relationship("UserDB")
 

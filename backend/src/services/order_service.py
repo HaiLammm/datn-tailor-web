@@ -110,6 +110,11 @@ async def create_order(
             total_price=item_total,
             quantity=1,
         )
+
+        # Set rental-specific fields for rent transactions (Story 4.3)
+        if item.transaction_type == "rent":
+            order_item.rental_status = "active"
+            order_item.deposit_amount = unit_price * Decimal("0.3")  # 30% of rental price
         order_items.append(order_item)
         item_details.append(
             {
