@@ -428,3 +428,59 @@ class GarmentDB(Base):
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
+
+class TailorTaskDB(Base):
+    """ORM model for the `tailor_tasks` table (Story 5.3).
+
+    Tracks production tasks assigned to tailors.
+    Denormalized garment_name and customer_name for query performance.
+    Status flow: assigned → in_progress → completed (no backward transitions).
+    """
+
+    __tablename__ = "tailor_tasks"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("order_items.id", ondelete="SET NULL"), nullable=True
+    )
+    assigned_to: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assigned_by: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    garment_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="assigned", index=True
+    )
+    deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    piece_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    design_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("designs.id", ondelete="SET NULL"), nullable=True
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    order: Mapped["OrderDB"] = relationship("OrderDB")
+    assignee: Mapped["UserDB"] = relationship("UserDB", foreign_keys=[assigned_to])
+    assigner: Mapped["UserDB"] = relationship("UserDB", foreign_keys=[assigned_by])
+    design: Mapped["DesignDB | None"] = relationship("DesignDB")
+

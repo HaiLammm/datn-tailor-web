@@ -23,8 +23,10 @@ from src.api.v1.geometry import router as geometry_router
 from src.api.v1.inference import router as inference_router
 from src.api.v1.notifications import router as notifications_router
 from src.api.v1.rules import router as rules_router
+from src.api.v1.kpi import router as kpi_router
 from src.api.v1.staff import router as staff_router
 from src.api.v1.styles import router as styles_router
+from src.api.v1.tailor_tasks import router as tailor_tasks_router
 from src.core.seed import seed_owner_account
 
 logger = logging.getLogger(__name__)
@@ -84,10 +86,12 @@ app.include_router(payments_router)
 app.include_router(geometry_router)
 app.include_router(guardrails_router)
 app.include_router(inference_router)
+app.include_router(kpi_router)
 app.include_router(notifications_router)
 app.include_router(rules_router)
 app.include_router(staff_router)
 app.include_router(styles_router)
+app.include_router(tailor_tasks_router)
 
 
 @app.get("/health")

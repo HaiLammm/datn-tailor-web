@@ -79,10 +79,10 @@ development_status:
   4-4g-kho-voucher: backlog  # P2
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-1-kpi-morning-command-center-dash: backlog
+  epic-5: in-progress
+  5-1-kpi-morning-command-center-dash: done
   5-2-bang-dieu-phoi-khoi-san-xuat-gap-viec: backlog
-  5-3-workstation-production-flow-dash-cho-tho-tiem: backlog
+  5-3-workstation-production-flow-dash-cho-tho-tiem: review  # Code Review Fixes 2026-03-17: All 10 action items resolved (3H/4M/3L)
   5-4-tinh-luongthu-nhap-tho: backlog
   epic-5-retrospective: optional
 
