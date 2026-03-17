@@ -6,11 +6,10 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import Date, and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, RentalReturnDB, UserDB
+from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, RentalReturnDB
 from src.models.rental import (
     ProcessReturnInput,
     ProcessReturnResponse,
@@ -62,7 +61,8 @@ async def list_rentals(
         filters.append(
             or_(
                 GarmentDB.name.ilike(search_pattern, escape="\\"),
-                GarmentDB.tenant_id == tenant_id,  # Add tenant_id for security
+                OrderDB.customer_name.ilike(search_pattern, escape="\\"),
+                OrderDB.customer_phone.ilike(search_pattern, escape="\\"),
             )
         )
 
@@ -161,6 +161,16 @@ async def list_rentals(
 async def get_rental_stats(db: AsyncSession, tenant_id: UUID) -> RentalStats:
     """Get rental statistics summary (Story 4.3)."""
 
+    from datetime import date, timedelta
+
+    today = date.today()
+
+    # Reusable condition: not returned (handles NULL rental_status from pre-migration rows)
+    not_returned = or_(
+        OrderItemDB.rental_status.is_(None),
+        OrderItemDB.rental_status != "returned",
+    )
+
     # Count active rentals (not returned, not overdue)
     active_query = (
         select(func.count())
@@ -168,7 +178,7 @@ async def get_rental_stats(db: AsyncSession, tenant_id: UUID) -> RentalStats:
         .join(GarmentDB, OrderItemDB.garment_id == GarmentDB.id)
         .where(
             OrderItemDB.transaction_type == "rent",
-            OrderItemDB.rental_status != "returned",
+            not_returned,
             OrderItemDB.end_date >= func.current_date(),
             GarmentDB.tenant_id == tenant_id,
         )
@@ -183,7 +193,7 @@ async def get_rental_stats(db: AsyncSession, tenant_id: UUID) -> RentalStats:
         .join(GarmentDB, OrderItemDB.garment_id == GarmentDB.id)
         .where(
             OrderItemDB.transaction_type == "rent",
-            OrderItemDB.rental_status != "returned",
+            not_returned,
             OrderItemDB.end_date < func.current_date(),
             GarmentDB.tenant_id == tenant_id,
         )
@@ -192,9 +202,6 @@ async def get_rental_stats(db: AsyncSession, tenant_id: UUID) -> RentalStats:
     overdue = overdue_count.scalar() or 0
 
     # Count returns due this week
-    from datetime import timedelta, date
-
-    today = date.today()
     week_end = today + timedelta(days=7)
     due_week_query = (
         select(func.count())
@@ -202,7 +209,7 @@ async def get_rental_stats(db: AsyncSession, tenant_id: UUID) -> RentalStats:
         .join(GarmentDB, OrderItemDB.garment_id == GarmentDB.id)
         .where(
             OrderItemDB.transaction_type == "rent",
-            OrderItemDB.rental_status != "returned",
+            not_returned,
             OrderItemDB.end_date.between(today, week_end),
             GarmentDB.tenant_id == tenant_id,
         )
@@ -210,14 +217,14 @@ async def get_rental_stats(db: AsyncSession, tenant_id: UUID) -> RentalStats:
     due_week_count = await db.execute(due_week_query)
     due_week = due_week_count.scalar() or 0
 
-    # Count returned this month
+    # Count returned this month — cast TIMESTAMPTZ to DATE for correct comparison
     month_start = date(today.year, today.month, 1)
-    month_end = today
     returned_month_query = (
         select(func.count())
         .select_from(RentalReturnDB)
         .where(
-            RentalReturnDB.returned_at.between(month_start, month_end),
+            func.cast(RentalReturnDB.returned_at, Date) >= month_start,
+            func.cast(RentalReturnDB.returned_at, Date) <= today,
             RentalReturnDB.tenant_id == tenant_id,
         )
     )
@@ -245,10 +252,14 @@ async def process_return(
     Uses FOR UPDATE to lock rows during processing.
     """
 
-    # Lock order_item row
+    # Lock order_item row — JOIN through order to enforce tenant isolation
     result = await db.execute(
         select(OrderItemDB)
-        .where(OrderItemDB.id == order_item_id)
+        .join(OrderDB, OrderItemDB.order_id == OrderDB.id)
+        .where(
+            OrderItemDB.id == order_item_id,
+            OrderDB.tenant_id == tenant_id,
+        )
         .with_for_update()
     )
     order_item = result.scalar_one_or_none()

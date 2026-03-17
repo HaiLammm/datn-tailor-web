@@ -120,6 +120,6 @@ async def process_return_endpoint(
         tenant_id,
         order_item_id,
         return_data,
-        processed_by_id=user.user_id,
+        processed_by_id=user.id,
     )
     return {"data": result.model_dump(mode="json"), "meta": {}}

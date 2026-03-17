@@ -28,6 +28,11 @@ describe("RentalBoard Components", () => {
       expect(badge).toHaveClass("animate-pulse");
     });
 
+    it("should render amber badge for due today (daysRemaining=0)", () => {
+      render(<CountdownBadge daysRemaining={0} status="active" />);
+      expect(screen.getByText("Hôm nay là hạn trả")).toBeInTheDocument();
+    });
+
     it("should render gray badge for returned", () => {
       render(<CountdownBadge daysRemaining={0} status="returned" />);
       expect(screen.getByText("Đã trả")).toBeInTheDocument();

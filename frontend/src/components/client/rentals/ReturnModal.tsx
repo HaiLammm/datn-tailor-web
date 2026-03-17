@@ -34,9 +34,7 @@ export function ReturnModal({
   const queryClient = useQueryClient();
   const [condition, setCondition] = useState<ReturnCondition>("good");
   const [damageNotes, setDamageNotes] = useState("");
-  const [depositDeduction, setDepositDeduction] = useState(
-    rental.deposit_amount
-  );
+  const [depositDeduction, setDepositDeduction] = useState("0");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const depositAmount = parseFloat(rental.deposit_amount);

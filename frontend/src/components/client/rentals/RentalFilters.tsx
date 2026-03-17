@@ -5,7 +5,7 @@
  * Status filter dropdown, search with debounce, URL state sync
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RentalListParams, RentalStatus } from "@/types/rental";
 
 interface RentalFiltersProps {
@@ -20,24 +20,26 @@ export function RentalFilters({
   isLoading = false,
 }: RentalFiltersProps) {
   const [search, setSearch] = useState(params.search || "");
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
-    null
-  );
+  const onFilterChangeRef = useRef(onFilterChange);
+  const isFirstRender = useRef(true);
 
-  // Debounce search input
+  // Keep ref up-to-date without triggering effect
+  onFilterChangeRef.current = onFilterChange;
+
+  // Debounce search input — use ref to avoid infinite loop
   useEffect(() => {
-    if (searchTimeout) clearTimeout(searchTimeout);
+    // Skip the initial render to avoid firing on mount
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
 
     const timeout = setTimeout(() => {
-      onFilterChange({ search: search || undefined, page: 1 });
+      onFilterChangeRef.current({ search: search || undefined, page: 1 });
     }, 500);
 
-    setSearchTimeout(timeout);
-
-    return () => {
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [search, onFilterChange]);
+    return () => clearTimeout(timeout);
+  }, [search]);
 
   const statusOptions: Array<{ value: RentalStatus | ""; label: string }> = [
     { value: "", label: "Tất Cả" },

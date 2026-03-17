@@ -28,6 +28,10 @@ export function CountdownBadge({
     bgColor = "bg-red-100 animate-pulse";
     textColor = "text-red-800";
     label = `Quá hạn ${Math.abs(daysRemaining)} ngày`;
+  } else if (daysRemaining === 0) {
+    bgColor = "bg-amber-100";
+    textColor = "text-amber-800";
+    label = "Hôm nay là hạn trả";
   } else if (daysRemaining <= 3 && daysRemaining > 0) {
     bgColor = "bg-amber-100";
     textColor = "text-amber-800";

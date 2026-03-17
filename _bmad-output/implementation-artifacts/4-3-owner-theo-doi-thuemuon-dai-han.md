@@ -1,6 +1,6 @@
 # Story 4.3: Owner Theo Dõi Thuê/Mượn Dài Hạn (Rental Management Board)
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -410,3 +410,27 @@ Successfully implemented Story 4.3 - Owner Rental Management Board with complete
 
 **Frontend Files (MODIFIED):**
 - frontend/src/components/client/workplace/WorkplaceSidebar.tsx
+
+## Senior Developer Review (AI)
+
+**Review Date:** 2026-03-18
+**Reviewer:** Claude Opus 4.6
+**Outcome:** Changes Requested → All Fixed
+
+### Action Items
+
+- [x] **[HIGH]** H1: `process_return` missing tenant_id isolation — any owner could return other tenant's rental `[rental_service.py:248]`
+- [x] **[HIGH]** H2: Search filter `or_()` with `tenant_id == tenant_id` always true — search by customer name/phone missing `[rental_service.py:62-66]`
+- [x] **[HIGH]** H3: `user.user_id` doesn't exist on UserDB — should be `user.id` — runtime crash `[rentals.py:123]`
+- [x] **[MED]** M1: `rental_status != 'returned'` excludes NULL rows (pre-migration) in stats — undercounting `[rental_service.py:164-175]`
+- [x] **[MED]** M2: RentalFilters useEffect has `onFilterChange` in deps — causes infinite render loop `[RentalFilters.tsx:28-40]`
+- [x] **[MED]** M3: Backend tests use non-existent fixtures — all 6 tests would fail with `fixture not found` `[test_rental_service.py]`
+- [x] **[MED]** M4: `returned_this_month` TIMESTAMPTZ vs date comparison misses same-day returns `[rental_service.py:216]`
+- [x] **[MED]** M5: Unused `selectinload` import `[rental_service.py:11]`
+- [x] **[LOW]** L1: CountdownBadge doesn't handle `daysRemaining === 0` (due today) — falls to green default `[CountdownBadge.tsx:31]`
+- [x] **[LOW]** L2: ReturnModal initial depositDeduction pre-filled with full deposit instead of 0 for default "good" condition `[ReturnModal.tsx:37-39]`
+- [ ] **[LOW]** L3: RentalDetailDrawer uses raw `<img>` instead of Next.js `Image` component `[RentalDetailDrawer.tsx:70-74]`
+
+### Change Log
+
+- **2026-03-18 (Code Review):** Fixed 10 of 11 review findings (3H/5M/2L). All HIGH and MEDIUM issues resolved. Backend: added tenant isolation to process_return, fixed broken search filter to include customer name/phone, fixed user.id attribute access, fixed NULL rental_status handling in stats, fixed TIMESTAMPTZ date comparison, removed unused import, rewrote tests with proper inline fixtures (10 real tests). Frontend: fixed RentalFilters infinite re-render loop via useRef pattern, fixed CountdownBadge daysRemaining=0, fixed ReturnModal initial deposit deduction. L3 (Next.js Image) deferred — requires next.config.js remotePatterns configuration.
