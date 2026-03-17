@@ -165,6 +165,60 @@ export interface CustomerListResponse {
   total_pages: number;
 }
 
+// ===== Story 4.4b: Customer Self-Service Profile Types =====
+
+/**
+ * Customer's own profile data (Story 4.4b)
+ * Returned by GET /api/v1/customers/me/profile
+ */
+export interface CustomerProfileDetail {
+  full_name: string | null;
+  email: string;
+  phone: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  has_password: boolean;
+}
+
+/**
+ * Schema for updating own profile (AC2)
+ */
+export const profileUpdateSchema = z.object({
+  full_name: z
+    .string()
+    .min(2, "Họ tên phải có ít nhất 2 ký tự")
+    .max(255, "Họ tên không được quá 255 ký tự"),
+  phone: z
+    .string()
+    .regex(/^0[0-9]{9,10}$/, "Số điện thoại không đúng định dạng (VD: 0901234567)")
+    .optional()
+    .or(z.literal("")),
+  gender: z.enum(["Nam", "Nữ", "Khác"]).optional().or(z.literal("")),
+});
+
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
+/**
+ * Schema for changing password (AC3, AC4)
+ */
+export const passwordChangeSchema = z
+  .object({
+    old_password: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại"),
+    new_password: z
+      .string()
+      .min(8, "Mật khẩu mới tối thiểu 8 ký tự")
+      .regex(/[A-Z]/, "Cần có ít nhất 1 chữ hoa")
+      .regex(/[a-z]/, "Cần có ít nhất 1 chữ thường")
+      .regex(/[0-9]/, "Cần có ít nhất 1 số"),
+    new_password_confirm: z.string(),
+  })
+  .refine((data) => data.new_password === data.new_password_confirm, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["new_password_confirm"],
+  });
+
+export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;
+
 // ===== API Error Types =====
 
 export interface ApiError {
