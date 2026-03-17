@@ -114,6 +114,58 @@ class OrderResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PaginationMeta(BaseModel):
+    """Pagination metadata for list responses."""
+
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
+
+
+class OrderFilterParams(BaseModel):
+    """Query params for filtering the order list."""
+
+    status: list[OrderStatus] | None = None
+    payment_status: list[PaymentStatus] | None = None
+    transaction_type: str | None = Field(None, pattern=r"^(buy|rent)$")
+    search: str | None = Field(None, max_length=255)
+    page: int = Field(1, ge=1)
+    page_size: int = Field(20, ge=1, le=100)
+    sort_by: str = Field("created_at", pattern=r"^(created_at|total_amount|status)$")
+    sort_order: str = Field("desc", pattern=r"^(asc|desc)$")
+
+
+class OrderListItem(BaseModel):
+    """Order summary row for list view."""
+
+    id: UUID
+    status: OrderStatus
+    payment_status: PaymentStatus
+    total_amount: Decimal
+    payment_method: PaymentMethod
+    customer_name: str
+    customer_phone: str
+    transaction_types: list[str] = []
+    created_at: datetime
+    next_valid_status: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class OrderListResponse(BaseModel):
+    """Response for paginated order list."""
+
+    data: list[OrderListItem]
+    meta: PaginationMeta
+
+
+class OrderStatusUpdate(BaseModel):
+    """Request body for status update."""
+
+    status: OrderStatus
+
+
 class PaymentTransactionResponse(BaseModel):
     """Schema for payment transaction response."""
 

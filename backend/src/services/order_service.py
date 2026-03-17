@@ -1,21 +1,29 @@
-"""Order business logic service (Story 3.3)."""
+"""Order business logic service (Story 3.3 + 4.2)."""
 
 import logging
+import math
+from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from src.models.db_models import GarmentDB, OrderDB, OrderItemDB
+from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, PaymentTransactionDB
 from src.models.order import (
     OrderCreate,
+    OrderFilterParams,
     OrderItemResponse,
+    OrderListItem,
+    OrderListResponse,
     OrderResponse,
+    OrderStatus,
+    OrderStatusUpdate,
+    PaginationMeta,
     PaymentMethod,
+    PaymentTransactionResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -226,3 +234,293 @@ async def get_order(
         items=response_items,
         created_at=order.created_at,
     )
+
+
+# ---------------------------------------------------------------------------
+# Story 4.2: Order list & status update
+# ---------------------------------------------------------------------------
+
+# Valid forward-only transition matrix
+_VALID_TRANSITIONS: dict[str, str | None] = {
+    "pending": "confirmed",
+    "confirmed": "in_production",
+    "in_production": "shipped",
+    "shipped": "delivered",
+    "delivered": None,
+    "cancelled": None,
+}
+
+
+async def list_orders(
+    db: AsyncSession,
+    tenant_id: UUID,
+    params: OrderFilterParams,
+) -> OrderListResponse:
+    """Return paginated, filtered, sorted order list for Owner dashboard."""
+    query = (
+        select(OrderDB)
+        .where(OrderDB.tenant_id == tenant_id)
+        .options(selectinload(OrderDB.items))
+    )
+
+    # ---- filters ----
+    if params.status:
+        query = query.where(OrderDB.status.in_([s.value for s in params.status]))
+
+    if params.payment_status:
+        query = query.where(
+            OrderDB.payment_status.in_([p.value for p in params.payment_status])
+        )
+
+    if params.transaction_type:
+        # Filter orders that have at least one item with matching transaction_type
+        query = query.where(
+            OrderDB.id.in_(
+                select(OrderItemDB.order_id).where(
+                    OrderItemDB.transaction_type == params.transaction_type
+                )
+            )
+        )
+
+    if params.search:
+        # NOTE: AC2 mentions search by email, but OrderDB has no customer_email field.
+        # Email search deferred until customer_email is added to the orders table.
+        escaped = params.search.strip().replace("%", "\\%").replace("_", "\\_")
+        search_term = f"%{escaped}%"
+        query = query.where(
+            or_(
+                OrderDB.customer_name.ilike(search_term),
+                OrderDB.customer_phone.ilike(search_term),
+                cast(OrderDB.id, String).ilike(search_term),
+            )
+        )
+
+    # ---- count ----
+    count_result = await db.execute(
+        select(func.count()).select_from(query.subquery())
+    )
+    total = count_result.scalar_one()
+
+    # ---- sort ----
+    sort_col = {
+        "created_at": OrderDB.created_at,
+        "total_amount": OrderDB.total_amount,
+        "status": OrderDB.status,
+    }[params.sort_by]
+    query = query.order_by(
+        sort_col.desc() if params.sort_order == "desc" else sort_col.asc()
+    )
+
+    # ---- pagination ----
+    offset = (params.page - 1) * params.page_size
+    query = query.offset(offset).limit(params.page_size)
+
+    result = await db.execute(query)
+    orders = result.scalars().all()
+
+    items = [
+        OrderListItem(
+            id=o.id,
+            status=o.status,
+            payment_status=o.payment_status,
+            total_amount=o.total_amount,
+            payment_method=o.payment_method,
+            customer_name=o.customer_name,
+            customer_phone=o.customer_phone,
+            transaction_types=list({item.transaction_type for item in o.items}),
+            created_at=o.created_at,
+            next_valid_status=_VALID_TRANSITIONS.get(o.status) if o.status not in ("cancelled", "delivered") else None,
+        )
+        for o in orders
+    ]
+
+    total_pages = max(1, math.ceil(total / params.page_size))
+
+    return OrderListResponse(
+        data=items,
+        meta=PaginationMeta(
+            page=params.page,
+            page_size=params.page_size,
+            total=total,
+            total_pages=total_pages,
+        ),
+    )
+
+
+async def update_order_status(
+    db: AsyncSession,
+    order_id: UUID,
+    tenant_id: UUID,
+    update: OrderStatusUpdate,
+) -> OrderResponse:
+    """Update order status with transition matrix enforcement and row locking."""
+    result = await db.execute(
+        select(OrderDB)
+        .where(OrderDB.id == order_id, OrderDB.tenant_id == tenant_id)
+        .with_for_update()
+    )
+    order = result.scalar_one_or_none()
+
+    if order is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": "ERR_ORDER_NOT_FOUND",
+                    "message": "Đơn hàng không tồn tại",
+                }
+            },
+        )
+
+    new_status = update.status.value
+    current_status = order.status
+
+    # Allow cancellation from any non-terminal status
+    if new_status == "cancelled":
+        if current_status in ("delivered", "cancelled"):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_INVALID_TRANSITION",
+                        "message": f"Không thể hủy đơn hàng ở trạng thái: {current_status}",
+                    }
+                },
+            )
+    else:
+        # Forward-only transition validation
+        expected_next = _VALID_TRANSITIONS.get(current_status)
+        if expected_next is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_INVALID_TRANSITION",
+                        "message": f"Đơn hàng ở trạng thái cuối: {current_status}",
+                    }
+                },
+            )
+        if new_status != expected_next:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_INVALID_TRANSITION",
+                        "message": f"Chuyển trạng thái không hợp lệ: {current_status} → {new_status}. Tiếp theo phải là: {expected_next}",
+                    }
+                },
+            )
+
+    order.status = new_status
+    order.updated_at = datetime.now(timezone.utc)
+    await db.flush()
+    await db.commit()
+
+    # Re-query with eager loading after commit to avoid lazy-load issues
+    refreshed = await db.execute(
+        select(OrderDB)
+        .options(
+            selectinload(OrderDB.items).selectinload(OrderItemDB.garment),
+        )
+        .where(OrderDB.id == order_id, OrderDB.tenant_id == tenant_id)
+    )
+    order = refreshed.scalar_one()
+
+    response_items = [
+        OrderItemResponse(
+            garment_id=item.garment_id,
+            garment_name=item.garment.name if item.garment else "Unknown",
+            image_url=item.garment.image_url if item.garment else None,
+            transaction_type=item.transaction_type,
+            size=item.size,
+            rental_days=item.rental_days,
+            unit_price=item.unit_price,
+            total_price=item.total_price,
+        )
+        for item in order.items
+    ]
+
+    return OrderResponse(
+        id=order.id,
+        status=order.status,
+        payment_status=order.payment_status,
+        total_amount=order.total_amount,
+        payment_method=order.payment_method,
+        customer_name=order.customer_name,
+        customer_phone=order.customer_phone,
+        shipping_address=order.shipping_address,
+        shipping_note=order.shipping_note,
+        items=response_items,
+        created_at=order.created_at,
+    )
+
+
+async def get_order_with_transactions(
+    db: AsyncSession,
+    order_id: UUID,
+    tenant_id: UUID,
+) -> tuple[OrderResponse, list[PaymentTransactionResponse]]:
+    """Get full order detail including payment transactions for owner drawer."""
+    result = await db.execute(
+        select(OrderDB)
+        .options(
+            selectinload(OrderDB.items).selectinload(OrderItemDB.garment),
+            selectinload(OrderDB.payment_transactions),
+        )
+        .where(OrderDB.id == order_id, OrderDB.tenant_id == tenant_id)
+    )
+    order = result.scalar_one_or_none()
+
+    if order is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": "ERR_ORDER_NOT_FOUND",
+                    "message": "Đơn hàng không tồn tại",
+                }
+            },
+        )
+
+    response_items = [
+        OrderItemResponse(
+            garment_id=item.garment_id,
+            garment_name=item.garment.name if item.garment else "Unknown",
+            image_url=item.garment.image_url if item.garment else None,
+            transaction_type=item.transaction_type,
+            size=item.size,
+            rental_days=item.rental_days,
+            unit_price=item.unit_price,
+            total_price=item.total_price,
+        )
+        for item in order.items
+    ]
+
+    transactions = [
+        PaymentTransactionResponse(
+            id=tx.id,
+            order_id=tx.order_id,
+            provider=tx.provider,
+            transaction_id=tx.transaction_id,
+            amount=tx.amount,
+            status=tx.status,
+            created_at=tx.created_at,
+        )
+        for tx in order.payment_transactions
+    ]
+
+    order_response = OrderResponse(
+        id=order.id,
+        status=order.status,
+        payment_status=order.payment_status,
+        total_amount=order.total_amount,
+        payment_method=order.payment_method,
+        customer_name=order.customer_name,
+        customer_phone=order.customer_phone,
+        shipping_address=order.shipping_address,
+        shipping_note=order.shipping_note,
+        items=response_items,
+        created_at=order.created_at,
+    )
+
+    return order_response, transactions

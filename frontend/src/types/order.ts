@@ -1,5 +1,6 @@
 /**
  * Order types - Story 3.3: Checkout Information & Payment Gateway
+ * Extended for Story 4.2: Owner Order Board
  */
 
 export type PaymentMethod = "cod" | "vnpay" | "momo";
@@ -60,4 +61,61 @@ export interface OrderResponse {
   shipping_note?: string | null;
   items: OrderItemResponse[];
   created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Story 4.2: Owner Order Board types
+// ---------------------------------------------------------------------------
+
+export interface PaginationMeta {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+}
+
+export interface OrderListItem {
+  id: string;
+  status: OrderStatus;
+  payment_status: PaymentStatus;
+  total_amount: number;
+  payment_method: PaymentMethod;
+  customer_name: string;
+  customer_phone: string;
+  transaction_types: string[];
+  created_at: string;
+  next_valid_status: string | null;
+}
+
+export interface OrderListParams {
+  status?: OrderStatus[];
+  payment_status?: PaymentStatus[];
+  transaction_type?: "buy" | "rent";
+  search?: string;
+  page?: number;
+  page_size?: number;
+  sort_by?: "created_at" | "total_amount" | "status";
+  sort_order?: "asc" | "desc";
+}
+
+export interface OrderListResponse {
+  data: OrderListItem[];
+  meta: {
+    pagination: PaginationMeta;
+  };
+}
+
+export interface PaymentTransactionItem {
+  id: string;
+  order_id: string;
+  provider: string;
+  transaction_id: string;
+  amount: number;
+  status: string;
+  created_at: string;
+}
+
+export interface OrderDetailResponse {
+  order: OrderResponse;
+  transactions: PaymentTransactionItem[];
 }

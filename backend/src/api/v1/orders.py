@@ -1,17 +1,25 @@
-"""Order API Router - Story 3.3: Checkout Information & Payment Gateway.
+"""Order API Router - Story 3.3 + 4.2.
 
-Public POST endpoint for order creation (guest checkout supported).
-Public GET endpoint for order lookup by ID.
-Multi-tenant isolated by tenant_id (uses default tenant for now).
+Public POST/GET endpoints for guest checkout.
+Owner-only GET list and PATCH status endpoints (Story 4.2).
+Multi-tenant isolated by tenant_id.
 """
 
 import uuid
+from typing import Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.dependencies import OwnerOnly, TenantId
 from src.core.database import get_db
-from src.models.order import OrderCreate
+from src.models.order import (
+    OrderCreate,
+    OrderFilterParams,
+    OrderStatus,
+    OrderStatusUpdate,
+    PaymentStatus,
+)
 from src.services import order_service
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
@@ -70,3 +78,106 @@ async def get_order_endpoint(
     tenant_id = get_default_tenant_id()
     result = await order_service.get_order(db, order_id, tenant_id)
     return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+# ---------------------------------------------------------------------------
+# Story 4.2: Owner-only order management endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "",
+    response_model=dict,
+    summary="List orders (Owner only)",
+    description="Paginated, filtered, sorted order list for the Owner dashboard.",
+)
+async def list_orders_endpoint(
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+    status_filter: Optional[list[OrderStatus]] = Query(None, alias="status"),
+    payment_status: Optional[list[PaymentStatus]] = Query(None),
+    transaction_type: Optional[str] = Query(None, pattern=r"^(buy|rent)$"),
+    search: Optional[str] = Query(None, max_length=255),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    sort_by: str = Query("created_at", pattern=r"^(created_at|total_amount|status)$"),
+    sort_order: str = Query("desc", pattern=r"^(asc|desc)$"),
+) -> dict:
+    """Get paginated order list with filters.
+
+    Owner only — tenant-scoped.
+
+    Returns:
+        API Response Wrapper: {"data": [...], "meta": {"pagination": {...}}}
+    """
+    params = OrderFilterParams(
+        status=status_filter,
+        payment_status=payment_status,
+        transaction_type=transaction_type,
+        search=search,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    result = await order_service.list_orders(db, tenant_id, params)
+    return {
+        "data": [item.model_dump(mode="json") for item in result.data],
+        "meta": {"pagination": result.meta.model_dump()},
+    }
+
+
+@router.patch(
+    "/{order_id}/status",
+    response_model=dict,
+    summary="Update order status (Owner only)",
+    description="Advance order status to next valid step in pipeline. Enforces transition matrix.",
+)
+async def update_order_status_endpoint(
+    order_id: uuid.UUID,
+    update: OrderStatusUpdate,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Update order status with transition matrix enforcement.
+
+    Owner only — tenant-scoped. Raises 422 for invalid transitions.
+
+    Returns:
+        API Response Wrapper: {"data": {...}}
+    """
+    result = await order_service.update_order_status(db, order_id, tenant_id, update)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.get(
+    "/{order_id}/detail",
+    response_model=dict,
+    summary="Get order detail with transactions (Owner only)",
+    description="Full order detail including payment transaction history for drawer.",
+)
+async def get_order_detail_endpoint(
+    order_id: uuid.UUID,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Get full order detail with payment transactions.
+
+    Owner only — tenant-scoped.
+
+    Returns:
+        API Response Wrapper: {"data": {"order": {...}, "transactions": [...]}}
+    """
+    order, transactions = await order_service.get_order_with_transactions(
+        db, order_id, tenant_id
+    )
+    return {
+        "data": {
+            "order": order.model_dump(mode="json"),
+            "transactions": [tx.model_dump(mode="json") for tx in transactions],
+        },
+        "meta": {},
+    }
