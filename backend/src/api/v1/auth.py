@@ -11,6 +11,7 @@ from src.models.user import (
     OTPVerifyRequest,
     RegisterRequest,
     ResendOTPRequest,
+    SocialLoginRequest,
     TokenResponse,
     UserResponse,
     VerifyTokenRequest,
@@ -134,6 +135,44 @@ async def verify_token(
         is_active=user.is_active,
         created_at=user.created_at,
     )
+
+
+@router.post("/social-login", response_model=TokenResponse)
+async def social_login(
+    request: SocialLoginRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Exchange Google OAuth credentials for a backend JWT.
+
+    Finds existing user by email or creates a new Customer account (no password,
+    is_active=True since OAuth is already verified by Google).
+    Used by Next-Auth jwt callback for Google OAuth users.
+    """
+    email = request.email.lower()
+    user = await get_user_by_email(db, email)
+
+    if user is None:
+        user = UserDB(
+            email=email,
+            hashed_password=None,
+            role="Customer",
+            is_active=True,
+            full_name=request.name,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    elif not user.is_active:
+        # Activate existing unverified account if signing in via Google
+        user.is_active = True
+        if user.full_name is None and request.name:
+            user.full_name = request.name
+        await db.commit()
+        await db.refresh(user)
+
+    role = await determine_role(db, user.email)
+    access_token = create_access_token(data={"sub": user.email, "role": role})
+    return TokenResponse(access_token=access_token)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)

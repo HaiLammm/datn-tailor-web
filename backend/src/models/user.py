@@ -26,6 +26,13 @@ class VerifyTokenRequest(BaseModel):
     token: str = Field(..., description="JWT access token to verify")
 
 
+class SocialLoginRequest(BaseModel):
+    """Schema for Google OAuth → backend JWT exchange."""
+
+    email: EmailStr
+    name: str | None = None
+
+
 class UserResponse(BaseModel):
     """Schema for user info returned by /auth/me."""
 

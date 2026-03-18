@@ -111,11 +111,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         signIn: "/login",
     },
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user, account }) {
             if (user) {
                 token.id = user.id;
                 token.role = user.role; // Attach role from user object
                 token.accessToken = user.accessToken; // Backend JWT for Server Actions
+            }
+            // Google OAuth: exchange Google credentials for backend JWT
+            if (account?.provider === "google" && user && !token.accessToken) {
+                try {
+                    const resp = await fetch(
+                        `${process.env.BACKEND_URL || "http://localhost:8000"}/api/v1/auth/social-login`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ email: user.email, name: user.name }),
+                        }
+                    );
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        token.accessToken = data.access_token;
+                    }
+                } catch {
+                    // social-login failed — token.accessToken remains undefined
+                }
             }
             return token;
         },
