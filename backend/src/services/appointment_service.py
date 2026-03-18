@@ -170,7 +170,7 @@ async def create_appointment(
         tenant_id=tenant_id,
         customer_name=appointment_data.customer_name,
         customer_phone=appointment_data.customer_phone,
-        customer_email=appointment_data.customer_email,
+        customer_email=appointment_data.customer_email.lower(),
         appointment_date=appointment_data.appointment_date,
         slot=appointment_data.slot,
         special_requests=appointment_data.special_requests,
