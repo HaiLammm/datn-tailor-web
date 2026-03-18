@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions for Customer Profile self-service (Story 4.4b)
+ * Server Actions for Customer Profile self-service (Story 4.4b, 4.4d, 4.4e)
  *
  * Pattern follows garment-actions.ts:
  *  - getAuthToken() → Bearer JWT from session
@@ -10,7 +10,8 @@
  */
 
 import { auth } from "@/auth";
-import type { CustomerProfileDetail, ProfileUpdateInput, PasswordChangeInput } from "@/types/customer";
+import type { CustomerProfileDetail, ProfileUpdateInput, PasswordChangeInput, MeasurementResponse } from "@/types/customer";
+import type { AppointmentResponse } from "@/types/booking";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 const FETCH_TIMEOUT = 10_000;
@@ -169,6 +170,160 @@ export async function changePassword(data: Pick<PasswordChangeInput, "old_passwo
     }
 
     return { success: true };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// GET /api/v1/customers/me/measurements
+// ──────────────────────────────────────────────
+
+export interface MeasurementsData {
+  default_measurement: MeasurementResponse | null;
+  measurements: MeasurementResponse[];
+  measurement_count: number;
+}
+
+// ──────────────────────────────────────────────
+// Types for Appointments (Story 4.4e)
+// ──────────────────────────────────────────────
+
+export interface AppointmentsData {
+  appointments: AppointmentResponse[];
+  appointment_count: number;
+}
+
+export async function getMyMeasurements(): Promise<{
+  success: boolean;
+  data?: MeasurementsData;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(`${BACKEND_URL}/api/v1/customers/me/measurements`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (!resp.ok) return { success: false, error: "Không thể tải số đo" };
+
+    const json = await resp.json();
+    const data = json.data as MeasurementsData;
+    if (!data || typeof data.measurement_count !== "number") {
+      return { success: false, error: "Dữ liệu số đo không hợp lệ" };
+    }
+    return { success: true, data };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// GET /api/v1/customers/me/appointments
+// ──────────────────────────────────────────────
+
+export async function getMyAppointments(): Promise<{
+  success: boolean;
+  data?: AppointmentsData;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(`${BACKEND_URL}/api/v1/customers/me/appointments`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (!resp.ok) return { success: false, error: "Không thể tải lịch hẹn" };
+
+    const json = await resp.json();
+    const data = json.data as AppointmentsData;
+    if (!data || typeof data.appointment_count !== "number") {
+      return { success: false, error: "Dữ liệu lịch hẹn không hợp lệ" };
+    }
+    return { success: true, data };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// PATCH /api/v1/customers/me/appointments/{id}/cancel
+// ──────────────────────────────────────────────
+
+export async function cancelMyAppointment(appointmentId: string): Promise<{
+  success: boolean;
+  data?: AppointmentResponse;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/customers/me/appointments/${appointmentId}/cancel`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (resp.status === 404) return { success: false, error: "Lịch hẹn không tồn tại" };
+    if (resp.status === 409) return { success: false, error: "Lịch hẹn đã được hủy trước đó" };
+    if (resp.status === 400) {
+      const err = await resp.json();
+      return { success: false, error: err.detail?.message ?? "Không thể hủy lịch hẹn" };
+    }
+    if (!resp.ok) return { success: false, error: "Không thể hủy lịch hẹn" };
+
+    const json = await resp.json();
+    return { success: true, data: json.data as AppointmentResponse };
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };

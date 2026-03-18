@@ -1,25 +1,35 @@
-"""Customer Profile self-service endpoints (Story 4.4b).
+"""Customer Profile self-service endpoints (Story 4.4b, 4.4e).
 
 Endpoints:
-  GET  /api/v1/customers/me/profile         — view own profile
-  PATCH /api/v1/customers/me/profile        — update own profile (no email change)
-  POST /api/v1/customers/me/change-password — change password (not for OAuth users)
+  GET  /api/v1/customers/me/profile                          — view own profile
+  PATCH /api/v1/customers/me/profile                         — update own profile (no email change)
+  POST /api/v1/customers/me/change-password                  — change password (not for OAuth users)
+  GET  /api/v1/customers/me/measurements                     — view own measurements (read-only)
+  GET  /api/v1/customers/me/appointments                     — view own appointments
+  PATCH /api/v1/customers/me/appointments/{id}/cancel        — cancel an appointment
 """
 
 import re
 import time
 from collections import defaultdict
+from datetime import date as date_type
+from uuid import UUID as PyUUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 
 from src.api.dependencies import CurrentUser
 from src.core.database import get_db
 from src.core.security import hash_password, verify_password
+from src.models.appointment import AppointmentResponse
+from src.models.customer import MeasurementResponse
 from src.models.customer_profile import (
     ChangePasswordRequest,
     CustomerProfileResponse,
     CustomerProfileUpdateRequest,
 )
+from src.models.db_models import AppointmentDB, CustomerProfileDB
+from src.services.measurement_service import get_default_measurement, get_measurements_history
 
 router = APIRouter(prefix="/api/v1/customers/me", tags=["customer-profile"])
 
@@ -156,5 +166,186 @@ async def change_my_password(
 
     return {
         "data": {"message": "Mật khẩu đã cập nhật thành công"},
+        "meta": {},
+    }
+
+
+@router.get("/measurements", response_model=dict)
+async def get_my_measurements(
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Return the authenticated customer's own measurements (read-only).
+
+    AC1, AC2, AC4: Returns default_measurement, all measurements sorted DESC,
+    and measurement_count. Customers cannot modify measurements.
+
+    Empty response (not error) when:
+    - current_user has no tenant_id (not yet linked to a tenant)
+    - no CustomerProfileDB found for this user (new account)
+    """
+    # Handle customer not yet linked to a tenant
+    if current_user.tenant_id is None:
+        return {
+            "data": {
+                "default_measurement": None,
+                "measurements": [],
+                "measurement_count": 0,
+            },
+            "meta": {},
+        }
+
+    # Look up CustomerProfileDB for this user (user_id + tenant_id)
+    stmt = (
+        select(CustomerProfileDB)
+        .where(
+            CustomerProfileDB.user_id == current_user.id,
+            CustomerProfileDB.tenant_id == current_user.tenant_id,
+        )
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    customer_profile = result.scalar_one_or_none()
+
+    # No profile created yet → return empty (not an error)
+    if customer_profile is None:
+        return {
+            "data": {
+                "default_measurement": None,
+                "measurements": [],
+                "measurement_count": 0,
+            },
+            "meta": {},
+        }
+
+    # Fetch measurements from service layer
+    measurements = await get_measurements_history(
+        db, customer_profile.id, customer_profile.tenant_id
+    )
+    default_measurement = await get_default_measurement(
+        db, customer_profile.id, customer_profile.tenant_id
+    )
+
+    return {
+        "data": {
+            "default_measurement": (
+                MeasurementResponse.model_validate(default_measurement).model_dump(mode="json")
+                if default_measurement
+                else None
+            ),
+            "measurements": [
+                MeasurementResponse.model_validate(m).model_dump(mode="json")
+                for m in measurements
+            ],
+            "measurement_count": len(measurements),
+        },
+        "meta": {},
+    }
+
+
+# ─── Default tenant (same as public booking endpoints) ───────────────────────
+_DEFAULT_TENANT_ID = PyUUID("00000000-0000-0000-0000-000000000001")
+
+
+@router.get("/appointments", response_model=dict)
+async def get_my_appointments(
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Return the authenticated customer's appointments (read-only).
+
+    AC1, AC2, AC3, AC6:
+    - Queries by customer_email (appointments are created via public booking form with email)
+    - Uses current_user.tenant_id or falls back to default tenant for MVP
+    - Returns sorted by appointment_date DESC (newest first)
+    - Empty array when no appointments found (not an error)
+    """
+    tenant_id = current_user.tenant_id if current_user.tenant_id is not None else _DEFAULT_TENANT_ID
+
+    stmt = (
+        select(AppointmentDB)
+        .where(
+            AppointmentDB.customer_email == current_user.email,
+            AppointmentDB.tenant_id == tenant_id,
+        )
+        .order_by(AppointmentDB.appointment_date.desc())
+    )
+    result = await db.execute(stmt)
+    appointments = result.scalars().all()
+
+    return {
+        "data": {
+            "appointments": [
+                AppointmentResponse.model_validate(a).model_dump(mode="json")
+                for a in appointments
+            ],
+            "appointment_count": len(appointments),
+        },
+        "meta": {},
+    }
+
+
+@router.patch("/appointments/{appointment_id}/cancel", response_model=dict)
+async def cancel_my_appointment(
+    appointment_id: PyUUID,
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Cancel an appointment owned by the current user.
+
+    AC4:
+    - 404 if appointment not found or does not belong to current user (email + tenant)
+    - 409 if appointment already cancelled
+    - 400 if appointment_date <= today (within 24h window — same-day or past)
+    - 200 with updated appointment on success
+    """
+    tenant_id = current_user.tenant_id if current_user.tenant_id is not None else _DEFAULT_TENANT_ID
+
+    stmt = (
+        select(AppointmentDB)
+        .where(
+            AppointmentDB.id == appointment_id,
+            AppointmentDB.customer_email == current_user.email,
+            AppointmentDB.tenant_id == tenant_id,
+        )
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    appointment = result.scalar_one_or_none()
+
+    if appointment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "NOT_FOUND",
+                "message": "Lịch hẹn không tồn tại hoặc không thuộc về bạn",
+            },
+        )
+
+    if appointment.status == "cancelled":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "ALREADY_CANCELLED",
+                "message": "Lịch hẹn đã được hủy trước đó",
+            },
+        )
+
+    # 24h rule: cannot cancel same-day or past appointments
+    if appointment.appointment_date <= date_type.today():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "WITHIN_24H",
+                "message": "Không thể hủy trong vòng 24h trước giờ hẹn",
+            },
+        )
+
+    appointment.status = "cancelled"
+    await db.commit()
+    await db.refresh(appointment)
+
+    return {
+        "data": AppointmentResponse.model_validate(appointment).model_dump(mode="json"),
         "meta": {},
     }
