@@ -12,6 +12,8 @@
 import { auth } from "@/auth";
 import type { CustomerProfileDetail, ProfileUpdateInput, PasswordChangeInput, MeasurementResponse } from "@/types/customer";
 import type { AppointmentResponse } from "@/types/booking";
+import type { NotificationsData, UnreadCountData } from "@/types/notification";
+import type { VouchersData } from "@/types/voucher";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 const FETCH_TIMEOUT = 10_000;
@@ -324,6 +326,273 @@ export async function cancelMyAppointment(appointmentId: string): Promise<{
 
     const json = await resp.json();
     return { success: true, data: json.data as AppointmentResponse };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// Notification types (Story 4.4f)
+// ──────────────────────────────────────────────
+
+export interface NotificationsActionData extends NotificationsData {}
+export interface UnreadCountActionData extends UnreadCountData {}
+
+// ──────────────────────────────────────────────
+// GET /api/v1/customers/me/notifications
+// ──────────────────────────────────────────────
+
+export async function getMyNotifications(): Promise<{
+  success: boolean;
+  data?: NotificationsActionData;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(`${BACKEND_URL}/api/v1/customers/me/notifications`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (!resp.ok) return { success: false, error: "Không thể tải thông báo" };
+
+    const json = await resp.json();
+    const data = json.data as NotificationsActionData;
+    if (!data || typeof data.notification_count !== "number") {
+      return { success: false, error: "Dữ liệu thông báo không hợp lệ" };
+    }
+    return { success: true, data };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// GET /api/v1/customers/me/notifications/unread-count
+// ──────────────────────────────────────────────
+
+export async function getUnreadNotificationCount(): Promise<{
+  success: boolean;
+  data?: UnreadCountActionData;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/customers/me/notifications/unread-count`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (!resp.ok) return { success: false, error: "Không thể tải số thông báo" };
+
+    const json = await resp.json();
+    const data = json.data as UnreadCountActionData;
+    if (!data || typeof data.unread_count !== "number") {
+      return { success: false, error: "Dữ liệu không hợp lệ" };
+    }
+    return { success: true, data };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// PATCH /api/v1/customers/me/notifications/{id}/read
+// ──────────────────────────────────────────────
+
+export async function markNotificationRead(notificationId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/customers/me/notifications/${notificationId}/read`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (resp.status === 404) return { success: false, error: "Thông báo không tồn tại" };
+    if (!resp.ok) return { success: false, error: "Không thể đánh dấu đã đọc" };
+
+    return { success: true };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// PATCH /api/v1/customers/me/notifications/read-all
+// ──────────────────────────────────────────────
+
+export async function markAllNotificationsRead(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/customers/me/notifications/read-all`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (!resp.ok) return { success: false, error: "Không thể đánh dấu đã đọc" };
+
+    return { success: true };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// DELETE /api/v1/customers/me/notifications/{id}
+// ──────────────────────────────────────────────
+
+export async function deleteNotification(notificationId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/customers/me/notifications/${notificationId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (resp.status === 404) return { success: false, error: "Thông báo không tồn tại" };
+    if (!resp.ok) return { success: false, error: "Không thể xóa thông báo" };
+
+    return { success: true };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// GET /api/v1/customers/me/vouchers (Story 4.4g)
+// ──────────────────────────────────────────────
+
+export async function getMyVouchers(): Promise<{
+  success: boolean;
+  data?: VouchersData;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(`${BACKEND_URL}/api/v1/customers/me/vouchers`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (!resp.ok) return { success: false, error: "Không thể tải danh sách voucher" };
+
+    const json = await resp.json();
+    const vouchersData = json.data as VouchersData;
+    return { success: true, data: vouchersData };
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };

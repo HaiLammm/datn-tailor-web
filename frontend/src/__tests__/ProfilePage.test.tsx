@@ -34,6 +34,7 @@ jest.mock("@/app/actions/profile-actions", () => ({
   getCustomerProfile: () => mockGetCustomerProfile(),
   updateCustomerProfile: jest.fn(),
   changePassword: jest.fn(),
+  getUnreadNotificationCount: jest.fn().mockResolvedValue({ success: true, data: { unread_count: 0 } }),
 }));
 
 // Mock client components so we can test the page server logic

@@ -524,3 +524,110 @@ class RentalReturnDB(Base):
     garment: Mapped["GarmentDB"] = relationship("GarmentDB")
     processor: Mapped["UserDB | None"] = relationship("UserDB")
 
+
+
+class NotificationDB(Base):
+    """ORM model for the `notifications` table (Story 4.4f).
+
+    In-app notifications for customers.
+    - Links to users.id (authenticated account), NOT customer_profiles.id.
+    - Soft delete via deleted_at.
+    - is_read + read_at track read state.
+    """
+
+    __tablename__ = "notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class VoucherDB(Base):
+    """ORM model for the `vouchers` table (Story 4.4g).
+
+    Master voucher definitions — will be managed by Owner via Story 6.3.
+    Linked to customers via user_vouchers (many-to-many assignment).
+    - type: 'percent' (0-100) or 'fixed' (VND amount).
+    - min_order_value: minimum order total before voucher applies.
+    - max_discount_value: cap for percent vouchers (None = no cap).
+    """
+
+    __tablename__ = "vouchers"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "code", name="uq_vouchers_tenant_code"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    code: Mapped[str] = mapped_column(String(50), nullable=False)
+    type: Mapped[str] = mapped_column(String(20), nullable=False)        # 'percent' | 'fixed'
+    value: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    min_order_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0"))
+    max_discount_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expiry_date: Mapped[date] = mapped_column(Date, nullable=False)
+    total_uses: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    used_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    assignments: Mapped[list["UserVoucherDB"]] = relationship(
+        "UserVoucherDB", back_populates="voucher", cascade="all, delete-orphan"
+    )
+
+
+class UserVoucherDB(Base):
+    """ORM model for the `user_vouchers` table (Story 4.4g).
+
+    Per-customer assignment of a voucher.
+    - One assignment per user per voucher (UNIQUE constraint).
+    - is_used tracks whether the customer has applied this voucher.
+    - used_in_order_id: FK to orders.id will be added in Epic 6 checkout integration.
+    """
+
+    __tablename__ = "user_vouchers"
+    __table_args__ = (
+        UniqueConstraint("user_id", "voucher_id", name="uq_user_vouchers_user_voucher"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    voucher_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("vouchers.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    used_in_order_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    voucher: Mapped["VoucherDB"] = relationship("VoucherDB", back_populates="assignments")

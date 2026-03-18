@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, PaymentTransactionDB
+from src.services.notification_creator import ORDER_STATUS_MESSAGES, create_notification
 from src.models.order import (
     OrderCreate,
     OrderFilterParams,
@@ -418,8 +419,31 @@ async def update_order_status(
 
     order.status = new_status
     order.updated_at = datetime.now(timezone.utc)
+    # Capture fields before commit (for notification, since session may expire objects)
+    _customer_id = order.customer_id
+    _tenant_id = order.tenant_id
+    _order_id_str = str(order.id)
     await db.flush()
     await db.commit()
+
+    # Story 4.4f: Create in-app notification for authenticated customers
+    if _customer_id is not None and new_status in ORDER_STATUS_MESSAGES:
+        try:
+            title, msg_template = ORDER_STATUS_MESSAGES[new_status]
+            message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+            await create_notification(
+                db=db,
+                user_id=_customer_id,
+                tenant_id=_tenant_id,
+                notification_type="order_status",
+                title=title,
+                message=message,
+                data={"order_id": _order_id_str},
+            )
+        except Exception:
+            logger.warning(
+                "Failed to create notification for order %s status %s", _order_id_str, new_status
+            )
 
     # Re-query with eager loading after commit to avoid lazy-load issues
     refreshed = await db.execute(

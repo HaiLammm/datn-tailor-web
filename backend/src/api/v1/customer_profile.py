@@ -1,4 +1,4 @@
-"""Customer Profile self-service endpoints (Story 4.4b, 4.4e).
+"""Customer Profile self-service endpoints (Story 4.4b, 4.4e, 4.4f, 4.4g).
 
 Endpoints:
   GET  /api/v1/customers/me/profile                          — view own profile
@@ -7,16 +7,23 @@ Endpoints:
   GET  /api/v1/customers/me/measurements                     — view own measurements (read-only)
   GET  /api/v1/customers/me/appointments                     — view own appointments
   PATCH /api/v1/customers/me/appointments/{id}/cancel        — cancel an appointment
+  GET  /api/v1/customers/me/notifications                    — list own notifications
+  GET  /api/v1/customers/me/notifications/unread-count       — unread notification count
+  PATCH /api/v1/customers/me/notifications/read-all          — mark all notifications as read
+  PATCH /api/v1/customers/me/notifications/{id}/read         — mark notification as read
+  DELETE /api/v1/customers/me/notifications/{id}             — soft delete a notification
+  GET  /api/v1/customers/me/vouchers                         — list assigned vouchers (Story 4.4g)
 """
 
+import logging
 import re
 import time
 from collections import defaultdict
-from datetime import date as date_type
+from datetime import date as date_type, datetime, timezone
 from uuid import UUID as PyUUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select, update as sa_update
 
 from src.api.dependencies import CurrentUser
 from src.core.database import get_db
@@ -28,8 +35,13 @@ from src.models.customer_profile import (
     CustomerProfileResponse,
     CustomerProfileUpdateRequest,
 )
-from src.models.db_models import AppointmentDB, CustomerProfileDB
+from src.models.db_models import AppointmentDB, CustomerProfileDB, NotificationDB, UserVoucherDB, VoucherDB
+from src.models.notification import NotificationResponse
+from src.models.voucher import VoucherStatus
 from src.services.measurement_service import get_default_measurement, get_measurements_history
+from src.services.notification_creator import APPOINTMENT_MESSAGES, create_notification
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/customers/me", tags=["customer-profile"])
 
@@ -348,10 +360,267 @@ async def cancel_my_appointment(
         )
 
     appointment.status = "cancelled"
+    # Capture for notification before commit
+    _appt_date = str(appointment.appointment_date)
+    _appt_slot = "Buổi Sáng" if appointment.slot == "morning" else "Buổi Chiều"
     await db.commit()
     await db.refresh(appointment)
+
+    # Story 4.4f: In-app notification for appointment cancellation
+    _tenant_id = current_user.tenant_id or _DEFAULT_TENANT_ID
+    try:
+        title, msg_template = APPOINTMENT_MESSAGES["cancelled"]
+        message = msg_template.format(date=_appt_date)
+        await create_notification(
+            db=db,
+            user_id=current_user.id,
+            tenant_id=_tenant_id,
+            notification_type="appointment",
+            title=title,
+            message=message,
+            data={"appointment_id": str(appointment.id), "appointment_date": _appt_date},
+        )
+    except Exception:
+        logger.warning(
+            "Failed to create cancellation notification for appointment %s", appointment.id
+        )
 
     return {
         "data": AppointmentResponse.model_validate(appointment).model_dump(mode="json"),
         "meta": {},
     }
+
+
+# ─── Notification endpoints (Story 4.4f) ─────────────────────────────────────
+# IMPORTANT: Static paths (/notifications/unread-count, /notifications/read-all)
+# MUST come before parameterized paths (/notifications/{id}) to prevent FastAPI
+# treating the literal strings as notification_id values.
+
+
+@router.get("/notifications", response_model=dict)
+async def get_my_notifications(
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Return the authenticated customer's notifications, newest first.
+
+    AC1: Sorted DESC by created_at. Excludes soft-deleted records.
+    """
+    stmt = (
+        select(NotificationDB)
+        .where(
+            NotificationDB.user_id == current_user.id,
+            NotificationDB.deleted_at.is_(None),
+        )
+        .order_by(NotificationDB.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    notifications = result.scalars().all()
+
+    return {
+        "data": {
+            "notifications": [
+                NotificationResponse.model_validate(n).model_dump(mode="json")
+                for n in notifications
+            ],
+            "notification_count": len(notifications),
+        },
+        "meta": {},
+    }
+
+
+@router.get("/notifications/unread-count", response_model=dict)
+async def get_unread_notification_count(
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Return count of unread (not deleted) notifications.
+
+    AC2: Used by ProfileSidebar badge.
+    """
+    from sqlalchemy import func as sa_func
+
+    stmt = (
+        select(sa_func.count())
+        .select_from(NotificationDB)
+        .where(
+            NotificationDB.user_id == current_user.id,
+            NotificationDB.is_read.is_(False),
+            NotificationDB.deleted_at.is_(None),
+        )
+    )
+    result = await db.execute(stmt)
+    count = result.scalar_one()
+
+    return {"data": {"unread_count": count}, "meta": {}}
+
+
+@router.patch("/notifications/read-all", response_model=dict)
+async def mark_all_notifications_read(
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Mark all unread notifications as read.
+
+    AC3: Bulk mark-read, badge count becomes 0.
+    """
+    now = datetime.now(timezone.utc)
+    stmt = (
+        sa_update(NotificationDB)
+        .where(
+            NotificationDB.user_id == current_user.id,
+            NotificationDB.is_read.is_(False),
+            NotificationDB.deleted_at.is_(None),
+        )
+        .values(is_read=True, read_at=now)
+    )
+    await db.execute(stmt)
+    await db.commit()
+
+    return {"data": {"message": "Đã đánh dấu tất cả thông báo là đã đọc"}, "meta": {}}
+
+
+@router.patch("/notifications/{notification_id}/read", response_model=dict)
+async def mark_notification_read(
+    notification_id: PyUUID,
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Mark a single notification as read.
+
+    AC3: Optimistic UI counterpart. 404 if not found / not owned.
+    """
+    stmt = (
+        select(NotificationDB)
+        .where(
+            NotificationDB.id == notification_id,
+            NotificationDB.user_id == current_user.id,
+            NotificationDB.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    notification = result.scalar_one_or_none()
+
+    if notification is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "NOT_FOUND",
+                "message": "Thông báo không tồn tại hoặc không thuộc về bạn",
+            },
+        )
+
+    if not notification.is_read:
+        notification.is_read = True
+        notification.read_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(notification)
+
+    return {
+        "data": NotificationResponse.model_validate(notification).model_dump(mode="json"),
+        "meta": {},
+    }
+
+
+@router.delete("/notifications/{notification_id}", response_model=dict)
+async def delete_notification(
+    notification_id: PyUUID,
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Soft delete a notification (sets deleted_at).
+
+    AC6: Notification disappears from list but is NOT hard deleted.
+    404 if not found or not owned.
+    """
+    stmt = (
+        select(NotificationDB)
+        .where(
+            NotificationDB.id == notification_id,
+            NotificationDB.user_id == current_user.id,
+            NotificationDB.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    notification = result.scalar_one_or_none()
+
+    if notification is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "NOT_FOUND",
+                "message": "Thông báo không tồn tại hoặc không thuộc về bạn",
+            },
+        )
+
+    notification.deleted_at = datetime.now(timezone.utc)
+    await db.commit()
+
+    return {"data": {"message": "Thông báo đã được xóa"}, "meta": {}}
+
+
+# ─── Voucher endpoints (Story 4.4g) ──────────────────────────────────────────
+
+
+@router.get("/vouchers", response_model=dict)
+async def get_my_vouchers(
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """List vouchers assigned to the authenticated customer.
+
+    Joins user_vouchers → vouchers (active vouchers only, is_active=True).
+    Sort: active first, expired second, used last (AC1).
+    Status computed server-side:
+      - is_used=True → 'used'
+      - expiry_date < today → 'expired'
+      - else → 'active'
+    Returns all assigned vouchers (active, expired, used) for history visibility.
+    AC1, AC2, AC6.
+    """
+    today = date_type.today()
+
+    # Computed sort key: 0=active, 1=expired, 2=used (AC1: active first, expired second, used last)
+    status_sort = case(
+        (UserVoucherDB.is_used.is_(True), 2),
+        (VoucherDB.expiry_date < today, 1),
+        else_=0,
+    )
+
+    stmt = (
+        select(UserVoucherDB, VoucherDB)
+        .join(VoucherDB, UserVoucherDB.voucher_id == VoucherDB.id)
+        .where(
+            UserVoucherDB.user_id == current_user.id,
+            VoucherDB.is_active.is_(True),
+        )
+        .order_by(status_sort.asc(), VoucherDB.expiry_date.asc())
+    )
+    rows = (await db.execute(stmt)).all()
+
+    vouchers = []
+    for uv, v in rows:
+        if uv.is_used:
+            status = VoucherStatus.USED
+        elif v.expiry_date < today:
+            status = VoucherStatus.EXPIRED
+        else:
+            status = VoucherStatus.ACTIVE
+
+        vouchers.append({
+            "id": str(uv.id),
+            "voucher_id": str(v.id),
+            "code": v.code,
+            "type": v.type,
+            "value": str(v.value),
+            "min_order_value": str(v.min_order_value),
+            "max_discount_value": str(v.max_discount_value) if v.max_discount_value is not None else None,
+            "description": v.description,
+            "expiry_date": v.expiry_date.isoformat(),
+            "status": status.value,
+            "assigned_at": uv.assigned_at.isoformat(),
+        })
+
+    return {"data": {"vouchers": vouchers, "voucher_count": len(vouchers)}, "meta": {}}

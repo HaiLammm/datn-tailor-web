@@ -9,6 +9,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+interface ProfileSidebarProps {
+  unreadNotificationCount?: number;
+}
+
 interface NavItem {
   label: string;
   href: string;
@@ -72,8 +76,26 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function ProfileSidebar() {
+export function ProfileSidebar({ unreadNotificationCount = 0 }: ProfileSidebarProps) {
   const pathname = usePathname();
+  const badgeCount = Math.min(unreadNotificationCount, 99);
+
+  function renderLabel(item: NavItem) {
+    if (item.href !== "/profile/notifications" || badgeCount === 0) {
+      return <span>{item.label}</span>;
+    }
+    return (
+      <>
+        <span>{item.label}</span>
+        <span
+          className="ml-auto min-w-[1.25rem] h-5 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold leading-none"
+          aria-label={`${badgeCount} thông báo chưa đọc`}
+        >
+          {badgeCount}
+        </span>
+      </>
+    );
+  }
 
   return (
     <>
@@ -94,7 +116,7 @@ export function ProfileSidebar() {
                   aria-current={isActive ? "page" : undefined}
                 >
                   {item.icon}
-                  {item.label}
+                  {renderLabel(item)}
                 </Link>
               </li>
             );
@@ -119,7 +141,7 @@ export function ProfileSidebar() {
                   aria-current={isActive ? "page" : undefined}
                 >
                   {item.icon}
-                  {item.label}
+                  {renderLabel(item)}
                 </Link>
               </li>
             );

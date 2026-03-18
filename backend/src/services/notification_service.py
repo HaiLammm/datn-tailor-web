@@ -2,6 +2,7 @@
 
 Handles finding garments due for return and sending reminder emails.
 Backend is SSOT for notification logic - frontend NEVER decides when to send.
+Story 4.4f: Also creates in-app notifications for authenticated renters.
 """
 
 import logging
@@ -14,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import settings
 from src.models.db_models import GarmentDB
 from src.services.email_service import send_return_reminder_email
+from src.services.notification_creator import RETURN_REMINDER_MESSAGE, create_notification
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,26 @@ async def send_return_reminder(db: AsyncSession, garment: GarmentDB) -> bool:
         await db.commit()
         await db.refresh(garment)
         logger.info(f"Reminder sent for garment {garment.id} to {garment.renter_email}")
+
+        # Story 4.4f: Create in-app notification for authenticated renters
+        if garment.renter_id is not None:
+            try:
+                title, msg_template = RETURN_REMINDER_MESSAGE
+                message = msg_template.format(garment_name=garment.name)
+                await create_notification(
+                    db=db,
+                    user_id=garment.renter_id,
+                    tenant_id=garment.tenant_id,
+                    notification_type="return_reminder",
+                    title=title,
+                    message=message,
+                    data={"garment_id": str(garment.id), "garment_name": garment.name},
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to create in-app return reminder for garment %s", garment.id
+                )
+
         return True
 
     logger.error(f"Failed to send reminder for garment {garment.id} to {garment.renter_email}")
