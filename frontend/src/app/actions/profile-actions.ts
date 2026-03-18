@@ -52,7 +52,11 @@ export async function getCustomerProfile(): Promise<{
     if (!resp.ok) return { success: false, error: "Không thể tải thông tin hồ sơ" };
 
     const json = await resp.json();
-    return { success: true, data: json.data as CustomerProfileDetail };
+    const profile = json.data;
+    if (!profile || typeof profile.email !== "string") {
+      return { success: false, error: "Dữ liệu hồ sơ không hợp lệ" };
+    }
+    return { success: true, data: profile as CustomerProfileDetail };
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
@@ -104,7 +108,11 @@ export async function updateCustomerProfile(data: ProfileUpdateInput): Promise<{
     if (!resp.ok) return { success: false, error: "Không thể cập nhật thông tin" };
 
     const json = await resp.json();
-    return { success: true, data: json.data as CustomerProfileDetail };
+    const updated = json.data;
+    if (!updated || typeof updated.email !== "string") {
+      return { success: false, error: "Dữ liệu cập nhật không hợp lệ" };
+    }
+    return { success: true, data: updated as CustomerProfileDetail };
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };

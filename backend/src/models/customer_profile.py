@@ -3,7 +3,7 @@
 import re
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, field_validator
 
 
 class CustomerProfileResponse(BaseModel):
@@ -43,7 +43,7 @@ class CustomerProfileUpdateRequest(BaseModel):
     @field_validator("gender")
     @classmethod
     def gender_valid(cls, v: str | None) -> str | None:
-        if v is not None and v not in ("Nam", "Nữ", "Khác"):
+        if v is not None and v != "" and v not in ("Nam", "Nữ", "Khác"):
             raise ValueError("Giới tính không hợp lệ. Chọn: Nam, Nữ, hoặc Khác")
         return v
 

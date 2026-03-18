@@ -79,7 +79,7 @@ So that hồ sơ của tôi luôn cập nhật và bảo mật.
   - [x] 9.3: `frontend/src/__tests__/profileActions.test.ts` — 6 tests: getProfile success/unauthorized, updateProfile success/validation error, changePassword success/wrong old password
   - [x] 9.4: Update `frontend/src/__tests__/ProfilePage.test.tsx` — updated for new page structure (4 new tests: renders forms, error state, default error, OAuth user)
 
-### Review Follow-ups (AI)
+### Review Follow-ups (AI) — Round 1
 
 - [x] [AI-Review][HIGH] H1 — Memory leak: Add `useEffect` cleanup for `toastTimerRef` on unmount in both `PersonalInfoForm.tsx` and `PasswordChangeForm.tsx` — must match `ProductForm.tsx:76-81` pattern [frontend/src/components/client/profile/PersonalInfoForm.tsx, PasswordChangeForm.tsx]
 - [x] [AI-Review][HIGH] H2 — Cannot clear phone/gender: `updateCustomerProfile()` Server Action uses truthy check `if (data.phone)` which drops empty strings — user can never un-set phone or gender. Fix: use `data.phone !== undefined` or include all fields in body [frontend/src/app/actions/profile-actions.ts:80-84]
@@ -90,23 +90,39 @@ So that hồ sơ của tôi luôn cập nhật và bảo mật.
 - [x] [AI-Review][LOW] L1 — `ConfigDict(from_attributes=True)` unnecessary on `CustomerProfileResponse` — model is always constructed manually, not from ORM [backend/src/models/customer_profile.py:11]
 - [x] [AI-Review][LOW] L2 — Missing `useEffect` import needed for H1 fix — add `import { useEffect }` to both form components [frontend/src/components/client/profile/PersonalInfoForm.tsx, PasswordChangeForm.tsx]
 
+### Review Follow-ups (AI) — Round 2
+
+- [x] [AI-Review][HIGH] H1 — Backend gender validator rejects empty string: user cannot clear gender. `gender_valid()` missing `v != ""` check (phone validator had it but gender didn't) [backend/src/models/customer_profile.py:43-47]
+- [x] [AI-Review][HIGH] H2 — Empty string stored in DB instead of None: PATCH stores `""` for phone/gender instead of converting to `None`, creating data inconsistency with nullable columns [backend/src/api/v1/customer_profile.py:62-65]
+- [x] [AI-Review][MEDIUM] M1 — Unused `ConfigDict` import leftover from L1 fix [backend/src/models/customer_profile.py:6]
+- [x] [AI-Review][MEDIUM] M2 — SVG icon code duplicated 3x in PasswordChangeForm: extracted to `EyeIcon`/`EyeOffIcon` helpers [frontend/src/components/client/profile/PasswordChangeForm.tsx]
+- [x] [AI-Review][MEDIUM] M3 — No rate limiting on change-password endpoint: added in-memory rate limiter (5 attempts / 15 min) [backend/src/api/v1/customer_profile.py]
+- [x] [AI-Review][MEDIUM] M4 — Type assertion `as` on API response: added basic runtime shape check before casting [frontend/src/app/actions/profile-actions.ts:55,107]
+- [x] [AI-Review][LOW] L1 — `response_model=dict` loose typing on all 3 endpoints (not fixed — matches existing project patterns)
+- [x] [AI-Review][LOW] L2 — Added missing backend tests for clearing gender and phone with empty string [backend/tests/test_customer_profile_api.py]
+
 ## Senior Developer Review (AI)
 
-- **Review Date:** 2026-03-18
+### Round 1 — 2026-03-18
 - **Reviewer:** Claude Opus 4.6 (adversarial code review)
-- **Review Outcome:** Changes Requested
-- **Total Action Items:** 8 (3 High, 3 Medium, 2 Low)
+- **Review Outcome:** Changes Requested → All Fixed
+- **Total Action Items:** 8 (3 High, 3 Medium, 2 Low) — all resolved
 
-### Action Items
+### Round 2 — 2026-03-18
+- **Reviewer:** Claude Opus 4.6 (adversarial code review)
+- **Review Outcome:** Changes Requested → All Fixed
+- **Total Action Items:** 8 (2 High, 4 Medium, 2 Low) — all resolved
 
-- [x] H1 — Toast timer memory leak in PersonalInfoForm + PasswordChangeForm (missing useEffect cleanup)
-- [x] H2 — Cannot clear phone/gender due to truthy check in Server Action
-- [x] H3 — Backend PATCH endpoint missing phone format validation (violates project-context.md §3)
-- [x] M1 — Duplicate `from fastapi import` in customer_profile.py
-- [x] M2 — Unused `AsyncSession` import in customer_profile.py
-- [x] M3 — Loose test assertion (or-accepts 401/403) in test_customer_profile_api.py
-- [x] L1 — Unnecessary `from_attributes=True` on CustomerProfileResponse
-- [x] L2 — Missing `useEffect` import (dependency of H1 fix)
+### Action Items (Round 2)
+
+- [x] H1 — Gender validator rejects empty string (cannot clear gender selection)
+- [x] H2 — Empty string stored in DB instead of None for phone/gender
+- [x] M1 — Unused `ConfigDict` import leftover from Round 1 L1 fix
+- [x] M2 — SVG icon code duplicated 3x → extracted to EyeIcon/EyeOffIcon helpers
+- [x] M3 — No rate limiting on change-password endpoint → added 5 attempts/15 min
+- [x] M4 — Type assertion without runtime validation on API response → added shape check
+- [x] L1 — `response_model=dict` loose (not fixed — matches existing project patterns)
+- [x] L2 — Added backend tests for clearing gender/phone with empty string
 
 ## Dev Notes
 
@@ -362,18 +378,19 @@ claude-sonnet-4-6 (2026-03-18)
 ### Change Log
 
 - 2026-03-18: Implemented Story 4.4b — Customer Profile Personal Info & Security (all 9 tasks, 31 subtasks)
-- 2026-03-18: Addressed code review findings — 8 action items resolved (3H/3M/2L): fixed memory leak, phone/gender clearing, phone validation, import consolidation, removed unused import, fixed test assertion, removed unnecessary config, added missing imports
+- 2026-03-18: Addressed code review Round 1 findings — 8 action items resolved (3H/3M/2L): fixed memory leak, phone/gender clearing, phone validation, import consolidation, removed unused import, fixed test assertion, removed unnecessary config, added missing imports
+- 2026-03-18: Addressed code review Round 2 findings — 8 action items resolved (2H/4M/2L): fixed gender clearing (empty string → None), empty string → None conversion for DB, removed leftover ConfigDict import, extracted SVG icons, added rate limiting on change-password, added runtime response validation, added tests for clearing fields
 
 ### File List
 
-backend/src/api/v1/customer_profile.py (MODIFIED — consolidated duplicate imports, removed AsyncSession type annotation)
-backend/src/models/customer_profile.py (MODIFIED — added phone format validator, removed unnecessary ConfigDict)
-backend/tests/test_customer_profile_api.py (MODIFIED — added phone validation test + fixed auth status code assertion)
+backend/src/api/v1/customer_profile.py (MODIFIED — added rate limiting, empty string → None conversion)
+backend/src/models/customer_profile.py (MODIFIED — fixed gender validator for empty string, removed unused ConfigDict import)
+backend/tests/test_customer_profile_api.py (MODIFIED — added tests for clearing gender/phone with empty string)
 backend/src/main.py (MODIFIED — added customer_profile_router)
 frontend/src/types/customer.ts (MODIFIED — added CustomerProfileDetail, profileUpdateSchema, passwordChangeSchema)
-frontend/src/app/actions/profile-actions.ts (MODIFIED — fixed phone/gender clearing with !== undefined checks)
+frontend/src/app/actions/profile-actions.ts (MODIFIED — added runtime response shape validation)
 frontend/src/components/client/profile/PersonalInfoForm.tsx (MODIFIED — added useEffect cleanup for toast timer)
-frontend/src/components/client/profile/PasswordChangeForm.tsx (MODIFIED — added useEffect cleanup for toast timer)
+frontend/src/components/client/profile/PasswordChangeForm.tsx (MODIFIED — extracted EyeIcon/EyeOffIcon helpers, removed SVG duplication)
 frontend/src/app/(customer)/profile/page.tsx (MODIFIED — rewritten for Story 4.4b)
 frontend/src/__tests__/PersonalInfoForm.test.tsx (NEW)
 frontend/src/__tests__/PasswordChangeForm.test.tsx (NEW)

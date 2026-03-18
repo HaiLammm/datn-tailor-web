@@ -7,6 +7,8 @@ Endpoints:
 """
 
 import re
+import time
+from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -23,6 +25,27 @@ router = APIRouter(prefix="/api/v1/customers/me", tags=["customer-profile"])
 
 # Minimum password strength: 8 chars, uppercase, lowercase, digit
 _PASSWORD_RE = re.compile(r"^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).{8,}$")
+
+# Simple in-memory rate limiter for password change attempts
+_password_attempts: dict[str, list[float]] = defaultdict(list)
+_MAX_ATTEMPTS = 5
+_WINDOW_SECONDS = 900  # 15 minutes
+
+
+def _check_rate_limit(user_email: str) -> None:
+    """Raise 429 if user exceeded password change attempt limit."""
+    now = time.monotonic()
+    attempts = _password_attempts[user_email]
+    # Prune old entries outside window
+    _password_attempts[user_email] = [t for t in attempts if now - t < _WINDOW_SECONDS]
+    if len(_password_attempts[user_email]) >= _MAX_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "RATE_LIMITED",
+                "message": "Quá nhiều lần thử. Vui lòng đợi 15 phút.",
+            },
+        )
 
 
 @router.get("/profile", response_model=dict)
@@ -60,9 +83,9 @@ async def update_my_profile(
     if body.full_name is not None:
         current_user.full_name = body.full_name.strip()
     if body.phone is not None:
-        current_user.phone = body.phone
+        current_user.phone = body.phone if body.phone != "" else None
     if body.gender is not None:
-        current_user.gender = body.gender
+        current_user.gender = body.gender if body.gender != "" else None
 
     await db.commit()
     await db.refresh(current_user)
@@ -94,6 +117,10 @@ async def change_my_password(
     - 400 WEAK_PASSWORD  — if new_password fails strength rules
     - 200 on success
     """
+    # Rate limit password change attempts
+    _check_rate_limit(current_user.email)
+    _password_attempts[current_user.email].append(time.monotonic())
+
     # AC7: OAuth-only user has no password
     if current_user.hashed_password is None:
         raise HTTPException(

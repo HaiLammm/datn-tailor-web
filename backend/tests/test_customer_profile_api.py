@@ -266,3 +266,44 @@ async def test_change_password_weak_new_password(seed_user_data, override_db):
 
     assert resp.status_code == 400
     assert resp.json()["detail"]["code"] == "WEAK_PASSWORD"
+
+
+# ────────────────────────────────────────────────────────
+# PATCH — clearing fields (empty string → None)
+# ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_patch_profile_clear_gender(seed_user_data, override_db):
+    """Sending gender="" should clear gender (store None, not empty string)."""
+    customer = seed_user_data["customer"]
+    token = make_token(customer.email)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.patch(
+            "/api/v1/customers/me/profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"gender": ""},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["gender"] is None
+
+
+@pytest.mark.asyncio
+async def test_patch_profile_clear_phone(seed_user_data, override_db):
+    """Sending phone="" should clear phone (store None, not empty string)."""
+    customer = seed_user_data["customer"]
+    token = make_token(customer.email)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.patch(
+            "/api/v1/customers/me/profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"phone": ""},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["phone"] is None
