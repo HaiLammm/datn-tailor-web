@@ -1,35 +1,49 @@
 /**
- * Profile Orders Page - Story 4.4a placeholder
- * Full implementation: Story 4.4c (Lịch sử mua hàng & Trạng thái đơn)
+ * Profile Orders Page — Story 4.4c: Lịch sử mua hàng & Trạng thái đơn
+ * Server Component: fetches order list at render time.
+ * Client-side pagination, filtering, and detail modal handled by OrdersClient.
  */
 
-// Auth guard is handled by parent profile/layout.tsx
-export default function ProfileOrdersPage() {
+import { getCustomerOrders } from "@/app/actions/order-actions";
+import OrdersClient from "./OrdersClient";
+
+export const metadata = {
+  title: "Lịch sử mua hàng | Hồ sơ",
+};
+
+export default async function ProfileOrdersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string>>;
+}) {
+  const params = await (searchParams ?? Promise.resolve({}));
+  const page = parseInt(params.page ?? "1", 10);
+  const status = params.status ?? undefined;
+  const orderType = (params.order_type as "buy" | "rental") ?? undefined;
+
+  const result = await getCustomerOrders(
+    { status, order_type: orderType },
+    { page, limit: 10 }
+  );
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-8">
-      <div className="text-center py-12">
-        <div className="mx-auto w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mb-6">
-          <svg
-            className="w-10 h-10 text-indigo-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-            />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-serif font-bold text-gray-900 mb-3">
+    <div className="bg-white rounded-xl border border-gray-200">
+      <div className="px-6 py-5 border-b border-gray-200">
+        <h2 className="text-xl font-serif font-bold text-gray-900">
           Lịch sử mua hàng
         </h2>
-        <p className="text-gray-500 max-w-sm mx-auto">
-          Sắp ra mắt — chức năng xem lịch sử đơn hàng đang được phát triển.
+        <p className="text-sm text-gray-500 mt-1">
+          Theo dõi các đơn hàng và tải hoá đơn của bạn
         </p>
       </div>
+
+      <OrdersClient
+        initialData={result.success ? result.data ?? null : null}
+        initialPage={page}
+        initialStatus={status}
+        initialOrderType={orderType}
+        error={result.success ? undefined : result.error}
+      />
     </div>
   );
 }

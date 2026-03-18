@@ -119,3 +119,87 @@ export interface OrderDetailResponse {
   order: OrderResponse;
   transactions: PaymentTransactionItem[];
 }
+
+// ---------------------------------------------------------------------------
+// Story 4.4c: Customer-facing Order History types
+// ---------------------------------------------------------------------------
+
+export type CustomerOrderStatus =
+  | "pending"
+  | "confirmed"
+  | "in_production"
+  | "shipped"
+  | "delivered"
+  | "cancelled"
+  | "returned"
+  | "overdue";
+
+export type OrderType = "buy" | "rental" | "mixed";
+
+export interface CustomerOrderItem {
+  garment_id: string;
+  garment_name: string;
+  image_url: string | null;
+  transaction_type: "buy" | "rent";
+  size?: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  // Rental-specific
+  start_date?: string | null;
+  end_date?: string | null;
+  rental_days?: number | null;
+  rental_status?: string | null;
+  deposit_amount?: number | null;
+}
+
+export interface OrderTimelineEntry {
+  status: string;
+  timestamp: string;
+  description: string;
+}
+
+export interface CustomerOrderDeliveryInfo {
+  recipient_name: string;
+  phone: string;
+  address: string;
+  notes?: string | null;
+}
+
+export interface CustomerOrderSummary {
+  id: string;
+  order_number: string;
+  total_amount: number;
+  status: string;
+  payment_status: string;
+  order_type: OrderType;
+  created_at: string;
+}
+
+export interface CustomerOrderDetail extends CustomerOrderSummary {
+  payment_method: string;
+  shipping_note?: string | null;
+  items: CustomerOrderItem[];
+  delivery_info: CustomerOrderDeliveryInfo;
+  timeline: OrderTimelineEntry[];
+}
+
+export interface CustomerOrderListMeta {
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface CustomerOrderListResponse {
+  data: CustomerOrderSummary[];
+  meta: CustomerOrderListMeta;
+}
+
+export interface CustomerOrderFilter {
+  status?: string;
+  order_type?: "buy" | "rental";
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+}

@@ -9,6 +9,9 @@
 import { auth } from "@/auth";
 import type {
   CreateOrderInput,
+  CustomerOrderDetail,
+  CustomerOrderFilter,
+  CustomerOrderListResponse,
   OrderDetailResponse,
   OrderListParams,
   OrderListResponse,
@@ -277,6 +280,151 @@ export async function updateOrderStatus(
       throw new Error("Yêu cầu hết thời gian. Vui lòng thử lại.");
     }
     throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Story 4.4c: Customer Order History actions
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch paginated order list for the authenticated customer.
+ */
+export async function getCustomerOrders(
+  filters?: CustomerOrderFilter,
+  pagination?: { page: number; limit: number }
+): Promise<{ success: boolean; data?: CustomerOrderListResponse; error?: string }> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+  const params = new URLSearchParams();
+  if (pagination) {
+    params.append("page", pagination.page.toString());
+    params.append("limit", pagination.limit.toString());
+  }
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.order_type) params.append("order_type", filters.order_type);
+  if (filters?.date_from) params.append("date_from", filters.date_from);
+  if (filters?.date_to) params.append("date_to", filters.date_to);
+  if (filters?.search) params.append("search", filters.search);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/customer/orders?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (!resp.ok) return { success: false, error: "Không thể tải danh sách đơn hàng" };
+
+    const json = await resp.json();
+    return {
+      success: true,
+      data: { data: json.data, meta: json.meta } as CustomerOrderListResponse,
+    };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+/**
+ * Fetch full detail of a single customer order.
+ */
+export async function getCustomerOrderDetail(
+  orderId: string
+): Promise<{ success: boolean; data?: CustomerOrderDetail; error?: string }> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/customer/orders/${orderId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (resp.status === 404) return { success: false, error: "Không tìm thấy đơn hàng" };
+    if (!resp.ok) return { success: false, error: "Không thể tải chi tiết đơn hàng" };
+
+    const json = await resp.json();
+    return { success: true, data: json.data as CustomerOrderDetail };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+/**
+ * Download invoice HTML for a customer order.
+ * Returns the HTML content as a string to trigger browser print/download.
+ */
+export async function downloadOrderInvoice(
+  orderId: string
+): Promise<{ success: boolean; htmlContent?: string; error?: string }> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/customer/orders/${orderId}/invoice`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+        cache: "no-store",
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+    if (resp.status === 404) return { success: false, error: "Không tìm thấy đơn hàng" };
+    if (!resp.ok) return { success: false, error: "Không thể tải hóa đơn" };
+
+    const htmlContent = await resp.text();
+    return { success: true, htmlContent };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
   }
 }
 

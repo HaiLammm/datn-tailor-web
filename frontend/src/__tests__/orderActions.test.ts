@@ -1,16 +1,31 @@
 /**
  * Order Actions Tests - Story 3.3: Checkout Information & Payment Gateway
- * Tests for createOrder and getOrder server actions.
+ * Extended for Story 4.4c: Customer Order History actions.
+ * Tests for createOrder, getOrder, getCustomerOrders, getCustomerOrderDetail, downloadOrderInvoice.
  */
 
 import { describe, it, expect, beforeEach } from "@jest/globals";
+
+// Mock auth (needed for customer actions)
+const mockAuth = jest.fn();
+jest.mock("@/auth", () => ({
+  auth: () => mockAuth(),
+}));
 
 // Mock global fetch
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
 // Import after mock setup
-import { createOrder, getOrder } from "@/app/actions/order-actions";
+import {
+  createOrder,
+  getOrder,
+  getCustomerOrders,
+  getCustomerOrderDetail,
+  downloadOrderInvoice,
+} from "@/app/actions/order-actions";
+
+const SESSION_WITH_TOKEN = { accessToken: "test-bearer-token" };
 
 const VALID_ORDER_INPUT = {
   customer_name: "Nguyễn Văn A",
@@ -56,9 +71,16 @@ const MOCK_ORDER_RESPONSE = {
   created_at: "2026-03-11T00:00:00Z",
 };
 
+beforeEach(() => {
+  jest.clearAllMocks();
+  // Default: not logged in for tests that don't need auth
+  mockAuth.mockResolvedValue(null);
+});
+
 describe("createOrder", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuth.mockResolvedValue(null);
   });
 
   it("returns success with order data on 201", async () => {
@@ -175,6 +197,7 @@ describe("createOrder", () => {
 describe("getOrder", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuth.mockResolvedValue(null);
   });
 
   it("returns order data on success", async () => {
@@ -209,6 +232,151 @@ describe("getOrder", () => {
 
     const result = await getOrder("order-123");
 
+    expect(result.success).toBe(false);
+    expect(result.error).toBeTruthy();
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Story 4.4c: Customer Order History action tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+const MOCK_CUSTOMER_SUMMARY = {
+  id: "order-001",
+  order_number: "ORD-20260318-ABC123",
+  total_amount: 1200000,
+  status: "delivered",
+  payment_status: "paid",
+  order_type: "buy",
+  created_at: "2026-03-18T10:00:00Z",
+};
+
+const MOCK_CUSTOMER_DETAIL = {
+  ...MOCK_CUSTOMER_SUMMARY,
+  payment_method: "cod",
+  shipping_note: null,
+  items: [
+    {
+      garment_id: "g-001",
+      garment_name: "Áo Dài Lụa",
+      image_url: null,
+      transaction_type: "buy",
+      size: "M",
+      quantity: 1,
+      unit_price: 1200000,
+      total_price: 1200000,
+    },
+  ],
+  delivery_info: {
+    recipient_name: "Nguyễn Thị Linh",
+    phone: "0901234567",
+    address: "123 Nguyễn Huệ, Q.1",
+    notes: null,
+  },
+  timeline: [
+    { status: "pending", timestamp: "2026-03-18T10:00:00Z", description: "Đơn hàng được tạo" },
+    { status: "delivered", timestamp: "2026-03-20T14:00:00Z", description: "Giao hàng thành công" },
+  ],
+};
+
+describe("getCustomerOrders — Story 4.4c", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuth.mockResolvedValue(SESSION_WITH_TOKEN);
+  });
+
+  it("returns order list on success", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [MOCK_CUSTOMER_SUMMARY],
+        meta: { total: 1, page: 1, limit: 10, total_pages: 1 },
+      }),
+    });
+
+    const result = await getCustomerOrders();
+    expect(result.success).toBe(true);
+    expect(result.data?.data).toHaveLength(1);
+    expect(result.data?.meta.total).toBe(1);
+  });
+
+  it("returns error when unauthorized (401)", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({}) });
+
+    const result = await getCustomerOrders();
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("hết hạn");
+  });
+
+  it("appends filter and pagination params to URL", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [], meta: { total: 0, page: 2, limit: 10, total_pages: 0 } }),
+    });
+
+    await getCustomerOrders({ status: "delivered", order_type: "buy" }, { page: 2, limit: 10 });
+
+    const url = (mockFetch.mock.calls[0][0] as string);
+    expect(url).toContain("status=delivered");
+    expect(url).toContain("order_type=buy");
+    expect(url).toContain("page=2");
+  });
+});
+
+describe("getCustomerOrderDetail — Story 4.4c", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuth.mockResolvedValue(SESSION_WITH_TOKEN);
+  });
+
+  it("returns order detail on success", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: MOCK_CUSTOMER_DETAIL }),
+    });
+
+    const result = await getCustomerOrderDetail("order-001");
+    expect(result.success).toBe(true);
+    expect(result.data?.order_number).toBe("ORD-20260318-ABC123");
+    expect(result.data?.items).toHaveLength(1);
+    expect(result.data?.timeline).toHaveLength(2);
+  });
+
+  it("returns error when order not found (404)", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({}) });
+
+    const result = await getCustomerOrderDetail("nonexistent-id");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Không tìm thấy");
+  });
+});
+
+describe("downloadOrderInvoice — Story 4.4c", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuth.mockResolvedValue(SESSION_WITH_TOKEN);
+  });
+
+  it("returns HTML content on success", async () => {
+    const mockHtml = "<html><body>HÓA ĐƠN ORD-001</body></html>";
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => mockHtml,
+    });
+
+    const result = await downloadOrderInvoice("order-001");
+    expect(result.success).toBe(true);
+    expect(result.htmlContent).toContain("HÓA ĐƠN");
+  });
+
+  it("returns error when invoice not found (404)", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404, text: async () => "" });
+
+    const result = await downloadOrderInvoice("nonexistent-id");
     expect(result.success).toBe(false);
     expect(result.error).toBeTruthy();
   });
