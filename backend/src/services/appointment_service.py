@@ -135,9 +135,11 @@ async def create_appointment(
             },
         )
 
-    # Count existing bookings with row-level lock to prevent race conditions
-    existing_count = await db.scalar(
-        select(func.count(AppointmentDB.id))
+    # Count existing bookings with row-level lock to prevent race conditions.
+    # PostgreSQL does not allow FOR UPDATE with aggregate functions, so we lock
+    # the individual rows first, then count in a subquery.
+    locked_ids_subq = (
+        select(AppointmentDB.id)
         .where(
             AppointmentDB.tenant_id == tenant_id,
             AppointmentDB.appointment_date == appointment_data.appointment_date,
@@ -145,6 +147,10 @@ async def create_appointment(
             AppointmentDB.status != "cancelled",
         )
         .with_for_update()
+        .subquery()
+    )
+    existing_count = await db.scalar(
+        select(func.count()).select_from(locked_ids_subq)
     )
 
     if (existing_count or 0) >= MAX_SLOTS_PER_SESSION:
