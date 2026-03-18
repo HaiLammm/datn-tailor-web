@@ -16,7 +16,7 @@ from datetime import date as date_type
 from uuid import UUID as PyUUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from src.api.dependencies import CurrentUser
 from src.core.database import get_db
@@ -255,18 +255,22 @@ async def get_my_appointments(
     """Return the authenticated customer's appointments (read-only).
 
     AC1, AC2, AC3, AC6:
-    - Queries by customer_email (appointments are created via public booking form with email)
-    - Uses current_user.tenant_id or falls back to default tenant for MVP
+    - Queries by customer_email (case-insensitive) since appointments are created via public
+      booking form with email (may differ in case from account email)
+    - Always includes DEFAULT_TENANT_ID results since the public booking form always uses it
     - Returns sorted by appointment_date DESC (newest first)
     - Empty array when no appointments found (not an error)
     """
-    tenant_id = current_user.tenant_id if current_user.tenant_id is not None else _DEFAULT_TENANT_ID
+    # Collect tenant IDs to search: always include default + user's own tenant (if different)
+    tenant_ids = {_DEFAULT_TENANT_ID}
+    if current_user.tenant_id is not None:
+        tenant_ids.add(current_user.tenant_id)
 
     stmt = (
         select(AppointmentDB)
         .where(
-            AppointmentDB.customer_email == current_user.email,
-            AppointmentDB.tenant_id == tenant_id,
+            func.lower(AppointmentDB.customer_email) == current_user.email.lower(),
+            AppointmentDB.tenant_id.in_(tenant_ids),
         )
         .order_by(AppointmentDB.appointment_date.desc())
     )
@@ -299,14 +303,16 @@ async def cancel_my_appointment(
     - 400 if appointment_date <= today (within 24h window — same-day or past)
     - 200 with updated appointment on success
     """
-    tenant_id = current_user.tenant_id if current_user.tenant_id is not None else _DEFAULT_TENANT_ID
+    tenant_ids = {_DEFAULT_TENANT_ID}
+    if current_user.tenant_id is not None:
+        tenant_ids.add(current_user.tenant_id)
 
     stmt = (
         select(AppointmentDB)
         .where(
             AppointmentDB.id == appointment_id,
-            AppointmentDB.customer_email == current_user.email,
-            AppointmentDB.tenant_id == tenant_id,
+            func.lower(AppointmentDB.customer_email) == current_user.email.lower(),
+            AppointmentDB.tenant_id.in_(tenant_ids),
         )
         .limit(1)
     )
