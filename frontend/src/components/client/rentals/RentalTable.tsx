@@ -11,7 +11,7 @@ import type { RentalListItem, RentalListParams } from "@/types/rental";
 import { CountdownBadge } from "./CountdownBadge";
 import { ReturnModal } from "./ReturnModal";
 import { RentalDetailDrawer } from "./RentalDetailDrawer";
-import { Pagination } from "../orders/Pagination";
+import Pagination from "../orders/Pagination";
 
 interface RentalTableProps {
   data: RentalListItem[];

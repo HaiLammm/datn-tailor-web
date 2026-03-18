@@ -77,6 +77,10 @@ app.add_middleware(
 
 # Register routers
 app.include_router(auth_router)
+# customer_profile_router MUST come before customers_router so that
+# GET /api/v1/customers/me/measurements (self-service) is matched
+# before GET /api/v1/customers/{customer_id}/measurements (owner-only).
+app.include_router(customer_profile_router)
 app.include_router(customers_router)
 app.include_router(designs_router)
 app.include_router(overrides_router)
@@ -96,7 +100,6 @@ app.include_router(rules_router)
 app.include_router(staff_router)
 app.include_router(styles_router)
 app.include_router(tailor_tasks_router)
-app.include_router(customer_profile_router)
 app.include_router(order_customer_router)
 
 
