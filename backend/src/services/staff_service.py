@@ -11,7 +11,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
+from src.core.security import hash_password
 from src.models.db_models import StaffWhitelistDB, UserDB
+from src.models.staff import DEFAULT_STAFF_PASSWORD
 
 
 async def get_all_whitelist_entries(db: AsyncSession) -> list[StaffWhitelistDB]:
@@ -46,18 +48,19 @@ async def get_active_staff_users(db: AsyncSession) -> list[UserDB]:
 
 
 async def add_staff_to_whitelist(
-    db: AsyncSession, email: str, role: str, created_by_email: str
-) -> StaffWhitelistDB | None:
-    """Add a new email to staff whitelist.
+    db: AsyncSession, email: str, role: str, created_by_email: str, password: str | None = None
+) -> tuple[StaffWhitelistDB, str] | None:
+    """Add a new email to staff whitelist and create user account.
 
     Args:
         db: Database session
         email: Email address to add
         role: Role to assign (Tailor or Owner)
         created_by_email: Email of the Owner creating this entry
+        password: Optional password. If None, default password is used.
 
     Returns:
-        Created StaffWhitelistDB instance, or None if email already exists
+        Tuple of (StaffWhitelistDB, plain_password), or None if email already exists
 
     Raises:
         ValueError: If attempting to add Owner email (must be in config.py)
@@ -75,6 +78,8 @@ async def add_staff_to_whitelist(
     if existing.scalar_one_or_none() is not None:
         return None
 
+    plain_password = password if password else DEFAULT_STAFF_PASSWORD
+
     new_entry = StaffWhitelistDB(
         email=email,
         role=role,
@@ -82,10 +87,28 @@ async def add_staff_to_whitelist(
     )
     db.add(new_entry)
 
+    # Create or update user account
+    existing_user = await db.execute(
+        select(UserDB).where(UserDB.email == email)
+    )
+    user = existing_user.scalar_one_or_none()
+    if user is None:
+        new_user = UserDB(
+            email=email,
+            hashed_password=hash_password(plain_password),
+            role=role,
+            is_active=True,
+        )
+        db.add(new_user)
+    else:
+        user.hashed_password = hash_password(plain_password)
+        user.role = role
+        user.is_active = True
+
     try:
         await db.commit()
         await db.refresh(new_entry)
-        return new_entry
+        return new_entry, plain_password
     except IntegrityError:
         await db.rollback()
         return None

@@ -11,6 +11,7 @@ class StaffWhitelistCreateRequest(BaseModel):
 
     email: EmailStr = Field(..., description="Email address of staff member")
     role: str = Field(..., description="Role: Tailor or Owner")
+    password: str | None = Field(None, description="Password for staff account. If empty, default password will be generated.")
 
     @field_validator("email")
     @classmethod
@@ -28,6 +29,9 @@ class StaffWhitelistCreateRequest(BaseModel):
         return v
 
 
+DEFAULT_STAFF_PASSWORD = "Tailor@123"
+
+
 class StaffWhitelistResponse(BaseModel):
     """Schema for staff whitelist entry response."""
 
@@ -38,6 +42,13 @@ class StaffWhitelistResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class StaffCreateResponse(BaseModel):
+    """Schema for staff creation response, includes plain password for Owner to share."""
+
+    whitelist_entry: StaffWhitelistResponse
+    plain_password: str = Field(..., description="Plain text password to share with the staff member")
 
 
 class ActiveStaffResponse(BaseModel):

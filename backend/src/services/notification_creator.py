@@ -74,6 +74,12 @@ RETURN_REMINDER_MESSAGE = (
     "Đồ thuê {garment_name} cần được trả vào ngày mai. Vui lòng liên hệ tiệm nếu cần gia hạn.",
 )
 
+# Triggered when Owner assigns production task to Tailor (Story 5.2)
+TASK_ASSIGNMENT_MESSAGE = (
+    "Công việc mới được giao",
+    "Bạn được giao công việc mới: {garment_name} - Hạn chót: {deadline}.",
+)
+
 
 async def create_notification(
     db: AsyncSession,

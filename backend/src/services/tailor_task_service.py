@@ -1,4 +1,4 @@
-"""Tailor Task service for production task management (Story 5.3).
+"""Tailor Task service for production task management (Story 5.3, 5.2).
 
 All task status transitions and overdue calculations happen here
 (Authoritative Server Pattern). Frontend only renders pre-calculated data.
@@ -6,15 +6,20 @@ All task status transitions and overdue calculations happen here
 
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.models.db_models import TailorTaskDB
+from src.models.db_models import OrderDB, OrderItemDB, TailorTaskDB, UserDB
 from src.models.tailor_task import (
     OrderInfoForTask,
+    OwnerTaskItem,
+    OwnerTaskListResponse,
     StatusUpdateRequest,
+    TaskCreateRequest,
+    TaskUpdateRequest,
     TailorTaskDetailResponse,
     TailorTaskListResponse,
     TailorTaskResponse,
@@ -37,7 +42,14 @@ def _task_to_response(task: TailorTaskDB, now: datetime) -> TailorTaskResponse:
     days_until_deadline = None
 
     if task.deadline and task.status != "completed":
-        delta = task.deadline - now
+        # Ensure both datetimes have matching timezone awareness
+        deadline = task.deadline
+        compare_now = now
+        if deadline.tzinfo is None and compare_now.tzinfo is not None:
+            compare_now = compare_now.replace(tzinfo=None)
+        elif deadline.tzinfo is not None and compare_now.tzinfo is None:
+            deadline = deadline.replace(tzinfo=None)
+        delta = deadline - compare_now
         days_until_deadline = delta.days
         if days_until_deadline < 0:
             is_overdue = True  # Deadline has passed
@@ -233,3 +245,301 @@ async def get_task_detail(
     detail_response_data = base_response.model_dump(mode="json")
     detail_response_data["order_info"] = order_info.model_dump(mode="json") if order_info else None
     return TailorTaskDetailResponse(**detail_response_data)
+
+
+# ── Story 5.2: Owner Task Management ──────────────────────────────────────────
+
+
+def _task_to_owner_item(task: TailorTaskDB, now: datetime) -> OwnerTaskItem:
+    """Convert DB model to Owner task item with assignee name."""
+    base = _task_to_response(task, now)
+    assignee_name = ""
+    if task.assignee:
+        assignee_name = task.assignee.full_name or task.assignee.email
+    data = base.model_dump(mode="json")
+    data["assignee_name"] = assignee_name
+    return OwnerTaskItem(**data)
+
+
+async def create_task(
+    db: AsyncSession,
+    request: TaskCreateRequest,
+    owner_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> OwnerTaskItem:
+    """Create a new tailor task (Owner assigns work).
+
+    Validates:
+    - Order exists and belongs to tenant
+    - Order status is 'in_production'
+    - Assigned tailor exists, is active, role=Tailor, same tenant
+    Auto-populates garment_name and customer_name from order.
+    """
+    # Validate order
+    order_query = select(OrderDB).where(OrderDB.id == request.order_id)
+    order_result = await db.execute(order_query)
+    order = order_result.scalar_one_or_none()
+
+    if order is None:
+        raise ValueError("Không tìm thấy đơn hàng")
+    if order.tenant_id != tenant_id:
+        raise PermissionError("Đơn hàng này không thuộc về cơ sở của bạn")
+    if order.status != "in_production":
+        raise ValueError(
+            f"Chỉ có thể giao việc cho đơn hàng đang sản xuất. "
+            f"Trạng thái hiện tại: '{order.status}'"
+        )
+
+    # Validate assigned tailor
+    tailor_query = select(UserDB).where(UserDB.id == request.assigned_to)
+    tailor_result = await db.execute(tailor_query)
+    tailor = tailor_result.scalar_one_or_none()
+
+    if tailor is None:
+        raise ValueError("Không tìm thấy thợ may")
+    if tailor.role != "Tailor":
+        raise ValueError("Người được giao phải có vai trò Thợ may")
+    if not tailor.is_active:
+        raise ValueError("Tài khoản thợ may đã bị vô hiệu hóa")
+    if tailor.tenant_id != tenant_id:
+        raise PermissionError("Thợ may không thuộc cùng cơ sở")
+
+    # Auto-populate garment_name from order item or fallback
+    garment_name = request.garment_name
+    if not garment_name:
+        if request.order_item_id:
+            item_query = (
+                select(OrderItemDB)
+                .options(joinedload(OrderItemDB.garment))
+                .where(OrderItemDB.id == request.order_item_id)
+            )
+            item_result = await db.execute(item_query)
+            item = item_result.scalar_one_or_none()
+            if item and item.garment:
+                garment_name = item.garment.name
+        if not garment_name:
+            # Fallback: get first item's garment name
+            items_query = (
+                select(OrderItemDB)
+                .options(joinedload(OrderItemDB.garment))
+                .where(OrderItemDB.order_id == order.id)
+                .limit(1)
+            )
+            items_result = await db.execute(items_query)
+            first_item = items_result.scalar_one_or_none()
+            if first_item and first_item.garment:
+                garment_name = first_item.garment.name
+            else:
+                garment_name = "Áo dài"
+
+    customer_name = request.customer_name or order.customer_name
+
+    new_task = TailorTaskDB(
+        tenant_id=tenant_id,
+        order_id=request.order_id,
+        order_item_id=request.order_item_id,
+        assigned_to=request.assigned_to,
+        assigned_by=owner_id,
+        garment_name=garment_name,
+        customer_name=customer_name,
+        status="assigned",
+        deadline=request.deadline,
+        notes=request.notes,
+        piece_rate=Decimal(str(request.piece_rate)) if request.piece_rate is not None else None,
+    )
+
+    db.add(new_task)
+    await db.flush()
+
+    # Reload with assignee relationship
+    reload_query = (
+        select(TailorTaskDB)
+        .options(joinedload(TailorTaskDB.assignee))
+        .where(TailorTaskDB.id == new_task.id)
+    )
+    reload_result = await db.execute(reload_query)
+    task = reload_result.scalar_one()
+
+    await db.commit()
+
+    now = datetime.now(timezone.utc)
+    return _task_to_owner_item(task, now)
+
+
+async def list_all_tasks(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    assigned_to: uuid.UUID | None = None,
+    status_filter: str | None = None,
+    overdue_only: bool = False,
+) -> OwnerTaskListResponse:
+    """List ALL tasks for tenant (Owner view).
+
+    Returns all tasks across all tailors with optional filters.
+    Includes assignee_name via JOIN on users table.
+    """
+    now = datetime.now(timezone.utc)
+
+    status_order = case(
+        (TailorTaskDB.status == "assigned", 1),
+        (TailorTaskDB.status == "in_progress", 2),
+        (TailorTaskDB.status == "completed", 3),
+        else_=4,
+    )
+
+    query = (
+        select(TailorTaskDB)
+        .options(joinedload(TailorTaskDB.assignee))
+        .where(TailorTaskDB.tenant_id == tenant_id)
+    )
+
+    if assigned_to is not None:
+        query = query.where(TailorTaskDB.assigned_to == assigned_to)
+
+    if status_filter:
+        if status_filter == "overdue":
+            query = query.where(
+                TailorTaskDB.deadline < now,
+                TailorTaskDB.status != "completed",
+            )
+        else:
+            query = query.where(TailorTaskDB.status == status_filter)
+
+    if overdue_only:
+        query = query.where(
+            TailorTaskDB.deadline < now,
+            TailorTaskDB.status != "completed",
+        )
+
+    query = query.order_by(status_order, TailorTaskDB.deadline.asc().nulls_last())
+
+    result = await db.execute(query)
+    tasks = result.scalars().unique().all()
+
+    task_items = [_task_to_owner_item(t, now) for t in tasks]
+
+    # Summary counts across ALL tasks in tenant (unfiltered)
+    summary_query = (
+        select(
+            func.count().label("total"),
+            func.count().filter(TailorTaskDB.status == "assigned").label("assigned"),
+            func.count().filter(TailorTaskDB.status == "in_progress").label("in_progress"),
+            func.count().filter(TailorTaskDB.status == "completed").label("completed"),
+            func.count().filter(
+                TailorTaskDB.deadline < now,
+                TailorTaskDB.status != "completed",
+            ).label("overdue"),
+        )
+        .where(TailorTaskDB.tenant_id == tenant_id)
+    )
+    summary_result = (await db.execute(summary_query)).one()
+
+    summary = TailorTaskSummary(
+        total=summary_result.total,
+        assigned=summary_result.assigned,
+        in_progress=summary_result.in_progress,
+        completed=summary_result.completed,
+        overdue=summary_result.overdue,
+    )
+
+    return OwnerTaskListResponse(tasks=task_items, summary=summary)
+
+
+async def update_task(
+    db: AsyncSession,
+    task_id: uuid.UUID,
+    request: TaskUpdateRequest,
+    owner_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> OwnerTaskItem:
+    """Owner updates task fields (deadline, notes, piece_rate, reassign).
+
+    If assigned_to changes, validates new tailor.
+    """
+    query = (
+        select(TailorTaskDB)
+        .options(joinedload(TailorTaskDB.assignee))
+        .where(TailorTaskDB.id == task_id)
+    )
+    result = await db.execute(query)
+    task = result.scalar_one_or_none()
+
+    if task is None:
+        raise ValueError("Không tìm thấy công việc")
+    if task.tenant_id != tenant_id:
+        raise PermissionError("Công việc này không thuộc về cơ sở của bạn")
+
+    reassigned = False
+
+    if request.assigned_to is not None and request.assigned_to != task.assigned_to:
+        # Validate new tailor
+        tailor_query = select(UserDB).where(UserDB.id == request.assigned_to)
+        tailor_result = await db.execute(tailor_query)
+        new_tailor = tailor_result.scalar_one_or_none()
+
+        if new_tailor is None:
+            raise ValueError("Không tìm thấy thợ may mới")
+        if new_tailor.role != "Tailor":
+            raise ValueError("Người được giao phải có vai trò Thợ may")
+        if not new_tailor.is_active:
+            raise ValueError("Tài khoản thợ may đã bị vô hiệu hóa")
+        if new_tailor.tenant_id != tenant_id:
+            raise PermissionError("Thợ may không thuộc cùng cơ sở")
+
+        task.assigned_to = request.assigned_to
+        reassigned = True
+
+    if request.deadline is not None:
+        task.deadline = request.deadline
+
+    if request.notes is not None:
+        task.notes = request.notes
+
+    if request.piece_rate is not None:
+        task.piece_rate = Decimal(str(request.piece_rate))
+
+    task.updated_at = datetime.now(timezone.utc)
+    task_id = task.id
+    await db.flush()
+    await db.commit()
+
+    # Fresh query to get updated assignee relationship
+    reload_query = (
+        select(TailorTaskDB)
+        .options(joinedload(TailorTaskDB.assignee))
+        .where(TailorTaskDB.id == task_id)
+        .execution_options(populate_existing=True)
+    )
+    reload_result = await db.execute(reload_query)
+    task = reload_result.scalar_one()
+
+    now = datetime.now(timezone.utc)
+    return _task_to_owner_item(task, now), reassigned
+
+
+async def delete_task(
+    db: AsyncSession,
+    task_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> bool:
+    """Delete task only if status is 'assigned' (not started).
+
+    Raises ValueError if task is in_progress or completed.
+    """
+    query = select(TailorTaskDB).where(TailorTaskDB.id == task_id)
+    result = await db.execute(query)
+    task = result.scalar_one_or_none()
+
+    if task is None:
+        raise ValueError("Không tìm thấy công việc")
+    if task.tenant_id != tenant_id:
+        raise PermissionError("Công việc này không thuộc về cơ sở của bạn")
+    if task.status != "assigned":
+        raise ValueError(
+            f"Chỉ có thể xóa công việc chưa bắt đầu (trạng thái 'Chờ nhận'). "
+            f"Trạng thái hiện tại: '{task.status}'"
+        )
+
+    await db.delete(task)
+    await db.commit()
+    return True

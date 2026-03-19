@@ -14,6 +14,7 @@ from src.core.database import get_db
 from src.models.db_models import UserDB
 from src.models.staff import (
     ActiveStaffResponse,
+    StaffCreateResponse,
     StaffManagementResponse,
     StaffWhitelistCreateRequest,
     StaffWhitelistResponse,
@@ -55,38 +56,46 @@ async def get_staff_management_data(
     )
 
 
-@router.post("/", response_model=StaffWhitelistResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=StaffCreateResponse, status_code=status.HTTP_201_CREATED)
 async def add_staff_member(
     request: StaffWhitelistCreateRequest,
     current_user: OwnerOnly,
     db: AsyncSession = Depends(get_db),
-) -> StaffWhitelistResponse:
-    """Add a new staff member to the whitelist.
+) -> StaffCreateResponse:
+    """Add a new staff member to the whitelist and create user account.
 
     Requires: Owner role
 
     Args:
-        request: Email and role for new staff member
+        request: Email, role, and optional password for new staff member
 
     Returns:
-        Created StaffWhitelistResponse
+        StaffCreateResponse with whitelist entry and plain password
 
     Raises:
         HTTPException 400: If email already exists in whitelist or invalid
         HTTPException 409: If attempting to add Owner email
     """
     try:
-        new_entry = await add_staff_to_whitelist(
-            db, email=request.email, role=request.role, created_by_email=current_user.email
+        result = await add_staff_to_whitelist(
+            db,
+            email=request.email,
+            role=request.role,
+            created_by_email=current_user.email,
+            password=request.password,
         )
 
-        if new_entry is None:
+        if result is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email đã tồn tại trong danh sách nhân viên",
             )
 
-        return StaffWhitelistResponse.model_validate(new_entry)
+        whitelist_entry, plain_password = result
+        return StaffCreateResponse(
+            whitelist_entry=StaffWhitelistResponse.model_validate(whitelist_entry),
+            plain_password=plain_password,
+        )
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))

@@ -30,4 +30,10 @@ export interface StaffManagementResponse {
 export interface StaffWhitelistCreateRequest {
     email: string;
     role: "Tailor" | "Owner";
+    password?: string;
+}
+
+export interface StaffCreateResponse {
+    whitelist_entry: StaffWhitelistEntry;
+    plain_password: string;
 }

@@ -49,3 +49,38 @@ export const NEXT_STATUS: Record<string, TaskStatus | null> = {
   in_progress: "completed",
   completed: null,
 };
+
+// ── Story 5.2: Owner Task Management Types ────────────────────────────────────
+
+export interface TaskCreateRequest {
+  order_id: string;
+  order_item_id?: string | null;
+  assigned_to: string;
+  deadline?: string | null;
+  notes?: string | null;
+  piece_rate?: number | null;
+  garment_name?: string | null;
+  customer_name?: string | null;
+}
+
+export interface TaskUpdateRequest {
+  deadline?: string | null;
+  notes?: string | null;
+  piece_rate?: number | null;
+  assigned_to?: string | null;
+}
+
+export interface OwnerTaskItem extends TailorTask {
+  assignee_name: string;
+}
+
+export interface OwnerTaskListResponse {
+  tasks: OwnerTaskItem[];
+  summary: TailorTaskSummary;
+}
+
+export interface OwnerTaskFilters {
+  assigned_to?: string;
+  status?: string;
+  overdue_only?: boolean;
+}

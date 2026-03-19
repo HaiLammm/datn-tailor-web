@@ -1,20 +1,28 @@
-"""Tailor Tasks API Router (Story 5.3).
+"""Tailor Tasks API Router (Story 5.3, 5.2).
 
 Authenticated endpoints for Tailor/Owner roles.
-Provides task listing, status updates, and task detail views.
+Provides task listing, status updates, task detail views,
+and Owner task management (create, list-all, update, delete).
 """
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import OwnerOrTailor, TenantId
+from src.api.dependencies import OwnerOnly, OwnerOrTailor, TenantId
 from src.core.database import get_db
-from src.models.tailor_task import StatusUpdateRequest
+from src.models.tailor_task import StatusUpdateRequest, TaskCreateRequest, TaskUpdateRequest
 from src.services import tailor_task_service
+from src.services.notification_creator import (
+    TASK_ASSIGNMENT_MESSAGE,
+    create_notification,
+)
 
 router = APIRouter(prefix="/api/v1/tailor-tasks", tags=["tailor-tasks"])
+
+
+# ── Tailor-facing endpoints (Story 5.3) ───────────────────────────────────────
 
 
 @router.get(
@@ -84,6 +92,165 @@ async def update_task_status(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
         )
+
+
+# ── Owner-facing endpoints (Story 5.2) ───────────────────────────────────────
+
+
+@router.post(
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Giao việc mới cho thợ may",
+    description="Owner tạo task giao việc cho thợ may, kèm notification.",
+)
+async def create_task_endpoint(
+    body: TaskCreateRequest,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Create a new tailor task (Owner assigns work)."""
+    try:
+        task_item = await tailor_task_service.create_task(
+            db, body, user.id, tenant_id
+        )
+
+        # Send in-app notification to assigned tailor
+        deadline_text = (
+            task_item.deadline[:10] if task_item.deadline else "Không có hạn"
+        )
+        title, message_template = TASK_ASSIGNMENT_MESSAGE
+        message = message_template.format(
+            garment_name=task_item.garment_name,
+            deadline=deadline_text,
+        )
+        await create_notification(
+            db=db,
+            user_id=body.assigned_to,
+            tenant_id=tenant_id,
+            notification_type="task_assigned",
+            title=title,
+            message=message,
+            data={"task_id": task_item.id, "order_id": task_item.order_id},
+        )
+
+        return {"data": task_item.model_dump(mode="json"), "meta": {}}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
+        )
+
+
+@router.get(
+    "/",
+    response_model=dict,
+    summary="Danh sách tất cả công việc (Owner)",
+    description="Liệt kê tất cả tasks cho tenant với bộ lọc.",
+)
+async def list_all_tasks_endpoint(
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    assigned_to: uuid.UUID | None = Query(default=None, description="Lọc theo thợ may"),
+    task_status: str | None = Query(
+        default=None,
+        alias="status",
+        description="Lọc theo trạng thái: assigned, in_progress, completed, overdue",
+    ),
+    overdue_only: bool = Query(default=False, description="Chỉ hiện quá hạn"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """List ALL tasks for tenant with optional filters (Owner view)."""
+    result = await tailor_task_service.list_all_tasks(
+        db,
+        tenant_id=tenant_id,
+        assigned_to=assigned_to,
+        status_filter=task_status,
+        overdue_only=overdue_only,
+    )
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.patch(
+    "/{task_id}",
+    response_model=dict,
+    summary="Chỉnh sửa công việc (Owner)",
+    description="Owner cập nhật deadline, ghi chú, tiền công, hoặc đổi thợ may.",
+)
+async def update_task_endpoint(
+    task_id: uuid.UUID,
+    body: TaskUpdateRequest,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Owner updates task fields."""
+    try:
+        task_item, reassigned = await tailor_task_service.update_task(
+            db, task_id, body, user.id, tenant_id
+        )
+
+        # Send notification if reassigned
+        if reassigned and body.assigned_to:
+            deadline_text = (
+                task_item.deadline[:10] if task_item.deadline else "Không có hạn"
+            )
+            title, message_template = TASK_ASSIGNMENT_MESSAGE
+            message = message_template.format(
+                garment_name=task_item.garment_name,
+                deadline=deadline_text,
+            )
+            await create_notification(
+                db=db,
+                user_id=body.assigned_to,
+                tenant_id=tenant_id,
+                notification_type="task_assigned",
+                title=title,
+                message=message,
+                data={"task_id": task_item.id, "order_id": task_item.order_id},
+            )
+
+        return {"data": task_item.model_dump(mode="json"), "meta": {}}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
+        )
+
+
+@router.delete(
+    "/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Xóa công việc (Owner)",
+    description="Chỉ xóa được task chưa bắt đầu (trạng thái 'Chờ nhận').",
+)
+async def delete_task_endpoint(
+    task_id: uuid.UUID,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Delete task only if status is 'assigned' (not started)."""
+    try:
+        await tailor_task_service.delete_task(db, task_id, tenant_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
+        )
+
+
+# ── Shared detail endpoint (Story 5.3 — placed LAST to avoid path conflicts) ─
 
 
 @router.get(

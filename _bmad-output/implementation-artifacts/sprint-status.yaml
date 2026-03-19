@@ -32,6 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
+last_updated: 2026-03-19  # Story 5.2 → review
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -65,22 +66,22 @@ development_status:
   3-4-lich-book-appointments-tiem-khach: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1-xu-ly-state-thanh-toan-qua-webhook: review
   4-2-visual-bang-don-hang-owner-host: done
   4-3-owner-theo-doi-thuemuon-dai-han: done  # Code Review 2026-03-18: 10/11 items fixed (3H/5M/2L)
   4-4a-customer-profile-layout-navbar-icon: done  # P0 - Thay thế story 4.4 gốc, tách thành 7 sub-stories (Sprint Change 2026-03-12)
   4-4b-thong-tin-ca-nhan-bao-mat: done  # Code Review Round 2 completed 2026-03-18: 8 items resolved (2H/4M/2L)
   4-4c-lich-su-mua-hang-trang-thai-don: done  # P0 — Code Review fixes completed 2026-03-18: All 10 action items resolved (3H/5M/2L)
-  4-4d-so-do-co-the: review  # P1
-  4-4e-lich-hen-sap-toi: review  # P1
-  4-4f-thong-bao-notifications: review  # P2
-  4-4g-kho-voucher: review  # P2
+  4-4d-so-do-co-the: done  # P1
+  4-4e-lich-hen-sap-toi: done  # P1
+  4-4f-thong-bao-notifications: done  # P2
+  4-4g-kho-voucher: done  # P2
   epic-4-retrospective: optional
 
   epic-5: in-progress
   5-1-kpi-morning-command-center-dash: done
-  5-2-bang-dieu-phoi-khoi-san-xuat-gap-viec: backlog
+  5-2-bang-dieu-phoi-khoi-san-xuat-gap-viec: review
   5-3-workstation-production-flow-dash-cho-tho-tiem: review  # Code Review Fixes 2026-03-17: All 10 action items resolved (3H/4M/3L)
   5-4-tinh-luongthu-nhap-tho: backlog
   epic-5-retrospective: optional
