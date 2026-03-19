@@ -30,7 +30,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function OrderConfirmation({ order }: OrderConfirmationProps) {
   const router = useRouter();
-  const { shipping_address: addr } = order;
+  const addr = order.shipping_address;
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
@@ -106,13 +106,15 @@ export function OrderConfirmation({ order }: OrderConfirmationProps) {
               <span className="text-[#6B7280]">Số điện thoại</span>
               <span className="text-[#1A1A2E]">{order.customer_phone}</span>
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[#6B7280]">Địa chỉ giao hàng</span>
-              <span className="text-[#1A1A2E] text-right">
-                {addr.address_detail}, {addr.ward}, {addr.district},{" "}
-                {addr.province}
-              </span>
-            </div>
+            {addr && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[#6B7280]">Địa chỉ giao hàng</span>
+                <span className="text-[#1A1A2E] text-right">
+                  {addr.address_detail}, {addr.ward}, {addr.district},{" "}
+                  {addr.province}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -273,7 +273,8 @@ class OrderDB(Base):
     )
     customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     customer_phone: Mapped[str] = mapped_column(String(20), nullable=False)
-    shipping_address: Mapped[dict] = mapped_column(JSON, nullable=False)
+    is_internal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    shipping_address: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     shipping_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False, default="cod")
     status: Mapped[str] = mapped_column(

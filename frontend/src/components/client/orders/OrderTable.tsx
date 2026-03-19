@@ -163,8 +163,13 @@ export default function OrderTable({
                     {order.id.slice(0, 8).toUpperCase()}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
                       {order.customer_name}
+                      {order.is_internal && (
+                        <span className="px-1.5 py-0.5 text-xs rounded bg-purple-100 text-purple-800 font-medium">
+                          Nội bộ
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-gray-500">{order.customer_phone}</div>
                   </td>

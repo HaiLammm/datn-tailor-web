@@ -13,6 +13,7 @@ import OrderFilters from "./OrderFilters";
 import OrderTable from "./OrderTable";
 import Pagination from "./Pagination";
 import OrderDetailDrawer from "./OrderDetailDrawer";
+import InternalOrderDialog from "./InternalOrderDialog";
 
 // ---------------------------------------------------------------------------
 // Skeleton loading state
@@ -35,11 +36,13 @@ function TableSkeleton() {
 function paramsFromSearch(search: URLSearchParams): OrderListParams {
   const statusRaw = search.getAll("status") as OrderStatus[];
   const paymentRaw = search.getAll("payment_status") as import("@/types/order").PaymentStatus[];
+  const isInternalRaw = search.get("is_internal");
   return {
     status: statusRaw.length ? statusRaw : undefined,
     payment_status: paymentRaw.length ? paymentRaw : undefined,
     transaction_type:
       (search.get("transaction_type") as "buy" | "rent" | null) ?? undefined,
+    is_internal: isInternalRaw === null ? undefined : isInternalRaw === "true",
     search: search.get("search") ?? undefined,
     page: Number(search.get("page") ?? "1"),
     page_size: Number(search.get("page_size") ?? "20"),
@@ -58,6 +61,7 @@ function buildURL(pathname: string, params: OrderListParams): string {
   params.status?.forEach((s) => sp.append("status", s));
   params.payment_status?.forEach((p) => sp.append("payment_status", p));
   if (params.transaction_type) sp.set("transaction_type", params.transaction_type);
+  if (params.is_internal !== undefined) sp.set("is_internal", String(params.is_internal));
   if (params.search) sp.set("search", params.search);
   if (params.page && params.page !== 1) sp.set("page", String(params.page));
   if (params.page_size && params.page_size !== 20)
@@ -84,6 +88,7 @@ export default function OrderBoardClient() {
 
   // Selected order for drawer
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [showInternalDialog, setShowInternalDialog] = useState(false);
 
   // ---- orders query ----
   const {
@@ -195,8 +200,18 @@ export default function OrderBoardClient() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <OrderFilters params={params} onChange={handleParamsChange} />
+      {/* Header with filters and internal order button */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <OrderFilters params={params} onChange={handleParamsChange} />
+        </div>
+        <button
+          onClick={() => setShowInternalDialog(true)}
+          className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-[#D4AF37] rounded-lg hover:bg-[#C4A030] transition-colors whitespace-nowrap"
+        >
+          Tạo đơn nội bộ
+        </button>
+      </div>
 
       {/* Table card */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -255,6 +270,12 @@ export default function OrderBoardClient() {
           onClose={() => setSelectedOrderId(null)}
         />
       )}
+
+      {/* Internal order dialog */}
+      <InternalOrderDialog
+        open={showInternalDialog}
+        onClose={() => setShowInternalDialog(false)}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-"""Pydantic schemas for Tailor Task endpoints (Story 5.3)."""
+"""Pydantic schemas for Tailor Task endpoints (Story 5.3, 5.2)."""
 
 import uuid
 from datetime import datetime
@@ -49,7 +49,7 @@ class OrderInfoForTask(BaseModel):
     total_amount: float
     customer_name: str
     customer_phone: str
-    shipping_address: dict
+    shipping_address: dict | None = None
     shipping_note: str | None = None
 
 
@@ -74,4 +74,52 @@ class TailorTaskListResponse(BaseModel):
     """Response wrapper for task list with summary."""
 
     tasks: list[TailorTaskResponse] = []
+    summary: TailorTaskSummary = TailorTaskSummary()
+
+
+# ── Story 5.2: Owner Task Management ──────────────────────────────────────────
+
+
+class TaskCreateRequest(BaseModel):
+    """Request body for Owner creating/assigning a task."""
+
+    order_id: uuid.UUID = Field(description="Order to assign for production")
+    order_item_id: uuid.UUID | None = Field(
+        default=None, description="Optional: specific garment item in order"
+    )
+    assigned_to: uuid.UUID = Field(description="Tailor user ID to assign")
+    deadline: datetime | None = Field(default=None, description="Production deadline (timezone-aware)")
+    notes: str | None = Field(default=None, max_length=2000, description="Owner instructions for tailor")
+    piece_rate: float | None = Field(default=None, ge=0, description="Payment amount for this task")
+    garment_name: str | None = Field(
+        default=None, max_length=255,
+        description="Override garment name (auto-populated from order if omitted)"
+    )
+    customer_name: str | None = Field(
+        default=None, max_length=255,
+        description="Override customer name (auto-populated from order if omitted)"
+    )
+
+
+class TaskUpdateRequest(BaseModel):
+    """Request body for Owner updating a task."""
+
+    deadline: datetime | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+    piece_rate: float | None = Field(default=None, ge=0)
+    assigned_to: uuid.UUID | None = Field(
+        default=None, description="Reassign to different tailor"
+    )
+
+
+class OwnerTaskItem(TailorTaskResponse):
+    """Task item for Owner view — extends base with assignee name."""
+
+    assignee_name: str = ""
+
+
+class OwnerTaskListResponse(BaseModel):
+    """Response wrapper for Owner task list with summary."""
+
+    tasks: list[OwnerTaskItem] = []
     summary: TailorTaskSummary = TailorTaskSummary()

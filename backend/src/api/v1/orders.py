@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies import OwnerOnly, TenantId
 from src.core.database import get_db
 from src.models.order import (
+    InternalOrderCreate,
     OrderCreate,
     OrderFilterParams,
     OrderStatus,
@@ -31,6 +32,27 @@ def get_default_tenant_id() -> uuid.UUID:
     TODO: In production, extract from subdomain or request context.
     """
     return uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+@router.post(
+    "/internal",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create internal order (Owner only)",
+)
+async def create_internal_order_endpoint(
+    order_data: InternalOrderCreate,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Create an internal production order.
+
+    Owner only — skips shipping/payment, auto-fills customer info from Owner.
+    Order goes directly to in_production status.
+    """
+    result = await order_service.create_internal_order(db, order_data, user, tenant_id)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
 
 
 @router.post(
@@ -98,6 +120,7 @@ async def list_orders_endpoint(
     status_filter: Optional[list[OrderStatus]] = Query(None, alias="status"),
     payment_status: Optional[list[PaymentStatus]] = Query(None),
     transaction_type: Optional[str] = Query(None, pattern=r"^(buy|rent)$"),
+    is_internal: Optional[bool] = Query(None),
     search: Optional[str] = Query(None, max_length=255),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -115,6 +138,7 @@ async def list_orders_endpoint(
         status=status_filter,
         payment_status=payment_status,
         transaction_type=transaction_type,
+        is_internal=is_internal,
         search=search,
         page=page,
         page_size=page_size,

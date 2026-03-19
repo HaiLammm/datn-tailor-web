@@ -79,7 +79,7 @@ export default function OrderFilters({ params, onChange }: OrderFiltersProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         {/* Order status multi-select */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-2">
@@ -137,6 +137,28 @@ export default function OrderFilters({ params, onChange }: OrderFiltersProps) {
             <option value="">Tất cả</option>
             <option value="buy">Mua</option>
             <option value="rent">Thuê</option>
+          </select>
+        </div>
+
+        {/* Order type (internal/customer) */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-2">
+            Loại đơn
+          </label>
+          <select
+            value={params.is_internal === undefined ? "" : params.is_internal ? "true" : "false"}
+            onChange={(e) => {
+              const val = e.target.value;
+              onChange({
+                is_internal: val === "" ? undefined : val === "true",
+                page: 1,
+              });
+            }}
+            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Tất cả</option>
+            <option value="false">Đơn khách</option>
+            <option value="true">Đơn nội bộ</option>
           </select>
         </div>
       </div>

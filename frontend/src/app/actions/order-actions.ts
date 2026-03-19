@@ -12,6 +12,7 @@ import type {
   CustomerOrderDetail,
   CustomerOrderFilter,
   CustomerOrderListResponse,
+  InternalOrderInput,
   OrderDetailResponse,
   OrderListParams,
   OrderListResponse,
@@ -191,6 +192,8 @@ export async function fetchOrders(
   }
   if (params.transaction_type)
     url.searchParams.set("transaction_type", params.transaction_type);
+  if (params.is_internal !== undefined)
+    url.searchParams.set("is_internal", String(params.is_internal));
   if (params.search) url.searchParams.set("search", params.search);
   if (params.page) url.searchParams.set("page", String(params.page));
   if (params.page_size)
@@ -274,6 +277,96 @@ export async function updateOrderStatus(
 
     const result = await response.json();
     return result.data as OrderResponse;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Yêu cầu hết thời gian. Vui lòng thử lại.");
+    }
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Internal Order actions (Owner only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create an internal production order (Owner only).
+ * Throws on error so TanStack Query can handle error state.
+ */
+export async function createInternalOrder(
+  orderData: InternalOrderInput
+): Promise<OrderResponse> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) throw new Error("Chưa đăng nhập. Vui lòng đăng nhập lại.");
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/v1/orders/internal`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(orderData),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const msg =
+        err?.detail?.error?.message ||
+        err?.error?.message ||
+        err?.detail ||
+        `Lỗi tạo đơn nội bộ (HTTP ${response.status})`;
+      throw new Error(msg);
+    }
+
+    const result = await response.json();
+    return result.data as OrderResponse;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Yêu cầu hết thời gian. Vui lòng thử lại.");
+    }
+    throw error;
+  }
+}
+
+/**
+ * Fetch garments for internal order dialog (Owner only, authenticated).
+ */
+export async function fetchGarmentsForInternalOrder(): Promise<
+  { id: string; name: string; sale_price: number | null; image_url: string | null; size_options: string[] }[]
+> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) throw new Error("Chưa đăng nhập. Vui lòng đăng nhập lại.");
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/garments?page_size=200`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!response.ok) throw new Error("Không thể tải danh sách sản phẩm");
+
+    const json = await response.json();
+    return json.data ?? [];
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === "AbortError") {

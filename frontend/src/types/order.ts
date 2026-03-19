@@ -3,7 +3,7 @@
  * Extended for Story 4.2: Owner Order Board
  */
 
-export type PaymentMethod = "cod" | "vnpay" | "momo";
+export type PaymentMethod = "cod" | "vnpay" | "momo" | "internal";
 export type OrderStatus =
   | "pending"
   | "confirmed"
@@ -57,8 +57,9 @@ export interface OrderResponse {
   payment_url?: string | null;
   customer_name: string;
   customer_phone: string;
-  shipping_address: ShippingAddress;
+  shipping_address: ShippingAddress | null;
   shipping_note?: string | null;
+  is_internal?: boolean;
   items: OrderItemResponse[];
   created_at: string;
 }
@@ -74,6 +75,11 @@ export interface PaginationMeta {
   total_pages: number;
 }
 
+export interface InternalOrderInput {
+  items: { garment_id: string; transaction_type: "buy"; size?: string }[];
+  notes?: string;
+}
+
 export interface OrderListItem {
   id: string;
   status: OrderStatus;
@@ -82,6 +88,7 @@ export interface OrderListItem {
   payment_method: PaymentMethod;
   customer_name: string;
   customer_phone: string;
+  is_internal?: boolean;
   transaction_types: string[];
   created_at: string;
   next_valid_status: string | null;
@@ -91,6 +98,7 @@ export interface OrderListParams {
   status?: OrderStatus[];
   payment_status?: PaymentStatus[];
   transaction_type?: "buy" | "rent";
+  is_internal?: boolean;
   search?: string;
   page?: number;
   page_size?: number;

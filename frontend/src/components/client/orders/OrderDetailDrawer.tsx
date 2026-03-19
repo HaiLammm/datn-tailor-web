@@ -180,7 +180,7 @@ export default function OrderDetailDrawer({
                     <span className="font-medium">{order.customer_phone}</span>
                   </div>
                 </div>
-                {order.shipping_address && (
+                {order.shipping_address ? (
                   <div className="text-sm">
                     <span className="text-gray-500">Địa chỉ: </span>
                     <span>
@@ -190,7 +190,12 @@ export default function OrderDetailDrawer({
                       {order.shipping_address.province}
                     </span>
                   </div>
-                )}
+                ) : order.is_internal ? (
+                  <div className="text-sm text-purple-700 flex items-center gap-1.5">
+                    <span className="text-base">ℹ</span>
+                    <span>Đơn nội bộ — không giao hàng</span>
+                  </div>
+                ) : null}
                 {order.shipping_note && (
                   <div className="text-sm">
                     <span className="text-gray-500">Ghi chú: </span>

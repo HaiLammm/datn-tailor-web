@@ -17,6 +17,7 @@ class PaymentMethod(str, Enum):
     cod = "cod"
     vnpay = "vnpay"
     momo = "momo"
+    internal = "internal"
 
 
 class OrderStatus(str, Enum):
@@ -106,12 +107,20 @@ class OrderResponse(BaseModel):
     payment_url: str | None = None
     customer_name: str
     customer_phone: str
-    shipping_address: ShippingAddress
+    shipping_address: ShippingAddress | None = None
     shipping_note: str | None = None
+    is_internal: bool = False
     items: list[OrderItemResponse] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class InternalOrderCreate(BaseModel):
+    """Schema for creating an internal (Owner production) order."""
+
+    items: list[OrderItemCreate] = Field(..., min_length=1)
+    notes: str | None = Field(None, max_length=500)
 
 
 class PaginationMeta(BaseModel):
@@ -129,6 +138,7 @@ class OrderFilterParams(BaseModel):
     status: list[OrderStatus] | None = None
     payment_status: list[PaymentStatus] | None = None
     transaction_type: str | None = Field(None, pattern=r"^(buy|rent)$")
+    is_internal: bool | None = None
     search: str | None = Field(None, max_length=255)
     page: int = Field(1, ge=1)
     page_size: int = Field(20, ge=1, le=100)
@@ -146,6 +156,7 @@ class OrderListItem(BaseModel):
     payment_method: PaymentMethod
     customer_name: str
     customer_phone: str
+    is_internal: bool = False
     transaction_types: list[str] = []
     created_at: datetime
     next_valid_status: str | None = None

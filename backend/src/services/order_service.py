@@ -11,9 +11,10 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, PaymentTransactionDB
+from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, PaymentTransactionDB, UserDB
 from src.services.notification_creator import ORDER_STATUS_MESSAGES, create_notification
 from src.models.order import (
+    InternalOrderCreate,
     OrderCreate,
     OrderFilterParams,
     OrderItemResponse,
@@ -30,19 +31,22 @@ from src.models.order import (
 logger = logging.getLogger(__name__)
 
 
-async def create_order(
-    db: AsyncSession, order_data: OrderCreate, tenant_id: UUID
-) -> OrderResponse:
-    """Create a new order with verified prices (Authoritative Server Pattern).
+async def _validate_and_price_items(
+    db: AsyncSession,
+    items: list,
+    tenant_id: UUID,
+    skip_availability_check: bool = False,
+) -> tuple[list[OrderItemDB], list[dict], Decimal]:
+    """Shared helper: validate garments and compute prices (Authoritative Server Pattern).
 
-    Backend is SSOT for prices - never trust client-side price data.
+    Args:
+        skip_availability_check: If True, skip garment status check (for internal orders).
     """
     total_amount = Decimal("0")
     order_items: list[OrderItemDB] = []
     item_details: list[dict] = []
 
-    # Batch fetch all garments with FOR UPDATE lock to prevent race conditions
-    garment_ids = [item.garment_id for item in order_data.items]
+    garment_ids = [item.garment_id for item in items]
     result = await db.execute(
         select(GarmentDB)
         .where(
@@ -53,8 +57,7 @@ async def create_order(
     )
     garments_map = {g.id: g for g in result.scalars().all()}
 
-    # Verify each item: availability and price from GarmentDB
-    for item in order_data.items:
+    for item in items:
         garment = garments_map.get(item.garment_id)
 
         if garment is None:
@@ -68,7 +71,7 @@ async def create_order(
                 },
             )
 
-        if garment.status != "available":
+        if not skip_availability_check and garment.status != "available":
             raise HTTPException(
                 status_code=422,
                 detail={
@@ -79,7 +82,6 @@ async def create_order(
                 },
             )
 
-        # Determine price from backend (SSOT)
         if item.transaction_type == "buy":
             if garment.sale_price is None:
                 raise HTTPException(
@@ -94,7 +96,6 @@ async def create_order(
             unit_price = garment.sale_price
             item_total = unit_price
         else:
-            # rent: multiply by rental_days (default 1 if not provided)
             unit_price = garment.rental_price
             days = item.rental_days if item.rental_days else 1
             item_total = unit_price * days
@@ -104,18 +105,17 @@ async def create_order(
             garment_id=item.garment_id,
             transaction_type=item.transaction_type,
             size=item.size,
-            start_date=item.start_date,
-            end_date=item.end_date,
-            rental_days=item.rental_days,
+            start_date=getattr(item, "start_date", None),
+            end_date=getattr(item, "end_date", None),
+            rental_days=getattr(item, "rental_days", None),
             unit_price=unit_price,
             total_price=item_total,
             quantity=1,
         )
 
-        # Set rental-specific fields for rent transactions (Story 4.3)
         if item.transaction_type == "rent":
             order_item.rental_status = "active"
-            order_item.deposit_amount = unit_price * Decimal("0.3")  # 30% of rental price
+            order_item.deposit_amount = unit_price * Decimal("0.3")
         order_items.append(order_item)
         item_details.append(
             {
@@ -124,11 +124,25 @@ async def create_order(
                 "garment_id": garment.id,
                 "transaction_type": item.transaction_type,
                 "size": item.size,
-                "rental_days": item.rental_days,
+                "rental_days": getattr(item, "rental_days", None),
                 "unit_price": unit_price,
                 "total_price": item_total,
             }
         )
+
+    return order_items, item_details, total_amount
+
+
+async def create_order(
+    db: AsyncSession, order_data: OrderCreate, tenant_id: UUID
+) -> OrderResponse:
+    """Create a new order with verified prices (Authoritative Server Pattern).
+
+    Backend is SSOT for prices - never trust client-side price data.
+    """
+    order_items, item_details, total_amount = await _validate_and_price_items(
+        db, order_data.items, tenant_id, skip_availability_check=False
+    )
 
     # Create OrderDB
     order = OrderDB(
@@ -186,6 +200,88 @@ async def create_order(
         customer_phone=order.customer_phone,
         shipping_address=order_data.shipping_address,
         shipping_note=order.shipping_note,
+        is_internal=False,
+        items=response_items,
+        created_at=order.created_at,
+    )
+
+
+async def create_internal_order(
+    db: AsyncSession,
+    order_data: InternalOrderCreate,
+    owner: UserDB,
+    tenant_id: UUID,
+) -> OrderResponse:
+    """Create an internal production order (Owner only).
+
+    Skips shipping/payment. Auto-fills customer info from Owner profile.
+    Status goes directly to in_production.
+    """
+    # Reject any rent items — internal orders are buy-only
+    for item in order_data.items:
+        if item.transaction_type != "buy":
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_INTERNAL_BUY_ONLY",
+                        "message": "Don noi bo chi ho tro mua (buy), khong ho tro thue (rent)",
+                    }
+                },
+            )
+
+    order_items, item_details, total_amount = await _validate_and_price_items(
+        db, order_data.items, tenant_id, skip_availability_check=True
+    )
+
+    customer_name = owner.full_name or owner.email
+    customer_phone = owner.phone or "N/A"
+
+    order = OrderDB(
+        tenant_id=tenant_id,
+        customer_id=owner.id,
+        customer_name=customer_name,
+        customer_phone=customer_phone,
+        shipping_address=None,
+        shipping_note=order_data.notes,
+        payment_method="internal",
+        status="in_production",
+        payment_status="paid",
+        is_internal=True,
+        total_amount=total_amount,
+    )
+    order.items = order_items
+
+    db.add(order)
+    await db.flush()
+    await db.commit()
+    await db.refresh(order)
+
+    response_items = [
+        OrderItemResponse(
+            garment_id=detail["garment_id"],
+            garment_name=detail["garment_name"],
+            image_url=detail["image_url"],
+            transaction_type=detail["transaction_type"],
+            size=detail["size"],
+            rental_days=detail["rental_days"],
+            unit_price=detail["unit_price"],
+            total_price=detail["total_price"],
+        )
+        for detail in item_details
+    ]
+
+    return OrderResponse(
+        id=order.id,
+        status=order.status,
+        payment_status=order.payment_status,
+        total_amount=order.total_amount,
+        payment_method=order.payment_method,
+        customer_name=order.customer_name,
+        customer_phone=order.customer_phone,
+        shipping_address=None,
+        shipping_note=order.shipping_note,
+        is_internal=True,
         items=response_items,
         created_at=order.created_at,
     )
@@ -237,6 +333,7 @@ async def get_order(
         customer_phone=order.customer_phone,
         shipping_address=order.shipping_address,
         shipping_note=order.shipping_note,
+        is_internal=order.is_internal,
         items=response_items,
         created_at=order.created_at,
     )
@@ -288,6 +385,9 @@ async def list_orders(
             )
         )
 
+    if params.is_internal is not None:
+        query = query.where(OrderDB.is_internal == params.is_internal)
+
     if params.search:
         # NOTE: AC2 mentions search by email, but OrderDB has no customer_email field.
         # Email search deferred until customer_email is added to the orders table.
@@ -333,6 +433,7 @@ async def list_orders(
             payment_method=o.payment_method,
             customer_name=o.customer_name,
             customer_phone=o.customer_phone,
+            is_internal=o.is_internal,
             transaction_types=list({item.transaction_type for item in o.items}),
             created_at=o.created_at,
             next_valid_status=_VALID_TRANSITIONS.get(o.status) if o.status not in ("cancelled", "delivered") else None,
@@ -423,11 +524,13 @@ async def update_order_status(
     _customer_id = order.customer_id
     _tenant_id = order.tenant_id
     _order_id_str = str(order.id)
+    _is_internal = order.is_internal
     await db.flush()
     await db.commit()
 
     # Story 4.4f: Create in-app notification for authenticated customers
-    if _customer_id is not None and new_status in ORDER_STATUS_MESSAGES:
+    # Suppress notifications for internal orders (F11)
+    if _customer_id is not None and new_status in ORDER_STATUS_MESSAGES and not _is_internal:
         try:
             title, msg_template = ORDER_STATUS_MESSAGES[new_status]
             message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
@@ -479,6 +582,7 @@ async def update_order_status(
         customer_phone=order.customer_phone,
         shipping_address=order.shipping_address,
         shipping_note=order.shipping_note,
+        is_internal=order.is_internal,
         items=response_items,
         created_at=order.created_at,
     )
@@ -548,6 +652,7 @@ async def get_order_with_transactions(
         customer_phone=order.customer_phone,
         shipping_address=order.shipping_address,
         shipping_note=order.shipping_note,
+        is_internal=order.is_internal,
         items=response_items,
         created_at=order.created_at,
     )
