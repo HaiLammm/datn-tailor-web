@@ -14,6 +14,7 @@ import { formatMoney } from "@/utils/format";
 interface GarmentItem {
   id: string;
   name: string;
+  rental_price: number;
   sale_price: number | null;
   image_url: string | null;
   size_options: string[];
@@ -100,9 +101,7 @@ export default function InternalOrderDialog({
     mutation.mutate(orderData);
   }
 
-  const availableGarments = (garments ?? []).filter(
-    (g: GarmentItem) => g.sale_price !== null
-  );
+  const availableGarments = garments ?? [];
 
   return (
     <Dialog.Root
@@ -131,7 +130,7 @@ export default function InternalOrderDialog({
                 <div className="text-sm text-gray-500">Đang tải...</div>
               ) : availableGarments.length === 0 ? (
                 <div className="text-sm text-gray-500">
-                  Không có sản phẩm nào có giá bán
+                  Không có sản phẩm nào trong kho
                 </div>
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -168,7 +167,7 @@ export default function InternalOrderDialog({
                             {g.name}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {formatMoney(g.sale_price!)}
+                            {formatMoney(g.sale_price ?? g.rental_price)}
                           </p>
                         </div>
                         <input

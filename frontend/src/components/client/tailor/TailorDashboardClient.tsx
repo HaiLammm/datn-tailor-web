@@ -8,6 +8,7 @@ import { NEXT_STATUS } from "@/types/tailor-task";
 import TaskSummaryCards from "./TaskSummaryCards";
 import TaskList, { TaskListSkeleton } from "./TaskList";
 import TaskDetailModal from "./TaskDetailModal";
+import IncomeWidget from "./IncomeWidget";
 
 function SummaryCardsSkeleton() {
   return (
@@ -85,6 +86,8 @@ export default function TailorDashboardClient() {
     onSettled: () => {
       setUpdatingTaskId(null);
       queryClient.invalidateQueries({ queryKey: ["tailor-tasks"] });
+      // Story 5.4: Re-fetch income when task status changes (completed tasks affect sum)
+      queryClient.invalidateQueries({ queryKey: ["tailor-income"] });
     },
   });
 
@@ -128,6 +131,9 @@ export default function TailorDashboardClient() {
         onRowClick={setSelectedTask}
         updatingTaskId={updatingTaskId}
       />
+
+      {/* Story 5.4: Income Widget — Thu Nhập Tháng Này */}
+      <IncomeWidget />
 
       {/* Task Detail Modal */}
       {selectedTask && (

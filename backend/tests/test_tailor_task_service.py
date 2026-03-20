@@ -272,3 +272,144 @@ async def test_get_task_detail_not_found(db: AsyncSession):
     """Reject detail for non-existent task."""
     with pytest.raises(ValueError, match="Không tìm thấy"):
         await tailor_task_service.get_task_detail(db, uuid.uuid4(), TAILOR_ID, TENANT_ID)
+
+
+# ── Story 5.4: Income Calculation Tests ───────────────────────────────────────
+
+
+@pytest_asyncio.fixture
+async def seed_income_tasks(db: AsyncSession):
+    """Tasks for income calculation tests — different statuses and piece_rates."""
+    now = datetime.now(timezone.utc)
+    tasks = [
+        # Completed this month with piece_rate
+        TailorTaskDB(
+            id=uuid.uuid4(),
+            tenant_id=TENANT_ID,
+            order_id=ORDER_ID,
+            assigned_to=TAILOR_ID,
+            assigned_by=OWNER_ID,
+            garment_name="Áo dài cưới",
+            customer_name="Khách A",
+            status="completed",
+            piece_rate=Decimal("300000"),
+            completed_at=now,
+        ),
+        TailorTaskDB(
+            id=uuid.uuid4(),
+            tenant_id=TENANT_ID,
+            order_id=ORDER_ID,
+            assigned_to=TAILOR_ID,
+            assigned_by=OWNER_ID,
+            garment_name="Áo dài truyền thống",
+            customer_name="Khách B",
+            status="completed",
+            piece_rate=Decimal("200000"),
+            completed_at=now,
+        ),
+        # Completed this month WITHOUT piece_rate — should be excluded
+        TailorTaskDB(
+            id=uuid.uuid4(),
+            tenant_id=TENANT_ID,
+            order_id=ORDER_ID,
+            assigned_to=TAILOR_ID,
+            assigned_by=OWNER_ID,
+            garment_name="Áo dài tặng kèm",
+            customer_name="Khách C",
+            status="completed",
+            piece_rate=None,
+            completed_at=now,
+        ),
+        # NOT completed — should NOT be included in income
+        TailorTaskDB(
+            id=uuid.uuid4(),
+            tenant_id=TENANT_ID,
+            order_id=ORDER_ID,
+            assigned_to=TAILOR_ID,
+            assigned_by=OWNER_ID,
+            garment_name="Áo dài chưa xong",
+            customer_name="Khách D",
+            status="in_progress",
+            piece_rate=Decimal("500000"),
+        ),
+        # Other tailor — same tenant, should NOT be included
+        TailorTaskDB(
+            id=uuid.uuid4(),
+            tenant_id=TENANT_ID,
+            order_id=ORDER_ID,
+            assigned_to=OTHER_TAILOR_ID,
+            assigned_by=OWNER_ID,
+            garment_name="Áo dài thợ khác",
+            customer_name="Khách E",
+            status="completed",
+            piece_rate=Decimal("400000"),
+            completed_at=now,
+        ),
+    ]
+    db.add_all(tasks)
+    await db.flush()
+    return tasks
+
+
+@pytest.mark.asyncio
+async def test_income_sums_completed_tasks(db: AsyncSession, seed_income_tasks):
+    """Income sums piece_rate of completed tasks for current month."""
+    result = await tailor_task_service.get_tailor_monthly_income(db, TAILOR_ID, TENANT_ID)
+    # 300000 + 200000 = 500000 (NULL excluded)
+    assert result.current_month.total_income == 500000.0
+    assert result.current_month.task_count == 2
+
+
+@pytest.mark.asyncio
+async def test_income_excludes_null_piece_rate(db: AsyncSession, seed_income_tasks):
+    """Tasks with NULL piece_rate are excluded from income sum."""
+    result = await tailor_task_service.get_tailor_monthly_income(db, TAILOR_ID, TENANT_ID)
+    # task_count should only count tasks with piece_rate set
+    assert result.current_month.task_count == 2
+
+
+@pytest.mark.asyncio
+async def test_income_excludes_non_completed_tasks(db: AsyncSession, seed_income_tasks):
+    """Tasks not completed (in_progress, assigned) are excluded."""
+    result = await tailor_task_service.get_tailor_monthly_income(db, TAILOR_ID, TENANT_ID)
+    # The in_progress task with 500000 piece_rate should NOT be included
+    assert result.current_month.total_income == 500000.0  # Only the 300k+200k
+
+
+@pytest.mark.asyncio
+async def test_income_no_completed_tasks(db: AsyncSession):
+    """Returns 0 income when no completed tasks exist."""
+    result = await tailor_task_service.get_tailor_monthly_income(db, TAILOR_ID, TENANT_ID)
+    assert result.current_month.total_income == 0.0
+    assert result.current_month.task_count == 0
+    assert result.previous_month.total_income == 0.0
+    assert result.percentage_change is None
+
+
+@pytest.mark.asyncio
+async def test_income_percentage_change_positive(db: AsyncSession, seed_income_tasks):
+    """Percentage change is None when previous month = 0 (first month with data)."""
+    # previous_month = 0, so percentage_change = None (avoid division by zero)
+    result = await tailor_task_service.get_tailor_monthly_income(db, TAILOR_ID, TENANT_ID)
+    # Previous month has no data → percentage_change is None
+    assert result.percentage_change is None
+
+
+@pytest.mark.asyncio
+async def test_income_tenant_isolation(db: AsyncSession, seed_income_tasks):
+    """OTHER_TAILOR's income is NOT included in TAILOR's income query."""
+    result = await tailor_task_service.get_tailor_monthly_income(db, TAILOR_ID, TENANT_ID)
+    # OTHER_TAILOR has 400k completed task — should NOT appear in TAILOR's income
+    assert result.current_month.total_income == 500000.0  # Only TAILOR_ID tasks
+
+
+@pytest.mark.asyncio
+async def test_income_response_structure(db: AsyncSession, seed_income_tasks):
+    """Response has correct structure with current/previous month and percentage."""
+    result = await tailor_task_service.get_tailor_monthly_income(db, TAILOR_ID, TENANT_ID)
+    assert hasattr(result, "current_month")
+    assert hasattr(result, "previous_month")
+    assert hasattr(result, "percentage_change")
+    assert result.current_month.month in range(1, 13)
+    assert result.current_month.year >= 2024
+    assert result.previous_month.month in range(1, 13)

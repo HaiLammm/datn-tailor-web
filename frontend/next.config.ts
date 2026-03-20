@@ -4,7 +4,16 @@ import path from "path";
 const nextConfig: NextConfig = {
   // Silence workspace root warning from multiple lockfiles
   outputFileTracingRoot: path.join(__dirname, "../"),
-  
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+  },
+
   trailingSlash: false,
   skipTrailingSlashRedirect: true,
   async rewrites() {

@@ -84,3 +84,19 @@ export interface OwnerTaskFilters {
   status?: string;
   overdue_only?: boolean;
 }
+
+// ── Story 5.4: Tailor Income Types ────────────────────────────────────────────
+
+export interface TailorMonthlyIncome {
+  month: number;
+  year: number;
+  total_income: number;
+  task_count: number;
+}
+
+export interface TailorIncomeResponse {
+  current_month: TailorMonthlyIncome;
+  previous_month: TailorMonthlyIncome;
+  /** % thay đổi thu nhập so tháng trước. null nếu tháng trước = 0. */
+  percentage_change: number | null;
+}

@@ -9,7 +9,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import OwnerOnly
+from src.api.dependencies import OwnerOnly, TenantId
 from src.core.database import get_db
 from src.models.db_models import UserDB
 from src.models.staff import (
@@ -60,6 +60,7 @@ async def get_staff_management_data(
 async def add_staff_member(
     request: StaffWhitelistCreateRequest,
     current_user: OwnerOnly,
+    tenant_id: TenantId,
     db: AsyncSession = Depends(get_db),
 ) -> StaffCreateResponse:
     """Add a new staff member to the whitelist and create user account.
@@ -83,6 +84,7 @@ async def add_staff_member(
             role=request.role,
             created_by_email=current_user.email,
             password=request.password,
+            tenant_id=tenant_id,
         )
 
         if result is None:

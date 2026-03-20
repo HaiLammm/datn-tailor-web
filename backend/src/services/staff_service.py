@@ -48,7 +48,7 @@ async def get_active_staff_users(db: AsyncSession) -> list[UserDB]:
 
 
 async def add_staff_to_whitelist(
-    db: AsyncSession, email: str, role: str, created_by_email: str, password: str | None = None
+    db: AsyncSession, email: str, role: str, created_by_email: str, password: str | None = None, tenant_id: uuid.UUID | None = None
 ) -> tuple[StaffWhitelistDB, str] | None:
     """Add a new email to staff whitelist and create user account.
 
@@ -98,12 +98,15 @@ async def add_staff_to_whitelist(
             hashed_password=hash_password(plain_password),
             role=role,
             is_active=True,
+            tenant_id=tenant_id,
         )
         db.add(new_user)
     else:
         user.hashed_password = hash_password(plain_password)
         user.role = role
         user.is_active = True
+        if tenant_id:
+            user.tenant_id = tenant_id
 
     try:
         await db.commit()

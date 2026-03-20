@@ -341,7 +341,7 @@ export async function createInternalOrder(
  * Fetch garments for internal order dialog (Owner only, authenticated).
  */
 export async function fetchGarmentsForInternalOrder(): Promise<
-  { id: string; name: string; sale_price: number | null; image_url: string | null; size_options: string[] }[]
+  { id: string; name: string; rental_price: number; sale_price: number | null; image_url: string | null; size_options: string[] }[]
 > {
   const session = await auth();
   const token = session?.accessToken;
@@ -352,7 +352,7 @@ export async function fetchGarmentsForInternalOrder(): Promise<
 
   try {
     const response = await fetch(
-      `${BACKEND_URL}/api/v1/garments?page_size=200`,
+      `${BACKEND_URL}/api/v1/garments?page_size=100`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -366,7 +366,7 @@ export async function fetchGarmentsForInternalOrder(): Promise<
     if (!response.ok) throw new Error("Không thể tải danh sách sản phẩm");
 
     const json = await response.json();
-    return json.data ?? [];
+    return json.data?.items ?? [];
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === "AbortError") {

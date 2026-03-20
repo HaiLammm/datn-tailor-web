@@ -123,3 +123,26 @@ class OwnerTaskListResponse(BaseModel):
 
     tasks: list[OwnerTaskItem] = []
     summary: TailorTaskSummary = TailorTaskSummary()
+
+
+# ── Story 5.4: Tailor Income / Tính Lương ─────────────────────────────────────
+
+
+class TailorMonthlyIncome(BaseModel):
+    """Monthly income summary for a tailor."""
+
+    month: int = Field(description="Month number (1-12)")
+    year: int = Field(description="Year (e.g. 2026)")
+    total_income: float = Field(default=0.0, description="Tổng tiền công (sum of piece_rate) cho tháng này")
+    task_count: int = Field(default=0, description="Số lượng công việc hoàn thành")
+
+
+class TailorIncomeResponse(BaseModel):
+    """Income comparison for current month vs previous month."""
+
+    current_month: TailorMonthlyIncome
+    previous_month: TailorMonthlyIncome
+    percentage_change: float | None = Field(
+        default=None,
+        description="% thay đổi thu nhập so với tháng trước. None nếu tháng trước = 0.",
+    )

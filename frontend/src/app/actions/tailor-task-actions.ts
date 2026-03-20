@@ -7,6 +7,7 @@
 
 import { auth } from "@/auth";
 import type {
+  TailorIncomeResponse,
   TailorTask,
   TailorTaskListResponse,
   TailorTaskSummary,
@@ -164,6 +165,49 @@ export async function updateTaskStatus(
       throw error;
     }
     throw new Error("Lỗi không xác định khi cập nhật trạng thái.");
+  }
+}
+
+/**
+ * Fetch monthly income summary for current tailor.
+ * Returns current month + previous month totals and percentage change.
+ */
+export async function fetchMyIncome(): Promise<TailorIncomeResponse> {
+  const token = await getAuthToken();
+  const { controller, timeoutId } = createAbortController();
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/v1/tailor-tasks/my-income`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("Không có quyền truy cập. Vui lòng đăng nhập lại.");
+    }
+
+    if (!response.ok) {
+      throw new Error(`Lỗi tải dữ liệu thu nhập (HTTP ${response.status})`);
+    }
+
+    const json = await response.json();
+    return json.data as TailorIncomeResponse;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        throw new Error("Hết thời gian kết nối. Vui lòng thử lại.");
+      }
+      throw error;
+    }
+    throw new Error("Lỗi không xác định khi tải dữ liệu thu nhập.");
   }
 }
 

@@ -18,6 +18,8 @@ from src.models.tailor_task import (
     OwnerTaskItem,
     OwnerTaskListResponse,
     StatusUpdateRequest,
+    TailorIncomeResponse,
+    TailorMonthlyIncome,
     TaskCreateRequest,
     TaskUpdateRequest,
     TailorTaskDetailResponse,
@@ -543,3 +545,92 @@ async def delete_task(
     await db.delete(task)
     await db.commit()
     return True
+
+
+# ── Story 5.4: Tailor Income Calculation ──────────────────────────────────────
+
+
+async def get_tailor_monthly_income(
+    db: AsyncSession,
+    tailor_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> TailorIncomeResponse:
+    """Calculate monthly income for a tailor by summing piece_rate of completed tasks.
+
+    Groups by month/year of completed_at. Returns current month + previous month.
+    Excludes tasks with NULL piece_rate (unpriced tasks).
+    Authoritative Server Pattern: all calculation happens here, NOT on frontend.
+    """
+    from datetime import date
+
+    today = date.today()
+    current_month = today.month
+    current_year = today.year
+
+    # Calculate previous month/year
+    if current_month == 1:
+        prev_month = 12
+        prev_year = current_year - 1
+    else:
+        prev_month = current_month - 1
+        prev_year = current_year
+
+    # Query: aggregate piece_rate by year+month for completed tasks
+    query = (
+        select(
+            func.extract("year", TailorTaskDB.completed_at).label("year"),
+            func.extract("month", TailorTaskDB.completed_at).label("month"),
+            func.coalesce(func.sum(TailorTaskDB.piece_rate), 0).label("total_income"),
+            func.count().label("task_count"),
+        )
+        .where(
+            TailorTaskDB.assigned_to == tailor_id,
+            TailorTaskDB.tenant_id == tenant_id,
+            TailorTaskDB.status == "completed",
+            TailorTaskDB.piece_rate.isnot(None),
+            TailorTaskDB.completed_at.isnot(None),
+        )
+        .group_by(
+            func.extract("year", TailorTaskDB.completed_at),
+            func.extract("month", TailorTaskDB.completed_at),
+        )
+        .order_by(
+            func.extract("year", TailorTaskDB.completed_at).desc(),
+            func.extract("month", TailorTaskDB.completed_at).desc(),
+        )
+    )
+
+    result = await db.execute(query)
+    rows = result.fetchall()
+
+    # Parse rows into month buckets
+    income_map: dict[tuple[int, int], tuple[float, int]] = {}  # (year, month) → (total, count)
+    for row in rows:
+        y = int(row.year)
+        m = int(row.month)
+        income_map[(y, m)] = (float(row.total_income), int(row.task_count))
+
+    # Build current and previous month results
+    curr_total, curr_count = income_map.get((current_year, current_month), (0.0, 0))
+    prev_total, prev_count = income_map.get((prev_year, prev_month), (0.0, 0))
+
+    # Percentage change: None if previous = 0 (avoid division by zero)
+    percentage_change: float | None = None
+    if prev_total > 0:
+        percentage_change = round(((curr_total - prev_total) / prev_total) * 100, 1)
+
+    return TailorIncomeResponse(
+        current_month=TailorMonthlyIncome(
+            month=current_month,
+            year=current_year,
+            total_income=curr_total,
+            task_count=curr_count,
+        ),
+        previous_month=TailorMonthlyIncome(
+            month=prev_month,
+            year=prev_year,
+            total_income=prev_total,
+            task_count=prev_count,
+        ),
+        percentage_change=percentage_change,
+    )

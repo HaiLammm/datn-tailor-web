@@ -94,6 +94,30 @@ async def update_task_status(
         )
 
 
+# ── Story 5.4: Tailor Income Endpoint ─────────────────────────────────────────
+
+
+@router.get(
+    "/my-income",
+    response_model=dict,
+    summary="Thu nhập tháng này vs tháng trước",
+    description="Trả về tổng tiền công tháng hiện tại và tháng trước, cùng % thay đổi.",
+)
+async def get_my_income(
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Get monthly income summary for current tailor.
+
+    Sums piece_rate from completed tasks grouped by month.
+    Excludes NULL piece_rate tasks (unpriced).
+    Multi-tenant isolated by tenant_id.
+    """
+    result = await tailor_task_service.get_tailor_monthly_income(db, user.id, tenant_id)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
 # ── Owner-facing endpoints (Story 5.2) ───────────────────────────────────────
 
 

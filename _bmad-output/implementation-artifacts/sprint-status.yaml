@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-03-19  # Story 5.2 → review
+last_updated: 2026-03-20  # Story 5.4 → review
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -83,7 +83,7 @@ development_status:
   5-1-kpi-morning-command-center-dash: done
   5-2-bang-dieu-phoi-khoi-san-xuat-gap-viec: review
   5-3-workstation-production-flow-dash-cho-tho-tiem: review  # Code Review Fixes 2026-03-17: All 10 action items resolved (3H/4M/3L)
-  5-4-tinh-luongthu-nhap-tho: backlog
+  5-4-tinh-luongthu-nhap-tho: review
   epic-5-retrospective: optional
 
   epic-6: backlog
