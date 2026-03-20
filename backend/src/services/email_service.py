@@ -919,6 +919,127 @@ Tailor Project Team
         return False
 
 
+async def send_appointment_cancellation_email(
+    email: str,
+    customer_name: str,
+    appointment_date: "date",
+    slot: str,
+) -> bool:
+    """Send cancellation notification email to customer when owner cancels appointment.
+
+    Args:
+        email: Customer email address
+        customer_name: Customer's full name
+        appointment_date: The cancelled appointment date
+        slot: 'morning' or 'afternoon'
+
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        formatted_date = appointment_date.strftime("%d/%m/%Y")
+        slot_display = _slot_label(slot)
+
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"Thông báo hủy lịch hẹn - {formatted_date} {slot_display}"
+        message["From"] = settings.FROM_EMAIL
+        message["To"] = email
+
+        text_content = f"""
+Xin chào {customer_name},
+
+Chúng tôi rất tiếc phải thông báo rằng lịch hẹn tư vấn của bạn đã bị hủy.Chúng tôi sẽ liên lạc lại với bạn sớm nhất có thể.
+
+Ngày hẹn: {formatted_date}
+Khung giờ: {slot_display}
+
+Nếu bạn muốn đặt lại lịch hẹn, vui lòng truy cập trang đặt lịch hoặc liên hệ tiệm theo số điện thoại 0823120701.
+
+Xin lỗi vì sự bất tiện này.
+
+Trân trọng,
+Tailor Project Team
+        """.strip()
+
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Thông báo hủy lịch hẹn</title>
+</head>
+<body style="margin:0;padding:0;font-family:'Georgia',serif;background-color:#F9F7F2;">
+    <table role="presentation" style="width:100%;border-collapse:collapse;">
+        <tr>
+            <td align="center" style="padding:40px 0;">
+                <table role="presentation" style="width:600px;border-collapse:collapse;background:#ffffff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="padding:40px 40px 30px 40px;background:linear-gradient(135deg,#1A2B4C 0%,#2d4a7a 100%);border-radius:8px 8px 0 0;">
+                            <h1 style="margin:0;color:#D4AF37;font-size:28px;font-weight:600;text-align:center;">Tailor Project</h1>
+                            <p style="margin:10px 0 0 0;color:#e0e7ff;font-size:14px;text-align:center;">Thông báo hủy lịch hẹn</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:40px;">
+                            <p style="margin:0 0 20px 0;color:#1A1A2E;font-size:16px;">Xin chào <strong>{customer_name}</strong>,</p>
+                            <p style="margin:0 0 20px 0;color:#4b5563;font-size:15px;line-height:1.6;">
+                                Chúng tôi rất tiếc phải thông báo rằng lịch hẹn tư vấn Bespoke của bạn đã bị hủy.
+                            </p>
+                            <table role="presentation" style="width:100%;border-collapse:collapse;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:20px;margin:20px 0;">
+                                <tr><td style="padding:12px 20px;border-bottom:1px solid #FECACA;">
+                                    <span style="color:#6B7280;font-size:13px;">Ngày hẹn</span><br>
+                                    <strong style="color:#DC2626;font-size:16px;text-decoration:line-through;">{formatted_date}</strong>
+                                </td></tr>
+                                <tr><td style="padding:12px 20px;">
+                                    <span style="color:#6B7280;font-size:13px;">Khung giờ</span><br>
+                                    <strong style="color:#DC2626;font-size:16px;text-decoration:line-through;">{slot_display}</strong>
+                                </td></tr>
+                            </table>
+                            <p style="margin:0 0 20px 0;color:#4b5563;font-size:15px;line-height:1.6;">
+                                Nếu bạn muốn đặt lại lịch hẹn, vui lòng truy cập trang đặt lịch hoặc liên hệ tiệm.
+                            </p>
+                            <p style="margin:0;color:#6B7280;font-size:13px;">
+                                Xin lỗi vì sự bất tiện này.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:30px 40px;background-color:#F9F7F2;border-radius:0 0 8px 8px;border-top:1px solid #e5e7eb;">
+                            <p style="margin:0;color:#6b7280;font-size:13px;text-align:center;">
+                                &copy; 2026 Tailor Project - Hệ thống May Đo Thông Minh
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+        """.strip()
+
+        part1 = MIMEText(text_content, "plain", "utf-8")
+        part2 = MIMEText(html_content, "html", "utf-8")
+        message.attach(part1)
+        message.attach(part2)
+
+        await aiosmtplib.send(
+            message,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+
+        logger.info("Appointment cancellation email sent to %s", email)
+        return True
+
+    except Exception as e:
+        logger.error("Failed to send appointment cancellation email to %s: %s", email, e)
+        return False
+
+
 def _create_order_confirmation_email_html(order) -> str:
     """Generate HTML email template for order confirmation (Story 4.1).
 

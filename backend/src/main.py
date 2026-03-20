@@ -31,6 +31,7 @@ from src.api.v1.tailor_tasks import router as tailor_tasks_router
 from src.api.v1.customer_profile import router as customer_profile_router
 from src.api.v1.order_customer import router as order_customer_router
 from src.api.v1.leads import router as leads_router
+from src.api.v1.owner_appointments import router as owner_appointments_router
 from src.core.seed import seed_owner_account
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,7 @@ app.include_router(overrides_router)
 app.include_router(export_router)
 app.include_router(fabrics_router)
 app.include_router(garments_router)
+app.include_router(owner_appointments_router)
 app.include_router(appointments_router)
 app.include_router(orders_router)
 app.include_router(payments_router)
