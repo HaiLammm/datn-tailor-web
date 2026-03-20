@@ -632,3 +632,33 @@ class UserVoucherDB(Base):
 
     # Relationships
     voucher: Mapped["VoucherDB"] = relationship("VoucherDB", back_populates="assignments")
+
+
+class LeadDB(Base):
+    """ORM model for the `leads` table (Story 6.1: CRM Leads Board).
+
+    Tracks potential customers (leads) who have expressed interest but not yet placed an order.
+    Multi-tenant isolated by tenant_id.
+    Classification: hot / warm / cold (Owner manually assigns).
+    """
+
+    __tablename__ = "leads"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
+    # source enum: manual | website | booking_abandoned | cart_abandoned | signup
+    classification: Mapped[str] = mapped_column(String(10), nullable=False, default="warm", index=True)
+    # classification enum: hot | warm | cold
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )

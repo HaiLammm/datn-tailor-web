@@ -30,6 +30,7 @@ from src.api.v1.styles import router as styles_router
 from src.api.v1.tailor_tasks import router as tailor_tasks_router
 from src.api.v1.customer_profile import router as customer_profile_router
 from src.api.v1.order_customer import router as order_customer_router
+from src.api.v1.leads import router as leads_router
 from src.core.seed import seed_owner_account
 
 logger = logging.getLogger(__name__)
@@ -101,6 +102,7 @@ app.include_router(staff_router)
 app.include_router(styles_router)
 app.include_router(tailor_tasks_router)
 app.include_router(order_customer_router)
+app.include_router(leads_router)
 
 
 @app.get("/health")
