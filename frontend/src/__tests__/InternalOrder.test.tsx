@@ -33,7 +33,7 @@ describe("OrderConfirmation", () => {
   it("handles null shipping_address without crash", () => {
     const order: OrderResponse = {
       id: "test-id-123",
-      status: "in_production",
+      status: "in_progress",
       payment_status: "paid",
       total_amount: 1200000,
       payment_method: "internal",

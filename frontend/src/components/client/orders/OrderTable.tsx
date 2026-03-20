@@ -7,8 +7,8 @@ import { formatMoney, formatDate } from "@/utils/format";
 
 const NEXT_STATUS_LABELS: Partial<Record<OrderStatus, string>> = {
   pending: "Xác nhận",
-  confirmed: "Bắt đầu may",
-  in_production: "Gửi đi",
+  in_progress: "Kiểm tra",
+  checked: "Gửi đi",
   shipped: "Giao thành công",
 };
 

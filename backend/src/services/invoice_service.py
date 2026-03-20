@@ -15,7 +15,8 @@ from src.models.order_customer import CustomerOrderDetail
 _STATUS_LABELS: dict[str, str] = {
     "pending": "Chờ xác nhận",
     "confirmed": "Đã xác nhận",
-    "in_production": "Đang may",
+    "in_progress": "Đang may",
+    "checked": "Đã kiểm tra",
     "shipped": "Đã gửi",
     "delivered": "Đã giao",
     "cancelled": "Đã hủy",

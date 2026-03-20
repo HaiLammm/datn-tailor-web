@@ -10,7 +10,8 @@ interface OrderStatsCardProps {
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending: { label: "Chờ xử lý", className: "bg-amber-100 text-amber-800" },
   confirmed: { label: "Đã xác nhận", className: "bg-blue-100 text-blue-800" },
-  in_production: { label: "Đang sản xuất", className: "bg-indigo-100 text-indigo-800" },
+  in_progress: { label: "Đang sản xuất", className: "bg-indigo-100 text-indigo-800" },
+  checked: { label: "Đã kiểm tra", className: "bg-violet-100 text-violet-800" },
   shipped: { label: "Đã giao", className: "bg-purple-100 text-purple-800" },
   delivered: { label: "Hoàn thành", className: "bg-emerald-100 text-emerald-800" },
   cancelled: { label: "Đã hủy", className: "bg-red-100 text-red-800" },

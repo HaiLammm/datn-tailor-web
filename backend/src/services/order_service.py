@@ -11,7 +11,7 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, PaymentTransactionDB, UserDB
+from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, PaymentTransactionDB, TailorTaskDB, UserDB
 from src.services.notification_creator import ORDER_STATUS_MESSAGES, create_notification
 from src.models.order import (
     InternalOrderCreate,
@@ -215,7 +215,7 @@ async def create_internal_order(
     """Create an internal production order (Owner only).
 
     Skips shipping/payment. Auto-fills customer info from Owner profile.
-    Status goes directly to in_production.
+    Status goes directly to in_progress.
     """
     # Reject any rent items — internal orders are buy-only
     for item in order_data.items:
@@ -245,7 +245,7 @@ async def create_internal_order(
         shipping_address=None,
         shipping_note=order_data.notes,
         payment_method="internal",
-        status="in_production",
+        status="confirmed",
         payment_status="paid",
         is_internal=True,
         total_amount=total_amount,
@@ -346,12 +346,30 @@ async def get_order(
 # Valid forward-only transition matrix
 _VALID_TRANSITIONS: dict[str, str | None] = {
     "pending": "confirmed",
-    "confirmed": "in_production",
-    "in_production": "shipped",
+    "confirmed": None,       # auto → in_progress via task assignment
+    "in_progress": "checked",  # requires all tailor tasks completed
+    "checked": "shipped",      # requires paid or COD
     "shipped": "delivered",
     "delivered": None,
     "cancelled": None,
 }
+
+
+async def _all_tailor_tasks_completed(db: AsyncSession, order_id: UUID) -> bool:
+    """Check if all tailor tasks for an order are completed."""
+    task_result = await db.execute(
+        select(
+            func.count(TailorTaskDB.id),
+            func.count(TailorTaskDB.id).filter(TailorTaskDB.status == "completed"),
+        ).where(TailorTaskDB.order_id == order_id)
+    )
+    total_tasks, completed_tasks = task_result.one()
+    return total_tasks > 0 and total_tasks == completed_tasks
+
+
+def _payment_ok(payment_status: str, payment_method: str) -> bool:
+    """Check if payment is settled (paid) or COD."""
+    return payment_status == "paid" or payment_method == "cod"
 
 
 async def list_orders(
@@ -424,6 +442,26 @@ async def list_orders(
     result = await db.execute(query)
     orders = result.scalars().all()
 
+    # Batch-check readiness for in_progress (→ checked) and checked (→ shipped)
+    checkable_ids: set[UUID] = set()
+    shippable_ids: set[UUID] = set()
+    for o in orders:
+        if o.status == "in_progress":
+            if await _all_tailor_tasks_completed(db, o.id):
+                checkable_ids.add(o.id)
+        elif o.status == "checked":
+            if _payment_ok(o.payment_status, o.payment_method):
+                shippable_ids.add(o.id)
+
+    def _next_status(o: OrderDB) -> str | None:
+        if o.status in ("cancelled", "delivered", "confirmed"):
+            return None
+        if o.status == "in_progress":
+            return "checked" if o.id in checkable_ids else None
+        if o.status == "checked":
+            return "shipped" if o.id in shippable_ids else None
+        return _VALID_TRANSITIONS.get(o.status)
+
     items = [
         OrderListItem(
             id=o.id,
@@ -436,7 +474,7 @@ async def list_orders(
             is_internal=o.is_internal,
             transaction_types=list({item.transaction_type for item in o.items}),
             created_at=o.created_at,
-            next_valid_status=_VALID_TRANSITIONS.get(o.status) if o.status not in ("cancelled", "delivered") else None,
+            next_valid_status=_next_status(o),
         )
         for o in orders
     ]
@@ -514,6 +552,32 @@ async def update_order_status(
                     "error": {
                         "code": "ERR_INVALID_TRANSITION",
                         "message": f"Chuyển trạng thái không hợp lệ: {current_status} → {new_status}. Tiếp theo phải là: {expected_next}",
+                    }
+                },
+            )
+
+    # Guard: in_progress → checked requires all tailor tasks completed
+    if current_status == "in_progress" and new_status == "checked":
+        if not await _all_tailor_tasks_completed(db, order.id):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_CHECK_NOT_READY",
+                        "message": "Chưa thể kiểm tra: cần tất cả thợ may đã hoàn thành công việc",
+                    }
+                },
+            )
+
+    # Guard: checked → shipped requires payment settled or COD
+    if current_status == "checked" and new_status == "shipped":
+        if not _payment_ok(order.payment_status, order.payment_method):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_SHIP_NOT_READY",
+                        "message": "Chưa thể gửi đi: cần đã thanh toán (hoặc COD)",
                     }
                 },
             )

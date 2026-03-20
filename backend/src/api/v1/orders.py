@@ -49,7 +49,7 @@ async def create_internal_order_endpoint(
     """Create an internal production order.
 
     Owner only — skips shipping/payment, auto-fills customer info from Owner.
-    Order goes directly to in_production status.
+    Order goes directly to in_progress status.
     """
     result = await order_service.create_internal_order(db, order_data, user, tenant_id)
     return {"data": result.model_dump(mode="json"), "meta": {}}

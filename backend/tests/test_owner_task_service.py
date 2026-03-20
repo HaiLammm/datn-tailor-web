@@ -83,12 +83,12 @@ async def db(test_db_engine):
         )
         session.add(garment)
 
-        # Seed order (in_production)
+        # Seed order (confirmed — ready for task assignment)
         order = OrderDB(
             id=ORDER_ID, tenant_id=TENANT_ID,
             customer_name="Nguyễn Thị Lan", customer_phone="0901234567",
             shipping_address={"city": "Hà Nội"}, total_amount=Decimal("3000000"),
-            status="in_production",
+            status="confirmed",
         )
         session.add(order)
 
@@ -120,7 +120,7 @@ async def db(test_db_engine):
 
 @pytest.mark.asyncio
 async def test_create_task_success(db: AsyncSession):
-    """Owner can create a task for an in_production order."""
+    """Owner can create a task for a confirmed order."""
     request = TaskCreateRequest(
         order_id=ORDER_ID,
         assigned_to=TAILOR_A_ID,
@@ -155,12 +155,12 @@ async def test_create_task_auto_populates_garment_name(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_create_task_rejects_non_production_order(db: AsyncSession):
-    """Cannot assign task for order not in 'in_production' status."""
+    """Cannot assign task for order not in 'confirmed' status."""
     request = TaskCreateRequest(
         order_id=ORDER_PENDING_ID,
         assigned_to=TAILOR_A_ID,
     )
-    with pytest.raises(ValueError, match="đang sản xuất"):
+    with pytest.raises(ValueError, match="đã xác nhận"):
         await tailor_task_service.create_task(db, request, OWNER_ID, TENANT_ID)
 
 

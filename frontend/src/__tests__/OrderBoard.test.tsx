@@ -19,7 +19,8 @@ describe("OrderStatusBadge", () => {
   const cases: { status: OrderStatus; label: string; colorClass: string }[] = [
     { status: "pending", label: "Chờ xác nhận", colorClass: "bg-amber-100" },
     { status: "confirmed", label: "Đã xác nhận", colorClass: "bg-blue-100" },
-    { status: "in_production", label: "Đang may", colorClass: "bg-indigo-100" },
+    { status: "in_progress", label: "Đang may", colorClass: "bg-indigo-100" },
+    { status: "checked", label: "Đã kiểm tra", colorClass: "bg-violet-100" },
     { status: "shipped", label: "Đã gửi", colorClass: "bg-cyan-100" },
     { status: "delivered", label: "Đã giao", colorClass: "bg-green-100" },
     { status: "cancelled", label: "Đã hủy", colorClass: "bg-red-100" },

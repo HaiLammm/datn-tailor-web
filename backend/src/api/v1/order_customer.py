@@ -33,7 +33,7 @@ async def list_my_orders(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=50),
-    status: Optional[str] = Query(None, description="Order status filter (pending, confirmed, in_production, shipped, delivered, cancelled)"),
+    status: Optional[str] = Query(None, description="Order status filter (pending, confirmed, in_progress, checked, shipped, delivered, cancelled)"),
     order_type: Optional[str] = Query(None, pattern=r"^(buy|rental)$"),
     date_from: Optional[str] = Query(None, description="ISO date string, e.g. 2026-01-01"),
     date_to: Optional[str] = Query(None, description="ISO date string, e.g. 2026-12-31"),

@@ -34,9 +34,13 @@ ORDER_STATUS_MESSAGES: dict[str, tuple[str, str]] = {
         "Đơn hàng đã xác nhận",
         "Đơn hàng {order_code} đã được xác nhận thành công.",
     ),
-    "in_production": (
-        "Đơn hàng đang sản xuất",
-        "Đơn hàng {order_code} đang được may.",
+    "in_progress": (
+        "Đơn hàng đang thực hiện",
+        "Đơn hàng {order_code} đã được giao cho thợ may và đang thực hiện.",
+    ),
+    "checked": (
+        "Đơn hàng đã kiểm tra",
+        "Đơn hàng {order_code} đã được kiểm tra hoàn thành, sẵn sàng gửi đi.",
     ),
     "shipped": (
         "Đơn hàng đã gửi đi",

@@ -214,7 +214,8 @@ export default function OrdersClient({
           <option value="">Tất cả trạng thái</option>
           <option value="pending">Chờ xác nhận</option>
           <option value="confirmed">Đã xác nhận</option>
-          <option value="in_production">Đang may</option>
+          <option value="in_progress">Đang may</option>
+          <option value="checked">Đã kiểm tra</option>
           <option value="shipped">Đã gửi</option>
           <option value="delivered">Đã giao</option>
           <option value="cancelled">Đã hủy</option>

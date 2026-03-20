@@ -273,7 +273,7 @@ async def create_task(
 
     Validates:
     - Order exists and belongs to tenant
-    - Order status is 'in_production'
+    - Order status is 'confirmed'
     - Assigned tailor exists, is active, role=Tailor, same tenant
     Auto-populates garment_name and customer_name from order.
     """
@@ -286,11 +286,21 @@ async def create_task(
         raise ValueError("Không tìm thấy đơn hàng")
     if order.tenant_id != tenant_id:
         raise PermissionError("Đơn hàng này không thuộc về cơ sở của bạn")
-    if order.status != "in_production":
+    if order.status != "confirmed":
         raise ValueError(
-            f"Chỉ có thể giao việc cho đơn hàng đang sản xuất. "
+            f"Chỉ có thể giao việc cho đơn hàng đã xác nhận. "
             f"Trạng thái hiện tại: '{order.status}'"
         )
+
+    # Check: one order can only have one active task (not cancelled/deleted)
+    existing_task_result = await db.execute(
+        select(func.count(TailorTaskDB.id)).where(
+            TailorTaskDB.order_id == request.order_id,
+            TailorTaskDB.tenant_id == tenant_id,
+        )
+    )
+    if existing_task_result.scalar_one() > 0:
+        raise ValueError("Đơn hàng này đã được giao cho thợ may rồi")
 
     # Validate assigned tailor
     tailor_query = select(UserDB).where(UserDB.id == request.assigned_to)
@@ -352,6 +362,11 @@ async def create_task(
 
     db.add(new_task)
     await db.flush()
+
+    # Auto-transition order status: confirmed → in_progress
+    if order.status == "confirmed":
+        order.status = "in_progress"
+        order.updated_at = datetime.now(timezone.utc)
 
     # Reload with assignee relationship
     reload_query = (

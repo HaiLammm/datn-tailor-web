@@ -21,9 +21,14 @@ describe("OrderStatusBadge", () => {
     expect(screen.getByText("Đã xác nhận")).toBeInTheDocument();
   });
 
-  it("renders in_production status", () => {
-    render(<OrderStatusBadge status="in_production" />);
+  it("renders in_progress status", () => {
+    render(<OrderStatusBadge status="in_progress" />);
     expect(screen.getByText("Đang may")).toBeInTheDocument();
+  });
+
+  it("renders checked status", () => {
+    render(<OrderStatusBadge status="checked" />);
+    expect(screen.getByText("Đã kiểm tra")).toBeInTheDocument();
   });
 
   it("renders shipped status", () => {

@@ -29,12 +29,13 @@ from src.models.order_customer import (
 DEFAULT_TENANT_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 # Status display order for timeline
-_STATUS_ORDER = ["pending", "confirmed", "in_production", "shipped", "delivered"]
+_STATUS_ORDER = ["pending", "confirmed", "in_progress", "checked", "shipped", "delivered"]
 
 _STATUS_LABELS: dict[str, str] = {
     "pending": "Đơn hàng được tạo",
     "confirmed": "Đơn hàng được xác nhận",
-    "in_production": "Bắt đầu may đo",
+    "in_progress": "Đang may đo",
+    "checked": "Đã kiểm tra hoàn thành",
     "shipped": "Đã giao cho đơn vị vận chuyển",
     "delivered": "Giao hàng thành công",
     "cancelled": "Đơn hàng đã bị hủy",

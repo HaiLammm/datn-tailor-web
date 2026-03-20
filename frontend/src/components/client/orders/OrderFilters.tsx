@@ -6,7 +6,8 @@ import type { OrderListParams, OrderStatus, PaymentStatus } from "@/types/order"
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Chờ xác nhận",
   confirmed: "Đã xác nhận",
-  in_production: "Đang may",
+  in_progress: "Đang may",
+  checked: "Đã kiểm tra",
   shipped: "Đã gửi",
   delivered: "Đã giao",
   cancelled: "Đã hủy",

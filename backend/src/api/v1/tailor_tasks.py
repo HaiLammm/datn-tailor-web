@@ -5,6 +5,7 @@ Provides task listing, status updates, task detail views,
 and Owner task management (create, list-all, update, delete).
 """
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -139,8 +140,17 @@ async def create_task_endpoint(
         task_item = await tailor_task_service.create_task(
             db, body, user.id, tenant_id
         )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
+        )
 
-        # Send in-app notification to assigned tailor
+    # Send in-app notification — failure must not break the create response
+    try:
         deadline_text = (
             task_item.deadline[:10] if task_item.deadline else "Không có hạn"
         )
@@ -158,16 +168,13 @@ async def create_task_endpoint(
             message=message,
             data={"task_id": task_item.id, "order_id": task_item.order_id},
         )
+    except Exception:
+        logging.getLogger(__name__).warning(
+            "Failed to send task assignment notification for task %s",
+            task_item.id,
+        )
 
-        return {"data": task_item.model_dump(mode="json"), "meta": {}}
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        )
-    except PermissionError as e:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
-        )
+    return {"data": task_item.model_dump(mode="json"), "meta": {}}
 
 
 @router.get(
@@ -217,9 +224,18 @@ async def update_task_endpoint(
         task_item, reassigned = await tailor_task_service.update_task(
             db, task_id, body, user.id, tenant_id
         )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
+        )
 
-        # Send notification if reassigned
-        if reassigned and body.assigned_to:
+    # Send notification if reassigned — failure must not break the update response
+    if reassigned and body.assigned_to:
+        try:
             deadline_text = (
                 task_item.deadline[:10] if task_item.deadline else "Không có hạn"
             )
@@ -237,16 +253,14 @@ async def update_task_endpoint(
                 message=message,
                 data={"task_id": task_item.id, "order_id": task_item.order_id},
             )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to send reassignment notification for task %s",
+                task_item.id,
+            )
 
-        return {"data": task_item.model_dump(mode="json"), "meta": {}}
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        )
-    except PermissionError as e:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
-        )
+    return {"data": task_item.model_dump(mode="json"), "meta": {}}
 
 
 @router.delete(

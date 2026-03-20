@@ -11,7 +11,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.models.db_models import Base, GarmentDB, OrderDB, OrderItemDB, TenantDB
+from src.models.db_models import Base, GarmentDB, OrderDB, OrderItemDB, TailorTaskDB, TenantDB
 from src.models.order import OrderFilterParams, OrderStatus, OrderStatusUpdate
 from src.services import order_service
 
@@ -80,7 +80,8 @@ async def seeded_db(test_db_session: AsyncSession):
             [
                 ("pending", "pending"),
                 ("confirmed", "pending"),
-                ("in_production", "paid"),
+                ("in_progress", "paid"),
+                ("checked", "paid"),
                 ("shipped", "paid"),
                 ("delivered", "paid"),
                 ("cancelled", "pending"),
@@ -113,8 +114,8 @@ async def test_list_orders_returns_all(test_db_session, seeded_db):
     """list_orders returns all orders for tenant with no filters."""
     params = OrderFilterParams()
     result = await order_service.list_orders(test_db_session, TENANT_ID, params)
-    assert result.meta.total == 6
-    assert len(result.data) == 6
+    assert result.meta.total == 7
+    assert len(result.data) == 7
 
 
 @pytest.mark.asyncio
@@ -151,7 +152,7 @@ async def test_list_orders_filter_payment_status(test_db_session, seeded_db):
 
     params = OrderFilterParams(payment_status=[PaymentStatus.paid])
     result = await order_service.list_orders(test_db_session, TENANT_ID, params)
-    assert result.meta.total == 3
+    assert result.meta.total == 4
 
 
 @pytest.mark.asyncio
@@ -180,8 +181,8 @@ async def test_list_orders_pagination(test_db_session, seeded_db):
     params = OrderFilterParams(page=1, page_size=3)
     result = await order_service.list_orders(test_db_session, TENANT_ID, params)
     assert len(result.data) == 3
-    assert result.meta.total == 6
-    assert result.meta.total_pages == 2
+    assert result.meta.total == 7
+    assert result.meta.total_pages == 3
 
     params2 = OrderFilterParams(page=2, page_size=3)
     result2 = await order_service.list_orders(test_db_session, TENANT_ID, params2)
@@ -275,23 +276,72 @@ async def test_update_status_pending_to_confirmed(test_db_session, pending_order
     assert result.status == OrderStatus.confirmed
 
 
+async def _make_order_shippable(session: AsyncSession, order: OrderDB):
+    """Add a completed tailor task and set payment to paid so order can ship."""
+    task = TailorTaskDB(
+        tenant_id=order.tenant_id,
+        order_id=order.id,
+        assigned_to=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        assigned_by=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        garment_name="Test Garment",
+        customer_name=order.customer_name,
+        status="completed",
+    )
+    session.add(task)
+    order.payment_status = "paid"
+    await session.flush()
+
+
 @pytest.mark.asyncio
 async def test_update_status_full_pipeline(test_db_session, pending_order):
-    """Walk the full pipeline: pending → confirmed → in_production → shipped → delivered."""
-    pipeline = ["confirmed", "in_production", "shipped", "delivered"]
-    for step in pipeline:
-        result = await order_service.update_order_status(
-            test_db_session,
-            pending_order.id,
-            pending_order.tenant_id,
-            OrderStatusUpdate(status=OrderStatus(step)),
-        )
-        assert result.status.value == step
+    """Walk the full pipeline: pending → confirmed → (task assigns → in_progress) → checked → shipped → delivered."""
+    # pending → confirmed (manual)
+    result = await order_service.update_order_status(
+        test_db_session,
+        pending_order.id,
+        pending_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.confirmed),
+    )
+    assert result.status == OrderStatus.confirmed
+
+    # Simulate task assignment auto-transition: confirmed → in_progress
+    pending_order.status = "in_progress"
+    await test_db_session.flush()
+
+    # Add completed tailor task for in_progress → checked guard
+    await _make_order_shippable(test_db_session, pending_order)
+
+    # in_progress → checked (manual, requires tailor tasks completed)
+    result = await order_service.update_order_status(
+        test_db_session,
+        pending_order.id,
+        pending_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.checked),
+    )
+    assert result.status == OrderStatus.checked
+
+    # checked → shipped (manual, requires paid/cod — pending_order is COD)
+    result = await order_service.update_order_status(
+        test_db_session,
+        pending_order.id,
+        pending_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.shipped),
+    )
+    assert result.status == OrderStatus.shipped
+
+    # shipped → delivered
+    result = await order_service.update_order_status(
+        test_db_session,
+        pending_order.id,
+        pending_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.delivered),
+    )
+    assert result.status == OrderStatus.delivered
 
 
 @pytest.mark.asyncio
 async def test_update_status_skip_transition_rejected(test_db_session, pending_order):
-    """Invalid skip: pending → in_production should raise 422."""
+    """Invalid skip: pending → in_progress should raise 422."""
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc_info:
@@ -299,7 +349,7 @@ async def test_update_status_skip_transition_rejected(test_db_session, pending_o
             test_db_session,
             pending_order.id,
             pending_order.tenant_id,
-            OrderStatusUpdate(status=OrderStatus.in_production),
+            OrderStatusUpdate(status=OrderStatus.in_progress),
         )
     assert exc_info.value.status_code == 422
 
@@ -322,11 +372,17 @@ async def test_update_status_cannot_cancel_delivered(test_db_session, pending_or
     from fastapi import HTTPException
 
     # Walk to delivered
-    for step in ["confirmed", "in_production", "shipped", "delivered"]:
+    await order_service.update_order_status(
+        test_db_session, pending_order.id, pending_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.confirmed),
+    )
+    # Simulate task assignment auto-transition
+    pending_order.status = "in_progress"
+    await test_db_session.flush()
+    await _make_order_shippable(test_db_session, pending_order)
+    for step in ["checked", "shipped", "delivered"]:
         await order_service.update_order_status(
-            test_db_session,
-            pending_order.id,
-            pending_order.tenant_id,
+            test_db_session, pending_order.id, pending_order.tenant_id,
             OrderStatusUpdate(status=OrderStatus(step)),
         )
 
@@ -353,3 +409,213 @@ async def test_update_status_not_found(test_db_session, pending_order):
             OrderStatusUpdate(status=OrderStatus.confirmed),
         )
     assert exc_info.value.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Guard tests: in_progress → checked (tailor tasks) & checked → shipped (payment)
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def in_progress_order(test_db_session: AsyncSession) -> OrderDB:
+    """Create an order at in_progress status for guard tests."""
+    tenant = TenantDB(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000077"),
+        name="Ship Shop",
+        slug="ship-shop",
+    )
+    garment = GarmentDB(
+        id=uuid.UUID("00000000-0000-0000-0000-000000000077"),
+        tenant_id=tenant.id,
+        name="Áo Dài Ship",
+        category="ao_dai",
+        rental_price=Decimal("300000"),
+        sale_price=Decimal("900000"),
+        status="available",
+        size_options=["M"],
+    )
+    order = OrderDB(
+        tenant_id=tenant.id,
+        customer_name="Ship Customer",
+        customer_phone="0901234567",
+        shipping_address={
+            "province": "TP HCM",
+            "district": "Q1",
+            "ward": "Bến Nghé",
+            "address_detail": "1 Lê Lợi",
+        },
+        payment_method="vnpay",
+        status="in_progress",
+        payment_status="pending",
+        total_amount=Decimal("900000"),
+    )
+    item = OrderItemDB(
+        garment_id=garment.id,
+        transaction_type="buy",
+        unit_price=Decimal("900000"),
+        total_price=Decimal("900000"),
+        quantity=1,
+    )
+    order.items.append(item)
+    test_db_session.add_all([tenant, garment, order])
+    await test_db_session.commit()
+    await test_db_session.refresh(order)
+    return order
+
+
+@pytest.mark.asyncio
+async def test_check_rejected_no_tailor_tasks(test_db_session, in_progress_order):
+    """Cannot check when no tailor tasks exist."""
+    from fastapi import HTTPException
+
+    with pytest.raises(HTTPException) as exc_info:
+        await order_service.update_order_status(
+            test_db_session,
+            in_progress_order.id,
+            in_progress_order.tenant_id,
+            OrderStatusUpdate(status=OrderStatus.checked),
+        )
+    assert exc_info.value.status_code == 422
+    assert "ERR_CHECK_NOT_READY" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_check_rejected_tailor_not_completed(test_db_session, in_progress_order):
+    """Cannot check when tailor task is still in_progress."""
+    from fastapi import HTTPException
+
+    task = TailorTaskDB(
+        tenant_id=in_progress_order.tenant_id,
+        order_id=in_progress_order.id,
+        assigned_to=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        assigned_by=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        garment_name="Test",
+        customer_name="Test",
+        status="in_progress",
+    )
+    test_db_session.add(task)
+    await test_db_session.flush()
+
+    with pytest.raises(HTTPException) as exc_info:
+        await order_service.update_order_status(
+            test_db_session,
+            in_progress_order.id,
+            in_progress_order.tenant_id,
+            OrderStatusUpdate(status=OrderStatus.checked),
+        )
+    assert exc_info.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_check_allowed_tailor_completed(test_db_session, in_progress_order):
+    """Can check when all tailor tasks completed."""
+    task = TailorTaskDB(
+        tenant_id=in_progress_order.tenant_id,
+        order_id=in_progress_order.id,
+        assigned_to=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        assigned_by=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        garment_name="Test",
+        customer_name="Test",
+        status="completed",
+    )
+    test_db_session.add(task)
+    await test_db_session.flush()
+
+    result = await order_service.update_order_status(
+        test_db_session,
+        in_progress_order.id,
+        in_progress_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.checked),
+    )
+    assert result.status == OrderStatus.checked
+
+
+@pytest.mark.asyncio
+async def test_ship_rejected_payment_not_settled(test_db_session, in_progress_order):
+    """Cannot ship from checked when payment pending + non-COD."""
+    from fastapi import HTTPException
+
+    # Move to checked first
+    task = TailorTaskDB(
+        tenant_id=in_progress_order.tenant_id,
+        order_id=in_progress_order.id,
+        assigned_to=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        assigned_by=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        garment_name="Test",
+        customer_name="Test",
+        status="completed",
+    )
+    test_db_session.add(task)
+    await test_db_session.flush()
+    await order_service.update_order_status(
+        test_db_session, in_progress_order.id, in_progress_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.checked),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await order_service.update_order_status(
+            test_db_session,
+            in_progress_order.id,
+            in_progress_order.tenant_id,
+            OrderStatusUpdate(status=OrderStatus.shipped),
+        )
+    assert exc_info.value.status_code == 422
+    assert "ERR_SHIP_NOT_READY" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_ship_allowed_with_cod(test_db_session, in_progress_order):
+    """COD orders can ship from checked even with pending payment."""
+    in_progress_order.payment_method = "cod"
+    task = TailorTaskDB(
+        tenant_id=in_progress_order.tenant_id,
+        order_id=in_progress_order.id,
+        assigned_to=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        assigned_by=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        garment_name="Test",
+        customer_name="Test",
+        status="completed",
+    )
+    test_db_session.add(task)
+    await test_db_session.flush()
+    await order_service.update_order_status(
+        test_db_session, in_progress_order.id, in_progress_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.checked),
+    )
+
+    result = await order_service.update_order_status(
+        test_db_session,
+        in_progress_order.id,
+        in_progress_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.shipped),
+    )
+    assert result.status == OrderStatus.shipped
+
+
+@pytest.mark.asyncio
+async def test_ship_allowed_with_paid(test_db_session, in_progress_order):
+    """Paid orders can ship from checked."""
+    in_progress_order.payment_status = "paid"
+    task = TailorTaskDB(
+        tenant_id=in_progress_order.tenant_id,
+        order_id=in_progress_order.id,
+        assigned_to=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        assigned_by=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        garment_name="Test",
+        customer_name="Test",
+        status="completed",
+    )
+    test_db_session.add(task)
+    await test_db_session.flush()
+    await order_service.update_order_status(
+        test_db_session, in_progress_order.id, in_progress_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.checked),
+    )
+
+    result = await order_service.update_order_status(
+        test_db_session,
+        in_progress_order.id,
+        in_progress_order.tenant_id,
+        OrderStatusUpdate(status=OrderStatus.shipped),
+    )
+    assert result.status == OrderStatus.shipped

@@ -117,7 +117,7 @@ async def seeded_db(test_db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_create_internal_order_success(test_db_session, seeded_db):
-    """Creates order with is_internal=True, status=in_production, payment=paid."""
+    """Creates order with is_internal=True, status=in_progress, payment=paid."""
     order_data = InternalOrderCreate(
         items=[OrderItemCreate(garment_id=GARMENT_ID_1, transaction_type="buy", size="M")],
     )
@@ -126,7 +126,7 @@ async def test_create_internal_order_success(test_db_session, seeded_db):
     )
     assert isinstance(result, OrderResponse)
     assert result.is_internal is True
-    assert result.status == OrderStatus.in_production
+    assert result.status == OrderStatus.in_progress
     assert result.payment_status.value == "paid"
     assert result.payment_method.value == "internal"
     assert result.shipping_address is None
@@ -222,7 +222,7 @@ async def seeded_mixed_orders(test_db_session: AsyncSession, seeded_db):
         customer_phone="0901234567",
         shipping_address=None,
         payment_method="internal",
-        status="in_production",
+        status="in_progress",
         payment_status="paid",
         total_amount=Decimal("900000"),
         is_internal=True,
@@ -267,9 +267,9 @@ async def test_list_orders_filter_is_internal_false(test_db_session, seeded_mixe
 
 
 @pytest.mark.asyncio
-async def test_internal_order_appears_in_production_list(test_db_session, seeded_mixed_orders):
-    """Internal order with in_production status shows up when filtering by status."""
-    params = OrderFilterParams(status=[OrderStatus.in_production])
+async def test_internal_order_appears_in_progress_list(test_db_session, seeded_mixed_orders):
+    """Internal order with in_progress status shows up when filtering by status."""
+    params = OrderFilterParams(status=[OrderStatus.in_progress])
     result = await order_service.list_orders(test_db_session, TENANT_ID, params)
     assert result.meta.total == 1
     assert result.data[0].is_internal is True
@@ -283,11 +283,33 @@ async def test_internal_order_appears_in_production_list(test_db_session, seeded
 @pytest.mark.asyncio
 async def test_internal_order_status_update_no_notification(test_db_session, seeded_mixed_orders):
     """Status update on internal order does NOT create notification (F11)."""
+    from src.models.db_models import TailorTaskDB
     internal_order = seeded_mixed_orders["internal"]
+
+    # Add completed tailor task for checked guard
+    task = TailorTaskDB(
+        tenant_id=TENANT_ID,
+        order_id=internal_order.id,
+        assigned_to=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        assigned_by=uuid.UUID("00000000-0000-0000-0000-000000000088"),
+        garment_name="Test",
+        customer_name="Test",
+        status="completed",
+    )
+    test_db_session.add(task)
+    await test_db_session.flush()
 
     with patch(
         "src.services.order_service.create_notification", new_callable=AsyncMock
     ) as mock_notify:
+        # in_progress → checked
+        await order_service.update_order_status(
+            test_db_session,
+            internal_order.id,
+            TENANT_ID,
+            OrderStatusUpdate(status=OrderStatus.checked),
+        )
+        # checked → shipped (internal has payment_status=paid)
         await order_service.update_order_status(
             test_db_session,
             internal_order.id,

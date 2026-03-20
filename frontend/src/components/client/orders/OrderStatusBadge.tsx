@@ -20,9 +20,13 @@ const CUSTOMER_STATUS_STYLES: Record<
     label: "Đã xác nhận",
     className: "bg-blue-50 text-blue-700 border border-blue-200",
   },
-  in_production: {
+  in_progress: {
     label: "Đang may",
     className: "bg-purple-50 text-purple-700 border border-purple-200",
+  },
+  checked: {
+    label: "Đã kiểm tra",
+    className: "bg-violet-50 text-violet-700 border border-violet-200",
   },
   shipped: {
     label: "Đã gửi",

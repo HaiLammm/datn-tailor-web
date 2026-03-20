@@ -198,7 +198,7 @@ export async function deleteTask(taskId: string): Promise<void> {
 }
 
 /**
- * Fetch orders with status 'in_production' for task assignment dropdown.
+ * Fetch orders with status 'confirmed' for task assignment dropdown.
  */
 export async function fetchOrdersForAssignment(): Promise<OrderListResponse> {
   const session = await auth();
@@ -206,7 +206,7 @@ export async function fetchOrdersForAssignment(): Promise<OrderListResponse> {
   if (!token) throw new Error("Chưa đăng nhập. Vui lòng đăng nhập lại.");
 
   const url = new URL(`${BACKEND_URL}/api/v1/orders`);
-  url.searchParams.append("status", "in_production");
+  url.searchParams.append("status", "confirmed");
   url.searchParams.set("page_size", "100");
 
   const controller = new AbortController();

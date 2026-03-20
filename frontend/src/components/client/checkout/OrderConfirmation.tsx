@@ -22,7 +22,8 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   pending: "Chờ Xác Nhận",
   confirmed: "Đã Xác Nhận",
-  in_production: "Đang Sản Xuất",
+  in_progress: "Đang Sản Xuất",
+  checked: "Đã Kiểm Tra",
   shipped: "Đang Giao",
   delivered: "Đã Giao",
   cancelled: "Đã Hủy",

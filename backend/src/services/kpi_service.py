@@ -196,7 +196,7 @@ async def _get_production_alerts(
         .join(OrderItemDB, OrderItemDB.order_id == OrderDB.id)
         .where(
             OrderDB.tenant_id == tenant_id,
-            OrderDB.status == "in_production",
+            OrderDB.status.in_(["in_progress", "checked"]),
             OrderDB.created_at <= seven_days_ago,
         )
         .order_by(OrderDB.created_at.asc())

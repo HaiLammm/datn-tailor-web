@@ -9,7 +9,8 @@ import type { OrderStatus, PaymentStatus } from "@/types/order";
 const ORDER_STATUS_STYLES: Record<OrderStatus, { label: string; className: string }> = {
   pending: { label: "Chờ xác nhận", className: "bg-amber-100 text-amber-800" },
   confirmed: { label: "Đã xác nhận", className: "bg-blue-100 text-blue-800" },
-  in_production: { label: "Đang may", className: "bg-indigo-100 text-indigo-800" },
+  in_progress: { label: "Đang may", className: "bg-indigo-100 text-indigo-800" },
+  checked: { label: "Đã kiểm tra", className: "bg-violet-100 text-violet-800" },
   shipped: { label: "Đã gửi", className: "bg-cyan-100 text-cyan-800" },
   delivered: { label: "Đã giao", className: "bg-green-100 text-green-800" },
   cancelled: { label: "Đã hủy", className: "bg-red-100 text-red-800" },

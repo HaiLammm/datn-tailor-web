@@ -7,7 +7,8 @@ export type PaymentMethod = "cod" | "vnpay" | "momo" | "internal";
 export type OrderStatus =
   | "pending"
   | "confirmed"
-  | "in_production"
+  | "in_progress"
+  | "checked"
   | "shipped"
   | "delivered"
   | "cancelled";
@@ -135,7 +136,8 @@ export interface OrderDetailResponse {
 export type CustomerOrderStatus =
   | "pending"
   | "confirmed"
-  | "in_production"
+  | "in_progress"
+  | "checked"
   | "shipped"
   | "delivered"
   | "cancelled"

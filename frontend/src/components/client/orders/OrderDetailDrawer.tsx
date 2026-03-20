@@ -9,7 +9,8 @@ import { formatMoney, formatDateTime } from "@/utils/format";
 const PIPELINE_STEPS: { status: OrderStatus; label: string }[] = [
   { status: "pending", label: "Chờ xác nhận" },
   { status: "confirmed", label: "Đã xác nhận" },
-  { status: "in_production", label: "Đang may" },
+  { status: "in_progress", label: "Đang may" },
+  { status: "checked", label: "Đã kiểm tra" },
   { status: "shipped", label: "Đã gửi" },
   { status: "delivered", label: "Đã giao" },
 ];
