@@ -691,3 +691,114 @@ class LeadConversionDB(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
+
+
+class MessageTemplateDB(Base):
+    """ORM model for the `message_templates` table (Story 6.4).
+
+    Reusable message templates for broadcast campaigns.
+    Supports variable interpolation: {{name}}, {{voucher_code}}, {{shop_name}}, etc.
+    - channel: 'email' (functional) | 'sms' | 'zalo' (stubs for future)
+    - is_default: pre-built templates seeded on init
+    """
+
+    __tablename__ = "message_templates"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name", name="uq_message_templates_tenant_name"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    channel: Mapped[str] = mapped_column(String(20), nullable=False, default="email")
+    subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    campaigns: Mapped[list["CampaignDB"]] = relationship("CampaignDB", back_populates="template")
+
+
+class CampaignDB(Base):
+    """ORM model for the `campaigns` table (Story 6.4).
+
+    Outreach broadcast campaigns to customer segments.
+    - channel: 'email' (functional MVP) | 'sms' | 'zalo' (stubs)
+    - segment: audience selection criteria
+    - status lifecycle: draft -> sending -> sent/failed
+    """
+
+    __tablename__ = "campaigns"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name", name="uq_campaigns_tenant_name"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    channel: Mapped[str] = mapped_column(String(20), nullable=False, default="email")
+    template_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("message_templates.id"), nullable=False
+    )
+    segment: Mapped[str] = mapped_column(String(50), nullable=False)
+    voucher_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("vouchers.id"), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    total_recipients: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sent_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    template: Mapped["MessageTemplateDB"] = relationship("MessageTemplateDB", back_populates="campaigns")
+    recipients: Mapped[list["CampaignRecipientDB"]] = relationship(
+        "CampaignRecipientDB", back_populates="campaign", cascade="all, delete-orphan"
+    )
+
+
+class CampaignRecipientDB(Base):
+    """ORM model for the `campaign_recipients` table (Story 6.4).
+
+    Per-recipient send log for campaign delivery tracking.
+    - user_id nullable: leads without accounts are tracked by email only
+    - status: pending -> sent/failed
+    """
+
+    __tablename__ = "campaign_recipients"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    recipient_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    campaign: Mapped["CampaignDB"] = relationship("CampaignDB", back_populates="recipients")

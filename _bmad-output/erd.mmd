@@ -1,0 +1,312 @@
+erDiagram
+    appointments {
+        uuid id PK
+        uuid tenant_id FK
+        varchar(255) customer_name
+        varchar(20) customer_phone
+        varchar(255) customer_email
+        date appointment_date
+        varchar(20) slot
+        text special_requests
+        varchar(20) status
+        bool reminder_sent
+        timestamp created_at
+        timestamp updated_at
+    }
+    customer_profiles {
+        uuid id PK
+        uuid tenant_id FK
+        uuid user_id FK
+        varchar(255) full_name
+        varchar(20) phone
+        varchar(255) email
+        date date_of_birth
+        varchar(20) gender
+        text address
+        text notes
+        bool is_deleted
+        int version
+        timestamp created_at
+        timestamp updated_at
+    }
+    design_overrides {
+        uuid id PK
+        uuid design_id FK
+        uuid tenant_id FK
+        uuid tailor_id FK
+        varchar(100) delta_key
+        decimal(5,2) original_value
+        decimal(5,2) overridden_value
+        varchar(20) delta_unit
+        varchar(255) label_vi
+        text reason_vi
+        bool flagged_for_learning
+        int sequence_id
+        timestamp created_at
+    }
+    designs {
+        uuid id PK
+        uuid user_id FK
+        uuid tenant_id FK
+        json master_geometry
+        varchar(64) geometry_hash
+        varchar(20) status
+        timestamp created_at
+    }
+    garments {
+        uuid id PK
+        uuid tenant_id FK
+        varchar(255) name
+        text description
+        varchar(50) category
+        varchar(50) color
+        varchar(50) occasion
+        varchar(50) material
+        json size_options
+        decimal(10,2) rental_price
+        decimal(10,2) sale_price
+        varchar(500) image_url
+        json image_urls
+        varchar(20) status
+        date expected_return_date
+        uuid renter_id FK
+        varchar(255) renter_name
+        varchar(255) renter_email
+        timestamp reminder_sent_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    lead_conversions {
+        uuid id PK
+        uuid tenant_id FK
+        uuid lead_id
+        varchar(255) lead_name
+        varchar(20) lead_phone
+        varchar(255) lead_email
+        varchar(50) lead_source
+        uuid customer_profile_id FK
+        uuid converted_by FK
+        timestamp created_at
+    }
+    leads {
+        uuid id PK
+        uuid tenant_id FK
+        varchar(255) name
+        varchar(20) phone
+        varchar(255) email
+        varchar(50) source
+        varchar(10) classification
+        text notes
+        timestamp created_at
+        timestamp updated_at
+    }
+    measurements {
+        uuid id PK
+        uuid customer_profile_id FK
+        uuid tenant_id FK
+        decimal(5,2) neck
+        decimal(5,2) shoulder_width
+        decimal(5,2) bust
+        decimal(5,2) waist
+        decimal(5,2) hip
+        decimal(5,2) top_length
+        decimal(5,2) sleeve_length
+        decimal(5,2) wrist
+        decimal(5,2) height
+        decimal(5,2) weight
+        text measurement_notes
+        bool is_default
+        date measured_date
+        uuid measured_by FK
+        int version
+        timestamp created_at
+        timestamp updated_at
+    }
+    notifications {
+        uuid id PK
+        uuid tenant_id FK
+        uuid user_id FK
+        varchar(50) type
+        varchar(255) title
+        text message
+        json data
+        bool is_read
+        timestamp read_at
+        timestamp deleted_at
+        timestamp created_at
+    }
+    order_items {
+        uuid id PK
+        uuid order_id FK
+        uuid garment_id FK
+        varchar(10) transaction_type
+        varchar(10) size
+        date start_date
+        date end_date
+        int rental_days
+        varchar(20) rental_status
+        decimal(10,2) deposit_amount
+        decimal(10,2) unit_price
+        decimal(10,2) total_price
+        int quantity
+        timestamp created_at
+    }
+    orders {
+        uuid id PK
+        uuid tenant_id FK
+        uuid customer_id FK
+        varchar(255) customer_name
+        varchar(20) customer_phone
+        bool is_internal
+        json shipping_address
+        text shipping_note
+        varchar(20) payment_method
+        varchar(20) status
+        varchar(20) payment_status
+        decimal(12,2) total_amount
+        timestamp created_at
+        timestamp updated_at
+    }
+    otp_codes {
+        int id PK
+        varchar(255) email
+        varchar(6) code
+        timestamp expires_at
+        varchar(50) purpose
+        bool is_used
+        timestamp created_at
+    }
+    payment_transactions {
+        uuid id PK
+        uuid order_id FK
+        varchar(20) provider
+        varchar(255) transaction_id
+        decimal(12,2) amount
+        varchar(20) status
+        json raw_payload
+        timestamp created_at
+    }
+    rental_returns {
+        uuid id PK
+        uuid tenant_id FK
+        uuid order_item_id FK
+        uuid garment_id FK
+        varchar(20) return_condition
+        text damage_notes
+        decimal(10,2) deposit_deduction
+        uuid processed_by FK
+        timestamp returned_at
+        timestamp created_at
+    }
+    staff_whitelist {
+        uuid id PK
+        varchar(255) email
+        varchar(50) role
+        varchar(255) created_by
+        timestamp created_at
+    }
+    tailor_tasks {
+        uuid id PK
+        uuid tenant_id FK
+        uuid order_id FK
+        uuid order_item_id FK
+        uuid assigned_to FK
+        uuid assigned_by FK
+        varchar(255) garment_name
+        varchar(255) customer_name
+        varchar(50) status
+        timestamp deadline
+        text notes
+        decimal(12,2) piece_rate
+        uuid design_id FK
+        timestamp completed_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    tenants {
+        uuid id PK
+        varchar(255) name
+        varchar(100) slug
+        bool is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+    user_vouchers {
+        uuid id PK
+        uuid tenant_id FK
+        uuid user_id FK
+        uuid voucher_id FK
+        bool is_used
+        timestamp used_at
+        uuid used_in_order_id
+        timestamp assigned_at
+    }
+    users {
+        uuid id PK
+        varchar(255) email
+        varchar(255) hashed_password
+        varchar(50) role
+        bool is_active
+        uuid tenant_id FK
+        varchar(255) full_name
+        varchar(20) phone
+        date date_of_birth
+        varchar(20) gender
+        text address
+        timestamp created_at
+    }
+    vouchers {
+        uuid id PK
+        uuid tenant_id FK
+        varchar(50) code
+        varchar(20) type
+        decimal(10,2) value
+        decimal(12,2) min_order_value
+        decimal(12,2) max_discount_value
+        text description
+        date expiry_date
+        int total_uses
+        int used_count
+        bool is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+    tenants ||--o{ appointments : "tenant_id"
+    tenants ||--o{ customer_profiles : "tenant_id"
+    users ||--o{ customer_profiles : "user_id"
+    designs ||--o{ design_overrides : "design_id"
+    users ||--o{ design_overrides : "tailor_id"
+    tenants ||--o{ design_overrides : "tenant_id"
+    tenants ||--o{ designs : "tenant_id"
+    users ||--o{ designs : "user_id"
+    customer_profiles ||--o{ garments : "renter_id"
+    tenants ||--o{ garments : "tenant_id"
+    users ||--o{ lead_conversions : "converted_by"
+    customer_profiles ||--o{ lead_conversions : "customer_profile_id"
+    tenants ||--o{ lead_conversions : "tenant_id"
+    tenants ||--o{ leads : "tenant_id"
+    customer_profiles ||--o{ measurements : "customer_profile_id"
+    users ||--o{ measurements : "measured_by"
+    tenants ||--o{ measurements : "tenant_id"
+    tenants ||--o{ notifications : "tenant_id"
+    users ||--o{ notifications : "user_id"
+    garments ||--o{ order_items : "garment_id"
+    orders ||--o{ order_items : "order_id"
+    users ||--o{ orders : "customer_id"
+    tenants ||--o{ orders : "tenant_id"
+    orders ||--o{ payment_transactions : "order_id"
+    garments ||--o{ rental_returns : "garment_id"
+    order_items ||--o{ rental_returns : "order_item_id"
+    users ||--o{ rental_returns : "processed_by"
+    tenants ||--o{ rental_returns : "tenant_id"
+    users ||--o{ tailor_tasks : "assigned_by"
+    users ||--o{ tailor_tasks : "assigned_to"
+    designs ||--o{ tailor_tasks : "design_id"
+    orders ||--o{ tailor_tasks : "order_id"
+    order_items ||--o{ tailor_tasks : "order_item_id"
+    tenants ||--o{ tailor_tasks : "tenant_id"
+    tenants ||--o{ user_vouchers : "tenant_id"
+    users ||--o{ user_vouchers : "user_id"
+    vouchers ||--o{ user_vouchers : "voucher_id"
+    tenants ||--o{ users : "tenant_id"
+    tenants ||--o{ vouchers : "tenant_id"

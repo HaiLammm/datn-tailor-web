@@ -1,0 +1,297 @@
+Project tailor_project {
+  database_type: "PostgreSQL"
+  Note: "Tailor Management System — Multi-tenant SaaS"
+}
+
+Table appointments {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  customer_name varchar(255) [not null]
+  customer_phone varchar(20) [not null]
+  customer_email varchar(255) [not null]
+  appointment_date date [not null]
+  slot varchar(20) [not null]
+  special_requests text
+  status varchar(20) [not null]
+  reminder_sent bool [not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table customer_profiles {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  user_id uuid [ref: > users.id]
+  full_name varchar(255) [not null]
+  phone varchar(20) [not null]
+  email varchar(255)
+  date_of_birth date
+  gender varchar(20)
+  address text
+  notes text
+  is_deleted bool [not null]
+  version int [not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table design_overrides {
+  id uuid [pk, not null]
+  design_id uuid [not null, ref: > designs.id]
+  tenant_id uuid [not null, ref: > tenants.id]
+  tailor_id uuid [ref: > users.id]
+  delta_key varchar(100) [not null]
+  original_value decimal(5,2) [not null]
+  overridden_value decimal(5,2) [not null]
+  delta_unit varchar(20) [not null]
+  label_vi varchar(255) [not null]
+  reason_vi text
+  flagged_for_learning bool [not null]
+  sequence_id int [not null]
+  created_at timestamp [not null]
+}
+
+Table designs {
+  id uuid [pk, not null]
+  user_id uuid [not null, ref: > users.id]
+  tenant_id uuid [not null, ref: > tenants.id]
+  master_geometry json [not null]
+  geometry_hash varchar(64) [not null]
+  status varchar(20) [not null]
+  created_at timestamp [not null]
+}
+
+Table garments {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  name varchar(255) [not null]
+  description text
+  category varchar(50) [not null]
+  color varchar(50)
+  occasion varchar(50)
+  material varchar(50)
+  size_options json [not null]
+  rental_price decimal(10,2) [not null]
+  sale_price decimal(10,2)
+  image_url varchar(500)
+  image_urls json [not null]
+  status varchar(20) [not null]
+  expected_return_date date
+  renter_id uuid [ref: > customer_profiles.id]
+  renter_name varchar(255)
+  renter_email varchar(255)
+  reminder_sent_at timestamp
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table lead_conversions {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  lead_id uuid [not null]
+  lead_name varchar(255) [not null]
+  lead_phone varchar(20)
+  lead_email varchar(255)
+  lead_source varchar(50)
+  customer_profile_id uuid [not null, ref: > customer_profiles.id]
+  converted_by uuid [not null, ref: > users.id]
+  created_at timestamp [not null]
+}
+
+Table leads {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  name varchar(255) [not null]
+  phone varchar(20)
+  email varchar(255)
+  source varchar(50) [not null]
+  classification varchar(10) [not null]
+  notes text
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table measurements {
+  id uuid [pk, not null]
+  customer_profile_id uuid [not null, ref: > customer_profiles.id]
+  tenant_id uuid [not null, ref: > tenants.id]
+  neck decimal(5,2)
+  shoulder_width decimal(5,2)
+  bust decimal(5,2)
+  waist decimal(5,2)
+  hip decimal(5,2)
+  top_length decimal(5,2)
+  sleeve_length decimal(5,2)
+  wrist decimal(5,2)
+  height decimal(5,2)
+  weight decimal(5,2)
+  measurement_notes text
+  is_default bool [not null]
+  measured_date date [not null]
+  measured_by uuid [ref: > users.id]
+  version int [not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table notifications {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  user_id uuid [not null, ref: > users.id]
+  type varchar(50) [not null]
+  title varchar(255) [not null]
+  message text [not null]
+  data json [not null]
+  is_read bool [not null]
+  read_at timestamp
+  deleted_at timestamp
+  created_at timestamp [not null]
+}
+
+Table order_items {
+  id uuid [pk, not null]
+  order_id uuid [not null, ref: > orders.id]
+  garment_id uuid [not null, ref: > garments.id]
+  transaction_type varchar(10) [not null]
+  size varchar(10)
+  start_date date
+  end_date date
+  rental_days int
+  rental_status varchar(20)
+  deposit_amount decimal(10,2)
+  unit_price decimal(10,2) [not null]
+  total_price decimal(10,2) [not null]
+  quantity int [not null]
+  created_at timestamp [not null]
+}
+
+Table orders {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  customer_id uuid [ref: > users.id]
+  customer_name varchar(255) [not null]
+  customer_phone varchar(20) [not null]
+  is_internal bool [not null]
+  shipping_address json
+  shipping_note text
+  payment_method varchar(20) [not null]
+  status varchar(20) [not null]
+  payment_status varchar(20) [not null]
+  total_amount decimal(12,2) [not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table otp_codes {
+  id int [pk, not null]
+  email varchar(255) [not null]
+  code varchar(6) [not null]
+  expires_at timestamp [not null]
+  purpose varchar(50) [not null]
+  is_used bool [not null]
+  created_at timestamp [not null]
+}
+
+Table payment_transactions {
+  id uuid [pk, not null]
+  order_id uuid [not null, ref: > orders.id]
+  provider varchar(20) [not null]
+  transaction_id varchar(255) [not null]
+  amount decimal(12,2) [not null]
+  status varchar(20) [not null]
+  raw_payload json [not null]
+  created_at timestamp [not null]
+}
+
+Table rental_returns {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  order_item_id uuid [not null, ref: > order_items.id]
+  garment_id uuid [not null, ref: > garments.id]
+  return_condition varchar(20) [not null]
+  damage_notes text
+  deposit_deduction decimal(10,2) [not null]
+  processed_by uuid [ref: > users.id]
+  returned_at timestamp [not null]
+  created_at timestamp [not null]
+}
+
+Table staff_whitelist {
+  id uuid [pk, not null]
+  email varchar(255) [not null]
+  role varchar(50) [not null]
+  created_by varchar(255)
+  created_at timestamp [not null]
+}
+
+Table tailor_tasks {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  order_id uuid [not null, ref: > orders.id]
+  order_item_id uuid [ref: > order_items.id]
+  assigned_to uuid [not null, ref: > users.id]
+  assigned_by uuid [not null, ref: > users.id]
+  garment_name varchar(255) [not null]
+  customer_name varchar(255) [not null]
+  status varchar(50) [not null]
+  deadline timestamp
+  notes text
+  piece_rate decimal(12,2)
+  design_id uuid [ref: > designs.id]
+  completed_at timestamp
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table tenants {
+  id uuid [pk, not null]
+  name varchar(255) [not null]
+  slug varchar(100) [not null]
+  is_active bool [not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table user_vouchers {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  user_id uuid [not null, ref: > users.id]
+  voucher_id uuid [not null, ref: > vouchers.id]
+  is_used bool [not null]
+  used_at timestamp
+  used_in_order_id uuid
+  assigned_at timestamp [not null]
+}
+
+Table users {
+  id uuid [pk, not null]
+  email varchar(255) [not null]
+  hashed_password varchar(255)
+  role varchar(50) [not null]
+  is_active bool [not null]
+  tenant_id uuid [ref: > tenants.id]
+  full_name varchar(255)
+  phone varchar(20)
+  date_of_birth date
+  gender varchar(20)
+  address text
+  created_at timestamp [not null]
+}
+
+Table vouchers {
+  id uuid [pk, not null]
+  tenant_id uuid [not null, ref: > tenants.id]
+  code varchar(50) [not null]
+  type varchar(20) [not null]
+  value decimal(10,2) [not null]
+  min_order_value decimal(12,2) [not null]
+  max_discount_value decimal(12,2)
+  description text
+  expiry_date date [not null]
+  total_uses int [not null]
+  used_count int [not null]
+  is_active bool [not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+

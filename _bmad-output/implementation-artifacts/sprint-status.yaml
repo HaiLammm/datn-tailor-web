@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-03-22  # Story 6.3 → review
+last_updated: 2026-03-22  # Story 6.4 → done
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -67,7 +67,7 @@ development_status:
   epic-3-retrospective: optional
 
   epic-4: done
-  4-1-xu-ly-state-thanh-toan-qua-webhook: review
+  4-1-xu-ly-state-thanh-toan-qua-webhook: done
   4-2-visual-bang-don-hang-owner-host: done
   4-3-owner-theo-doi-thuemuon-dai-han: done  # Code Review 2026-03-18: 10/11 items fixed (3H/5M/2L)
   4-4a-customer-profile-layout-navbar-icon: done  # P0 - Thay thế story 4.4 gốc, tách thành 7 sub-stories (Sprint Change 2026-03-12)
@@ -90,7 +90,7 @@ development_status:
   6-1-quan-tri-he-thong-danh-sach-bang-chia-khoa: done
   6-2-khai-mo-chuyen-hoa-khach: done
   6-3-voucher-creator-ui: review
-  6-4-tuong-tac-broadcasting-template-sms-sns: backlog
+  6-4-tuong-tac-broadcasting-template-sms-sns: review
   epic-6-retrospective: optional
 
   epic-7: done

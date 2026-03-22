@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tailor Project &mdash; Database ERD</title>
+<style>
+  :root {
+    --bg: #f0f2f5; --card: #fff; --accent: #667eea;
+    --accent2: #764ba2; --border: #e0e0e0; --text: #333;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--text); }
+  header {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color:#fff; padding:48px 20px; text-align:center;
+  }
+  header h1 { font-size:2.4em; }
+  header p { opacity:.85; margin-top:8px; }
+  .stats {
+    display:flex; justify-content:center; gap:48px; padding:24px 16px;
+    background:var(--card); border-bottom:1px solid var(--border);
+  }
+  .stat-n { font-size:2.2em; font-weight:700; color:var(--accent); }
+  .stat-l { font-size:.85em; color:#888; }
+  .container { max-width:1200px; margin:0 auto; padding:24px 16px; }
+  .toc { background:var(--card); border-radius:8px; padding:20px 24px;
+          margin-bottom:32px; border:1px solid var(--border); }
+  .toc h3 { margin-bottom:12px; color:var(--accent); }
+  .toc ul { list-style:none; display:flex; flex-wrap:wrap; gap:8px 24px; }
+  .toc a { color:var(--accent); text-decoration:none; font-size:.95em; }
+  .toc a:hover { text-decoration:underline; }
+  .group-title {
+    margin:36px 0 16px; padding-bottom:8px;
+    border-bottom:2px solid var(--accent); color:var(--accent); font-size:1.4em;
+  }
+  .card {
+    background:var(--card); border-radius:8px; margin-bottom:20px;
+    box-shadow:0 1px 4px rgba(0,0,0,.08); overflow:hidden;
+  }
+  .card-header {
+    padding:14px 18px; font-weight:600; font-size:1.05em;
+    border-bottom:2px solid var(--accent); background:#fafafa;
+  }
+  .col-count { font-weight:400; color:#999; font-size:.85em; }
+  table { width:100%; border-collapse:collapse; }
+  th { background:#f5f6f8; text-align:left; padding:10px 14px;
+       font-size:.82em; text-transform:uppercase; color:#666; letter-spacing:.5px; }
+  td { padding:9px 14px; border-top:1px solid #eee; font-size:.92em; }
+  tr:hover td { background:#f9f9fb; }
+  .col-name { font-family:SFMono-Regular,Consolas,monospace; font-weight:500; }
+  .col-type { font-family:SFMono-Regular,Consolas,monospace; color:#666; }
+  .badge {
+    display:inline-block; padding:2px 7px; border-radius:3px;
+    font-size:.78em; font-weight:600; margin-right:4px;
+  }
+  .badge.pk { background:#fef3e7; color:#d9534f; }
+  .badge.fk { background:#e8f5e9; color:#388e3c; }
+  .badge.nn { background:#f3e5f5; color:#7b1fa2; }
+  footer { text-align:center; padding:32px; color:#999; font-size:.85em; }
+  @media(max-width:600px) {
+    .stats { flex-direction:column; align-items:center; gap:16px; }
+    .toc ul { flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tailor Project &mdash; Database ERD</h1>
+  <p>Multi-tenant SaaS &bull; PostgreSQL &bull; 20 tables</p>
+</header>
+<div class="stats">
+  <div style="text-align:center"><div class="stat-n">20</div><div class="stat-l">Tables</div></div>
+  <div style="text-align:center"><div class="stat-n">232</div><div class="stat-l">Columns</div></div>
+  <div style="text-align:center"><div class="stat-n">39</div><div class="stat-l">Foreign Keys</div></div>
+</div>
+<div class="container">
+  <div class="toc"><h3>Table of Contents</h3><ul><li><a href="#auth--users">Auth & Users (3)</a></li>
+<li><a href="#tenants">Tenants (1)</a></li>
+<li><a href="#customers--profiles">Customers & Profiles (2)</a></li>
+<li><a href="#designs">Designs (2)</a></li>
+<li><a href="#garments">Garments (1)</a></li>
+<li><a href="#orders--payments">Orders & Payments (3)</a></li>
+<li><a href="#appointments">Appointments (1)</a></li>
+<li><a href="#rentals">Rentals (1)</a></li>
+<li><a href="#production">Production (1)</a></li>
+<li><a href="#vouchers">Vouchers (2)</a></li>
+<li><a href="#crm">CRM (2)</a></li>
+<li><a href="#notifications">Notifications (1)</a></li>
+</ul></div>
+  <h2 id="auth--users" class="group-title">Auth & Users</h2>
+<div class="card" id="tbl-users">
+  <div class="card-header">users <span class="col-count">(12 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">email</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">hashed_password</td><td class="col-type">varchar(255)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">role</td><td class="col-type">varchar(50)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">is_active</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> </td></tr>
+<tr><td class="col-name">full_name</td><td class="col-type">varchar(255)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">phone</td><td class="col-type">varchar(20)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">date_of_birth</td><td class="col-type">date</td><td>&mdash;</td></tr>
+<tr><td class="col-name">gender</td><td class="col-type">varchar(20)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">address</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<div class="card" id="tbl-staff_whitelist">
+  <div class="card-header">staff_whitelist <span class="col-count">(5 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">email</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">role</td><td class="col-type">varchar(50)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_by</td><td class="col-type">varchar(255)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<div class="card" id="tbl-otp_codes">
+  <div class="card-header">otp_codes <span class="col-count">(7 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">int</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">email</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">code</td><td class="col-type">varchar(6)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">expires_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">purpose</td><td class="col-type">varchar(50)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">is_used</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="tenants" class="group-title">Tenants</h2>
+<div class="card" id="tbl-tenants">
+  <div class="card-header">tenants <span class="col-count">(6 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">name</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">slug</td><td class="col-type">varchar(100)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">is_active</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">updated_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="customers--profiles" class="group-title">Customers & Profiles</h2>
+<div class="card" id="tbl-customer_profiles">
+  <div class="card-header">customer_profiles <span class="col-count">(14 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">user_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> </td></tr>
+<tr><td class="col-name">full_name</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">phone</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">email</td><td class="col-type">varchar(255)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">date_of_birth</td><td class="col-type">date</td><td>&mdash;</td></tr>
+<tr><td class="col-name">gender</td><td class="col-type">varchar(20)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">address</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">notes</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">is_deleted</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">version</td><td class="col-type">int</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">updated_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<div class="card" id="tbl-measurements">
+  <div class="card-header">measurements <span class="col-count">(20 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">customer_profile_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; customer_profiles.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">neck</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">shoulder_width</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">bust</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">waist</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">hip</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">top_length</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">sleeve_length</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">wrist</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">height</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">weight</td><td class="col-type">decimal(5,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">measurement_notes</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">is_default</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">measured_date</td><td class="col-type">date</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">measured_by</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> </td></tr>
+<tr><td class="col-name">version</td><td class="col-type">int</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">updated_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="designs" class="group-title">Designs</h2>
+<div class="card" id="tbl-designs">
+  <div class="card-header">designs <span class="col-count">(7 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">user_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">master_geometry</td><td class="col-type">json</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">geometry_hash</td><td class="col-type">varchar(64)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">status</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<div class="card" id="tbl-design_overrides">
+  <div class="card-header">design_overrides <span class="col-count">(13 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">design_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; designs.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">tailor_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> </td></tr>
+<tr><td class="col-name">delta_key</td><td class="col-type">varchar(100)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">original_value</td><td class="col-type">decimal(5,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">overridden_value</td><td class="col-type">decimal(5,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">delta_unit</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">label_vi</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">reason_vi</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">flagged_for_learning</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">sequence_id</td><td class="col-type">int</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="garments" class="group-title">Garments</h2>
+<div class="card" id="tbl-garments">
+  <div class="card-header">garments <span class="col-count">(21 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">name</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">description</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">category</td><td class="col-type">varchar(50)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">color</td><td class="col-type">varchar(50)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">occasion</td><td class="col-type">varchar(50)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">material</td><td class="col-type">varchar(50)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">size_options</td><td class="col-type">json</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">rental_price</td><td class="col-type">decimal(10,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">sale_price</td><td class="col-type">decimal(10,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">image_url</td><td class="col-type">varchar(500)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">image_urls</td><td class="col-type">json</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">status</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">expected_return_date</td><td class="col-type">date</td><td>&mdash;</td></tr>
+<tr><td class="col-name">renter_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; customer_profiles.id</span> </td></tr>
+<tr><td class="col-name">renter_name</td><td class="col-type">varchar(255)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">renter_email</td><td class="col-type">varchar(255)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">reminder_sent_at</td><td class="col-type">timestamp</td><td>&mdash;</td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">updated_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="orders--payments" class="group-title">Orders & Payments</h2>
+<div class="card" id="tbl-orders">
+  <div class="card-header">orders <span class="col-count">(14 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">customer_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> </td></tr>
+<tr><td class="col-name">customer_name</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">customer_phone</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">is_internal</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">shipping_address</td><td class="col-type">json</td><td>&mdash;</td></tr>
+<tr><td class="col-name">shipping_note</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">payment_method</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">status</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">payment_status</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">total_amount</td><td class="col-type">decimal(12,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">updated_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<div class="card" id="tbl-order_items">
+  <div class="card-header">order_items <span class="col-count">(14 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">order_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; orders.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">garment_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; garments.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">transaction_type</td><td class="col-type">varchar(10)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">size</td><td class="col-type">varchar(10)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">start_date</td><td class="col-type">date</td><td>&mdash;</td></tr>
+<tr><td class="col-name">end_date</td><td class="col-type">date</td><td>&mdash;</td></tr>
+<tr><td class="col-name">rental_days</td><td class="col-type">int</td><td>&mdash;</td></tr>
+<tr><td class="col-name">rental_status</td><td class="col-type">varchar(20)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">deposit_amount</td><td class="col-type">decimal(10,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">unit_price</td><td class="col-type">decimal(10,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">total_price</td><td class="col-type">decimal(10,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">quantity</td><td class="col-type">int</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<div class="card" id="tbl-payment_transactions">
+  <div class="card-header">payment_transactions <span class="col-count">(8 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">order_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; orders.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">provider</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">transaction_id</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">amount</td><td class="col-type">decimal(12,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">status</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">raw_payload</td><td class="col-type">json</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="appointments" class="group-title">Appointments</h2>
+<div class="card" id="tbl-appointments">
+  <div class="card-header">appointments <span class="col-count">(12 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">customer_name</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">customer_phone</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">customer_email</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">appointment_date</td><td class="col-type">date</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">slot</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">special_requests</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">status</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">reminder_sent</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">updated_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="rentals" class="group-title">Rentals</h2>
+<div class="card" id="tbl-rental_returns">
+  <div class="card-header">rental_returns <span class="col-count">(10 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">order_item_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; order_items.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">garment_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; garments.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">return_condition</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">damage_notes</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">deposit_deduction</td><td class="col-type">decimal(10,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">processed_by</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> </td></tr>
+<tr><td class="col-name">returned_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="production" class="group-title">Production</h2>
+<div class="card" id="tbl-tailor_tasks">
+  <div class="card-header">tailor_tasks <span class="col-count">(16 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">order_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; orders.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">order_item_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; order_items.id</span> </td></tr>
+<tr><td class="col-name">assigned_to</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">assigned_by</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">garment_name</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">customer_name</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">status</td><td class="col-type">varchar(50)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">deadline</td><td class="col-type">timestamp</td><td>&mdash;</td></tr>
+<tr><td class="col-name">notes</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">piece_rate</td><td class="col-type">decimal(12,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">design_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; designs.id</span> </td></tr>
+<tr><td class="col-name">completed_at</td><td class="col-type">timestamp</td><td>&mdash;</td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">updated_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="vouchers" class="group-title">Vouchers</h2>
+<div class="card" id="tbl-vouchers">
+  <div class="card-header">vouchers <span class="col-count">(14 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">code</td><td class="col-type">varchar(50)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">type</td><td class="col-type">varchar(20)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">value</td><td class="col-type">decimal(10,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">min_order_value</td><td class="col-type">decimal(12,2)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">max_discount_value</td><td class="col-type">decimal(12,2)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">description</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">expiry_date</td><td class="col-type">date</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">total_uses</td><td class="col-type">int</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">used_count</td><td class="col-type">int</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">is_active</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">updated_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<div class="card" id="tbl-user_vouchers">
+  <div class="card-header">user_vouchers <span class="col-count">(8 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">user_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">voucher_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; vouchers.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">is_used</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">used_at</td><td class="col-type">timestamp</td><td>&mdash;</td></tr>
+<tr><td class="col-name">used_in_order_id</td><td class="col-type">uuid</td><td>&mdash;</td></tr>
+<tr><td class="col-name">assigned_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="crm" class="group-title">CRM</h2>
+<div class="card" id="tbl-leads">
+  <div class="card-header">leads <span class="col-count">(10 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">name</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">phone</td><td class="col-type">varchar(20)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">email</td><td class="col-type">varchar(255)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">source</td><td class="col-type">varchar(50)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">classification</td><td class="col-type">varchar(10)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">notes</td><td class="col-type">text</td><td>&mdash;</td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">updated_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<div class="card" id="tbl-lead_conversions">
+  <div class="card-header">lead_conversions <span class="col-count">(10 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">lead_id</td><td class="col-type">uuid</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">lead_name</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">lead_phone</td><td class="col-type">varchar(20)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">lead_email</td><td class="col-type">varchar(255)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">lead_source</td><td class="col-type">varchar(50)</td><td>&mdash;</td></tr>
+<tr><td class="col-name">customer_profile_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; customer_profiles.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">converted_by</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+<h2 id="notifications" class="group-title">Notifications</h2>
+<div class="card" id="tbl-notifications">
+  <div class="card-header">notifications <span class="col-count">(11 cols)</span></div>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+    <tbody><tr><td class="col-name">id</td><td class="col-type">uuid</td><td><span class="badge pk">PK</span> </td></tr>
+<tr><td class="col-name">tenant_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; tenants.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">user_id</td><td class="col-type">uuid</td><td><span class="badge fk">FK &rarr; users.id</span> <span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">type</td><td class="col-type">varchar(50)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">title</td><td class="col-type">varchar(255)</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">message</td><td class="col-type">text</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">data</td><td class="col-type">json</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">is_read</td><td class="col-type">bool</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+<tr><td class="col-name">read_at</td><td class="col-type">timestamp</td><td>&mdash;</td></tr>
+<tr><td class="col-name">deleted_at</td><td class="col-type">timestamp</td><td>&mdash;</td></tr>
+<tr><td class="col-name">created_at</td><td class="col-type">timestamp</td><td><span class="badge nn">NOT NULL</span> </td></tr>
+</tbody>
+  </table>
+</div>
+
+</div>
+<footer>
+  Generated by <code>scripts/generate_erd.py</code> &bull; Tailor Project
+</footer>
+</body>
+</html>

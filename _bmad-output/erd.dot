@@ -1,0 +1,318 @@
+digraph ERD {
+  graph [rankdir=LR fontname="Helvetica" fontsize=12 bgcolor="#f8f9fa"];
+  node  [shape=none fontname="Helvetica" fontsize=10];
+  edge  [color="#666666" arrowsize=0.8 fontname="Helvetica" fontsize=8];
+
+  appointments [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>appointments</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>customer_name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>customer_phone</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>customer_email</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>appointment_date</TD><TD ALIGN="LEFT"><FONT COLOR="#888">date</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>slot</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>special_requests</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>status</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>reminder_sent</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>updated_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  customer_profiles [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>customer_profiles</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>user_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>full_name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>phone</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>email</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>date_of_birth</TD><TD ALIGN="LEFT"><FONT COLOR="#888">date</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>gender</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>address</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>notes</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>is_deleted</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>version</TD><TD ALIGN="LEFT"><FONT COLOR="#888">int</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>updated_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  design_overrides [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>design_overrides</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>design_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tailor_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>delta_key</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(100)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>original_value</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>overridden_value</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>delta_unit</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>label_vi</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>reason_vi</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>flagged_for_learning</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>sequence_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">int</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  designs [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>designs</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>user_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>master_geometry</TD><TD ALIGN="LEFT"><FONT COLOR="#888">json</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>geometry_hash</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(64)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>status</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  garments [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>garments</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>description</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>category</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>color</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>occasion</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>material</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>size_options</TD><TD ALIGN="LEFT"><FONT COLOR="#888">json</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>rental_price</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(10,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>sale_price</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(10,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>image_url</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(500)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>image_urls</TD><TD ALIGN="LEFT"><FONT COLOR="#888">json</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>status</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>expected_return_date</TD><TD ALIGN="LEFT"><FONT COLOR="#888">date</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>renter_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>renter_name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>renter_email</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>reminder_sent_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>updated_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  lead_conversions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>lead_conversions</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>lead_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>lead_name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>lead_phone</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>lead_email</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>lead_source</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>customer_profile_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>converted_by</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  leads [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>leads</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>phone</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>email</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>source</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>classification</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(10)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>notes</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>updated_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  measurements [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>measurements</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>customer_profile_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>neck</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>shoulder_width</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>bust</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>waist</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>hip</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>top_length</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>sleeve_length</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>wrist</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>height</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>weight</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(5,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>measurement_notes</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>is_default</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>measured_date</TD><TD ALIGN="LEFT"><FONT COLOR="#888">date</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>measured_by</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>version</TD><TD ALIGN="LEFT"><FONT COLOR="#888">int</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>updated_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  notifications [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>notifications</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>user_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>type</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>title</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>message</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>data</TD><TD ALIGN="LEFT"><FONT COLOR="#888">json</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>is_read</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>read_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>deleted_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  order_items [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>order_items</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>order_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>garment_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>transaction_type</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(10)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>size</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(10)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>start_date</TD><TD ALIGN="LEFT"><FONT COLOR="#888">date</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>end_date</TD><TD ALIGN="LEFT"><FONT COLOR="#888">date</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>rental_days</TD><TD ALIGN="LEFT"><FONT COLOR="#888">int</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>rental_status</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>deposit_amount</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(10,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>unit_price</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(10,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>total_price</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(10,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>quantity</TD><TD ALIGN="LEFT"><FONT COLOR="#888">int</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  orders [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>orders</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>customer_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>customer_name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>customer_phone</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>is_internal</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>shipping_address</TD><TD ALIGN="LEFT"><FONT COLOR="#888">json</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>shipping_note</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>payment_method</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>status</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>payment_status</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>total_amount</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(12,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>updated_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  otp_codes [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>otp_codes</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">int</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>email</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>code</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(6)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>expires_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>purpose</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>is_used</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  payment_transactions [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>payment_transactions</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>order_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>provider</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>transaction_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>amount</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(12,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>status</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>raw_payload</TD><TD ALIGN="LEFT"><FONT COLOR="#888">json</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  rental_returns [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>rental_returns</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>order_item_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>garment_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>return_condition</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>damage_notes</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>deposit_deduction</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(10,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>processed_by</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>returned_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  staff_whitelist [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>staff_whitelist</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>email</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>role</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_by</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  tailor_tasks [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>tailor_tasks</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>order_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>order_item_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>assigned_to</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>assigned_by</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>garment_name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>customer_name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>status</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>deadline</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>notes</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>piece_rate</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(12,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>design_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>completed_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>updated_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  tenants [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>tenants</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>slug</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(100)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>is_active</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>updated_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  user_vouchers [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>user_vouchers</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>user_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>voucher_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>is_used</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>used_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>used_in_order_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>assigned_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  users [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>users</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>email</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>hashed_password</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>role</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>is_active</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>full_name</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(255)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>phone</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>date_of_birth</TD><TD ALIGN="LEFT"><FONT COLOR="#888">date</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>gender</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>address</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+  vouchers [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD COLSPAN="2" BGCOLOR="#1A2B4C"><FONT COLOR="white"><B>vouchers</B></FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#d9534f"><B>PK </B></FONT>id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#5cb85c"><B>FK </B></FONT>tenant_id</TD><TD ALIGN="LEFT"><FONT COLOR="#888">uuid</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>code</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(50)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>type</TD><TD ALIGN="LEFT"><FONT COLOR="#888">varchar(20)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>value</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(10,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>min_order_value</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(12,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>max_discount_value</TD><TD ALIGN="LEFT"><FONT COLOR="#888">decimal(12,2)</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>description</TD><TD ALIGN="LEFT"><FONT COLOR="#888">text</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>expiry_date</TD><TD ALIGN="LEFT"><FONT COLOR="#888">date</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>total_uses</TD><TD ALIGN="LEFT"><FONT COLOR="#888">int</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>used_count</TD><TD ALIGN="LEFT"><FONT COLOR="#888">int</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>is_active</TD><TD ALIGN="LEFT"><FONT COLOR="#888">bool</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>created_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+<TR><TD ALIGN="LEFT"><FONT COLOR="#333"><B></B></FONT>updated_at</TD><TD ALIGN="LEFT"><FONT COLOR="#888">timestamp</FONT></TD></TR>
+</TABLE>>];
+
+  appointments -> tenants [label="tenant_id"];
+  customer_profiles -> tenants [label="tenant_id"];
+  customer_profiles -> users [label="user_id"];
+  design_overrides -> designs [label="design_id"];
+  design_overrides -> users [label="tailor_id"];
+  design_overrides -> tenants [label="tenant_id"];
+  designs -> tenants [label="tenant_id"];
+  designs -> users [label="user_id"];
+  garments -> customer_profiles [label="renter_id"];
+  garments -> tenants [label="tenant_id"];
+  lead_conversions -> users [label="converted_by"];
+  lead_conversions -> customer_profiles [label="customer_profile_id"];
+  lead_conversions -> tenants [label="tenant_id"];
+  leads -> tenants [label="tenant_id"];
+  measurements -> customer_profiles [label="customer_profile_id"];
+  measurements -> users [label="measured_by"];
+  measurements -> tenants [label="tenant_id"];
+  notifications -> tenants [label="tenant_id"];
+  notifications -> users [label="user_id"];
+  order_items -> garments [label="garment_id"];
+  order_items -> orders [label="order_id"];
+  orders -> users [label="customer_id"];
+  orders -> tenants [label="tenant_id"];
+  payment_transactions -> orders [label="order_id"];
+  rental_returns -> garments [label="garment_id"];
+  rental_returns -> order_items [label="order_item_id"];
+  rental_returns -> users [label="processed_by"];
+  rental_returns -> tenants [label="tenant_id"];
+  tailor_tasks -> users [label="assigned_by"];
+  tailor_tasks -> users [label="assigned_to"];
+  tailor_tasks -> designs [label="design_id"];
+  tailor_tasks -> orders [label="order_id"];
+  tailor_tasks -> order_items [label="order_item_id"];
+  tailor_tasks -> tenants [label="tenant_id"];
+  user_vouchers -> tenants [label="tenant_id"];
+  user_vouchers -> users [label="user_id"];
+  user_vouchers -> vouchers [label="voucher_id"];
+  users -> tenants [label="tenant_id"];
+  vouchers -> tenants [label="tenant_id"];
+}

@@ -33,6 +33,8 @@ from src.api.v1.order_customer import router as order_customer_router
 from src.api.v1.leads import router as leads_router
 from src.api.v1.owner_appointments import router as owner_appointments_router
 from src.api.v1.vouchers import router as vouchers_router
+from src.api.v1.campaigns import router as campaigns_router
+from src.api.v1.templates import router as templates_router
 from src.core.seed import seed_owner_account
 
 logger = logging.getLogger(__name__)
@@ -107,6 +109,8 @@ app.include_router(tailor_tasks_router)
 app.include_router(order_customer_router)
 app.include_router(leads_router)
 app.include_router(vouchers_router)
+app.include_router(templates_router)
+app.include_router(campaigns_router)
 
 
 @app.get("/health")

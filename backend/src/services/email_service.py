@@ -5,7 +5,9 @@ Story 5.4: Thong bao nhac nho tra do tu dong (Automatic Return Reminders)
 Uses aiosmtplib for async SMTP email sending with Heritage branding.
 """
 
+import html as html_mod
 import logging
+import re
 from datetime import date
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -1178,5 +1180,112 @@ Tailor Project - Hệ thống May Đo Thông Minh
 
     except Exception as e:
         logger.error("Failed to send order confirmation email for order %s: %s", order.id, e)
+        return False
+
+
+def create_campaign_email_html(body_text: str, shop_name: str = "Tailor Project") -> str:
+    """Create Heritage-branded HTML email for broadcast campaigns (Story 6.4).
+
+    Wraps the campaign template body in Heritage-branded HTML container.
+
+    Args:
+        body_text: Rendered template body with variables already substituted.
+        shop_name: Shop name for footer branding.
+
+    Returns:
+        str: Full HTML email content.
+    """
+    # Convert newlines to <br> for HTML display
+    html_body = body_text.replace("\n", "<br>")
+    safe_shop_name = html_mod.escape(shop_name)
+
+    return f"""<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{safe_shop_name}</title>
+</head>
+<body style="margin:0;padding:0;font-family:'Georgia',serif;background-color:#f5f5f5;">
+    <table role="presentation" style="width:100%;border-collapse:collapse;">
+        <tr>
+            <td align="center" style="padding:40px 0;">
+                <table role="presentation" style="width:600px;border-collapse:collapse;background-color:#ffffff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="padding:40px 40px 30px 40px;background:linear-gradient(135deg,#1A2B4C 0%,#2d4270 100%);border-radius:8px 8px 0 0;">
+                            <h1 style="margin:0;color:#D4AF37;font-size:26px;font-weight:600;text-align:center;font-family:'Georgia',serif;">
+                                {safe_shop_name}
+                            </h1>
+                            <p style="margin:8px 0 0;color:#e0e7ff;font-size:13px;text-align:center;">
+                                He thong May Do Thong Minh
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:40px;color:#1A1A2E;font-size:15px;line-height:1.7;">
+                            {html_body}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:20px 40px 30px;border-top:1px solid #f0ede8;">
+                            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+                                {safe_shop_name} &copy; 2026 &mdash; He thong May Do Thong Minh
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"""
+
+
+async def send_campaign_email(
+    to_email: str,
+    subject: str,
+    html_content: str,
+) -> bool:
+    """Send a single campaign email via SMTP (Story 6.4).
+
+    Non-blocking per-recipient send. Errors logged, not raised.
+
+    Args:
+        to_email: Recipient email address.
+        subject: Email subject line.
+        html_content: Heritage-branded HTML content.
+
+    Returns:
+        bool: True if sent successfully, False otherwise.
+    """
+    try:
+        message = MIMEMultipart("alternative")
+        message["Subject"] = subject
+        message["From"] = settings.FROM_EMAIL
+        message["To"] = to_email
+
+        # Plain text fallback — strip HTML tags
+        plain_text = html_content.replace("<br>", "\n")
+        plain_text = re.sub(r"<[^>]+>", "", plain_text).strip()
+
+        part1 = MIMEText(plain_text, "plain", "utf-8")
+        part2 = MIMEText(html_content, "html", "utf-8")
+        message.attach(part1)
+        message.attach(part2)
+
+        await aiosmtplib.send(
+            message,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USER,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+
+        logger.info("Campaign email sent to %s", to_email)
+        return True
+
+    except Exception as e:
+        logger.error("Failed to send campaign email to %s: %s", to_email, e)
         return False
 
