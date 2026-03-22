@@ -1,17 +1,29 @@
-"""Lead Service - Story 6.1: CRM Leads Board.
+"""Lead Service - Story 6.1 & 6.2: CRM Leads Board & Lead Conversion.
 
-Manages lead CRUD operations with multi-tenant isolation.
+Manages lead CRUD operations and lead-to-customer conversion with multi-tenant isolation.
 Owner-only access enforced at API layer.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
+from fastapi import HTTPException, status
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.db_models import LeadDB
+from src.models.db_models import (
+    CustomerProfileDB,
+    LeadConversionDB,
+    LeadDB,
+    MeasurementDB,
+    UserDB,
+)
+from src.core.security import hash_password
 from src.models.lead import LeadClassificationUpdate, LeadCreate, LeadFilter, LeadUpdate
+from src.services.customer_service import link_customer_to_user_by_email
+
+# Default password for accounts created via lead conversion
+DEFAULT_CONVERSION_PASSWORD = "camonquykhach"
 
 
 async def list_leads(
@@ -223,3 +235,147 @@ async def update_classification(
     await db.refresh(lead)
 
     return lead
+
+
+async def convert_lead_to_customer(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    lead_id: uuid.UUID,
+    converted_by: uuid.UUID,
+    create_account: bool = False,
+) -> CustomerProfileDB:
+    """Convert a lead to a customer profile in a single transaction.
+
+    Steps:
+    1. Lock and fetch lead (SELECT FOR UPDATE prevents race condition)
+    2. Check phone duplicate in customer_profiles
+    3. Create customer profile with lead's contact data
+    4. Link to existing user by email (if applicable)
+    5. Optionally create user account
+    6. Create default measurement profile
+    7. Create audit log (lead_conversions)
+    8. Delete lead
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID for multi-tenant isolation
+        lead_id: Lead UUID to convert
+        converted_by: User UUID of the Owner performing conversion
+        create_account: Whether to create a user account for the customer
+
+    Returns:
+        Created CustomerProfileDB instance
+
+    Raises:
+        HTTPException 404: Lead not found or already converted
+    """
+    # 1. Lock and fetch lead (SELECT FOR UPDATE prevents race condition)
+    result = await db.execute(
+        select(LeadDB)
+        .where(LeadDB.id == lead_id, LeadDB.tenant_id == tenant_id)
+        .with_for_update()
+    )
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lead không tồn tại hoặc đã được chuyển",
+        )
+
+    # 2. Check if customer with same phone already exists → reuse existing profile
+    existing_customer: CustomerProfileDB | None = None
+    if lead.phone:
+        existing_result = await db.execute(
+            select(CustomerProfileDB).where(
+                CustomerProfileDB.tenant_id == tenant_id,
+                CustomerProfileDB.phone == lead.phone,
+                CustomerProfileDB.is_deleted == False,  # noqa: E712
+            )
+        )
+        existing_customer = existing_result.scalar_one_or_none()
+
+    if existing_customer:
+        # Reuse existing customer profile — just merge lead notes
+        customer = existing_customer
+        lead_note = f"Chuyển từ Lead (source: {lead.source}). {lead.notes or ''}".strip()
+        if customer.notes:
+            customer.notes = f"{customer.notes}\n{lead_note}"
+        else:
+            customer.notes = lead_note
+    else:
+        # 3. Create new customer profile
+        customer = CustomerProfileDB(
+            tenant_id=tenant_id,
+            full_name=lead.name,
+            phone=lead.phone or "",
+            email=lead.email.lower() if lead.email else None,
+            notes=f"Chuyển từ Lead (source: {lead.source}). {lead.notes or ''}".strip(),
+        )
+
+        # 4. Link to existing user by email (if applicable)
+        if lead.email:
+            user_id = await link_customer_to_user_by_email(db, lead.email)
+            if user_id:
+                customer.user_id = user_id
+
+        db.add(customer)
+        await db.flush()  # Get customer.id
+
+    # 5. Optional: create user account with default password
+    # Login identifier: email if available, otherwise phone@local
+    if create_account and not customer.user_id:
+        login_email = (
+            lead.email.lower()
+            if lead.email
+            else f"{lead.phone}@local" if lead.phone else None
+        )
+        if login_email:
+            # Check if user with this email already exists
+            existing_user = await db.execute(
+                select(UserDB).where(UserDB.email == login_email)
+            )
+            if existing_user.scalar_one_or_none() is None:
+                user = UserDB(
+                    email=login_email,
+                    hashed_password=hash_password(DEFAULT_CONVERSION_PASSWORD),
+                    role="Customer",
+                    is_active=True,
+                    full_name=lead.name,
+                    phone=lead.phone,
+                    tenant_id=tenant_id,
+                )
+                db.add(user)
+                await db.flush()
+                customer.user_id = user.id
+                await db.flush()
+
+    # 6. Create default measurement profile (only for new customers)
+    if not existing_customer:
+        measurement = MeasurementDB(
+            customer_profile_id=customer.id,
+            tenant_id=tenant_id,
+            is_default=True,
+            measured_date=date.today(),
+        )
+        db.add(measurement)
+
+    # 7. Create audit log
+    conversion_log = LeadConversionDB(
+        tenant_id=tenant_id,
+        lead_id=lead.id,
+        lead_name=lead.name,
+        lead_phone=lead.phone,
+        lead_email=lead.email,
+        lead_source=lead.source,
+        customer_profile_id=customer.id,
+        converted_by=converted_by,
+    )
+    db.add(conversion_log)
+
+    # 8. Delete lead
+    await db.delete(lead)
+
+    await db.commit()
+    await db.refresh(customer)
+
+    return customer

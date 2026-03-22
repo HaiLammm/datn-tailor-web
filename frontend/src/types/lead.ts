@@ -91,6 +91,22 @@ export const LEAD_CLASSIFICATION_LABELS: Record<LeadClassification, string> = {
   cold: "Cold 🔴",
 };
 
+// --- Story 6.2: Lead-to-Customer Conversion ---
+
+export interface LeadConvertRequest {
+  create_account: boolean;
+}
+
+export interface LeadConvertResponse {
+  customer_profile_id: string;
+  customer_name: string;
+  message: string;
+}
+
+export interface LeadConvertApiResponse {
+  data: LeadConvertResponse;
+}
+
 /** Tailwind color classes for classification badges */
 export const LEAD_CLASSIFICATION_COLORS: Record<
   LeadClassification,

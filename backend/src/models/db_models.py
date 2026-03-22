@@ -662,3 +662,32 @@ class LeadDB(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
+
+
+class LeadConversionDB(Base):
+    """ORM model for the `lead_conversions` audit table (Story 6.2).
+
+    Records lead-to-customer conversion history for CRM analytics.
+    Lead data is denormalized here since the lead record is deleted after conversion.
+    """
+
+    __tablename__ = "lead_conversions"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    lead_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
+    lead_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    lead_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    lead_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    lead_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    customer_profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("customer_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    converted_by: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )

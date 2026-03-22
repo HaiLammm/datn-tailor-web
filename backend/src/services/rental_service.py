@@ -6,7 +6,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import Date, and_, case, func, or_, select
+from sqlalchemy import Date, Integer, and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, RentalReturnDB
@@ -82,10 +82,7 @@ async def list_rentals(
             OrderItemDB.rental_status,
             OrderDB.customer_name,
             OrderDB.customer_phone,
-            func.cast(
-                func.date_part("day", OrderItemDB.end_date - func.current_date()),
-                type_=Decimal,
-            ).cast(type_=int).label("days_remaining"),
+            (OrderItemDB.end_date - func.current_date()).label("days_remaining"),
         )
         .select_from(OrderItemDB)
         .join(GarmentDB, OrderItemDB.garment_id == GarmentDB.id)
@@ -386,10 +383,7 @@ async def get_rental_detail(
             GarmentDB.category,
             OrderDB.customer_name,
             OrderDB.customer_phone,
-            func.cast(
-                func.date_part("day", OrderItemDB.end_date - func.current_date()),
-                type_=Decimal,
-            ).cast(type_=int).label("days_remaining"),
+            (OrderItemDB.end_date - func.current_date()).label("days_remaining"),
         )
         .select_from(OrderItemDB)
         .join(GarmentDB, OrderItemDB.garment_id == GarmentDB.id)

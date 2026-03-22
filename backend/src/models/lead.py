@@ -158,3 +158,37 @@ class LeadListResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+
+# --- Story 6.2: Lead-to-Customer Conversion ---
+
+
+class LeadConvertRequest(BaseModel):
+    """Schema for lead conversion request."""
+
+    create_account: bool = Field(False, description="Tao tai khoan dang nhap cho khach")
+
+
+class LeadConvertResponse(BaseModel):
+    """Schema for lead conversion response."""
+
+    customer_profile_id: uuid.UUID
+    customer_name: str
+    message: str
+
+
+class LeadConversionRecord(BaseModel):
+    """Schema for lead conversion audit log record (future analytics)."""
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    lead_id: uuid.UUID
+    lead_name: str
+    lead_phone: str | None
+    lead_email: str | None
+    lead_source: str | None
+    customer_profile_id: uuid.UUID
+    converted_by: uuid.UUID
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

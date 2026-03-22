@@ -33,3 +33,61 @@ export interface VouchersData {
   vouchers: VoucherItem[];
   voucher_count: number;
 }
+
+// --- Story 6.3: Owner voucher management types ---
+
+export interface OwnerVoucher {
+  id: string;
+  code: string;
+  type: VoucherType;
+  /** Decimal serialized as string from backend — parse with parseFloat() */
+  value: string;
+  /** Decimal serialized as string from backend — parse with parseFloat() */
+  min_order_value: string;
+  /** Decimal or null — parse with parseFloat() if not null */
+  max_discount_value: string | null;
+  description: string | null;
+  /** ISO date string "YYYY-MM-DD" */
+  expiry_date: string;
+  total_uses: number;
+  used_count: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VoucherFormData {
+  code: string;
+  type: VoucherType;
+  value: number;
+  min_order_value: number;
+  max_discount_value: number | null;
+  description: string;
+  expiry_date: string;
+  total_uses: number;
+}
+
+export interface VoucherStats {
+  total_vouchers: number;
+  active_vouchers: number;
+  total_redemptions: number;
+  redemption_rate: number;
+}
+
+export interface VoucherListApiResponse {
+  data: OwnerVoucher[];
+  meta: {
+    total: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+  };
+}
+
+export interface VoucherDetailApiResponse {
+  data: OwnerVoucher;
+}
+
+export interface VoucherStatsApiResponse {
+  data: VoucherStats;
+}

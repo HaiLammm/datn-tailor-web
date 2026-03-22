@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-03-20  # Story 6.1 → review
+last_updated: 2026-03-22  # Story 6.3 → review
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -81,15 +81,15 @@ development_status:
 
   epic-5: done
   5-1-kpi-morning-command-center-dash: done
-  5-2-bang-dieu-phoi-khoi-san-xuat-gap-viec: review
-  5-3-workstation-production-flow-dash-cho-tho-tiem: review  # Code Review Fixes 2026-03-17: All 10 action items resolved (3H/4M/3L)
+  5-2-bang-dieu-phoi-khoi-san-xuat-gap-viec: done
+  5-3-workstation-production-flow-dash-cho-tho-tiem: done  # Code Review Fixes 2026-03-17: All 10 action items resolved (3H/4M/3L)
   5-4-tinh-luongthu-nhap-tho: done
   epic-5-retrospective: optional
 
   epic-6: in-progress
-  6-1-quan-tri-he-thong-danh-sach-bang-chia-khoa: review
-  6-2-khai-mo-chuyen-hoa-khach: backlog
-  6-3-voucher-creator-ui: backlog
+  6-1-quan-tri-he-thong-danh-sach-bang-chia-khoa: done
+  6-2-khai-mo-chuyen-hoa-khach: done
+  6-3-voucher-creator-ui: review
   6-4-tuong-tac-broadcasting-template-sms-sns: backlog
   epic-6-retrospective: optional
 
@@ -100,7 +100,7 @@ development_status:
   7-4-goi-compiler-doi-adjective-ra-semantic-toan: done
   epic-7-retrospective: optional
 
-  epic-8: in-progress
+  epic-8: done
   8-1-api-hinh-hoc-can-ban-sinh-json-cot-so: done
   8-2-base-render-2d-svg-cat-path-kich-co-mo: done
   8-3-noi-moc-morphing-effect-truot-thanh-so-slider: done # FIXED: Removed invalid placeholder in DesignSessionClient

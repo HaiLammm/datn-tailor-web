@@ -12,6 +12,8 @@ import { revalidatePath } from "next/cache";
 import {
   CreateLeadData,
   Lead,
+  LeadConvertApiResponse,
+  LeadConvertResponse,
   LeadDetailApiResponse,
   LeadFilter,
   LeadListApiResponse,
@@ -318,6 +320,62 @@ export async function updateLeadClassification(
     const result: LeadDetailApiResponse = await response.json();
     revalidatePath("/owner/crm");
     return { success: true, lead: result.data };
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === "AbortError") return { success: false, error: "Timeout" };
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Unknown error" };
+  }
+}
+
+/**
+ * Convert a lead to a customer profile (Owner only) - Story 6.2
+ *
+ * Creates customer profile, default measurement, audit log, and deletes the lead.
+ */
+export async function convertLeadToCustomer(
+  leadId: string,
+  createAccount: boolean = false
+): Promise<{ success: boolean; data?: LeadConvertResponse; error?: string }> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Unauthorized" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/leads/${leadId}/convert`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ create_account: createAccount }),
+        signal: controller.signal,
+      }
+    );
+
+    clearTimeout(timeoutId);
+
+    if (response.status === 401) return { success: false, error: "Unauthorized" };
+    if (response.status === 403) return { success: false, error: "Chỉ Owner mới có quyền chuyển Lead" };
+
+    if (response.status === 404) {
+      return { success: false, error: "Lead không tồn tại hoặc đã được chuyển thành khách hàng" };
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { success: false, error: errorData.detail || `HTTP ${response.status}` };
+    }
+
+    const result: LeadConvertApiResponse = await response.json();
+    revalidatePath("/owner/crm");
+    revalidatePath("/owner/customers");
+    return { success: true, data: result.data };
   } catch (error) {
     if (error instanceof Error) {
       if (error.name === "AbortError") return { success: false, error: "Timeout" };

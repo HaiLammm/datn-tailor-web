@@ -14,6 +14,8 @@ from src.core.database import get_db
 from src.models.lead import (
     LeadClassification,
     LeadClassificationUpdate,
+    LeadConvertRequest,
+    LeadConvertResponse,
     LeadCreate,
     LeadFilter,
     LeadListResponse,
@@ -185,6 +187,47 @@ async def delete_lead_endpoint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Không tìm thấy thông tin lead",
         )
+
+
+@router.post(
+    "/{lead_id}/convert",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Convert lead to customer (Owner only)",
+    description="Convert a lead to a customer profile with default measurement. Owner role required.",
+)
+async def convert_lead_endpoint(
+    lead_id: uuid.UUID,
+    data: LeadConvertRequest = LeadConvertRequest(),
+    db: AsyncSession = Depends(get_db),
+    tenant_id: uuid.UUID = Depends(get_tenant_id_from_user),
+    current_user=Depends(require_roles("Owner")),
+) -> dict:
+    """Convert lead to customer (Owner only).
+
+    Creates customer profile, default measurement, audit log, and deletes the lead.
+    Uses SELECT FOR UPDATE to prevent race conditions.
+
+    Returns:
+        API Response Wrapper: {"data": {...}}
+    """
+    customer = await lead_service.convert_lead_to_customer(
+        db=db,
+        tenant_id=tenant_id,
+        lead_id=lead_id,
+        converted_by=current_user.id,
+        create_account=data.create_account,
+    )
+
+    response = LeadConvertResponse(
+        customer_profile_id=customer.id,
+        customer_name=customer.full_name,
+        message="Đã chuyển Lead thành khách hàng thành công",
+    )
+
+    return {
+        "data": response.model_dump(mode="json"),
+    }
 
 
 @router.patch(
