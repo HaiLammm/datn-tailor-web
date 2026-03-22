@@ -6,6 +6,8 @@ Multi-tenant isolated by tenant_id.
 
 import uuid
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,8 +38,8 @@ async def list_vouchers_endpoint(
     search: str | None = Query(None, max_length=255, description="Search by code or description"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    sort_by: str = Query("created_at", description="Sort field: created_at|code|expiry_date|value|used_count"),
-    sort_order: str = Query("desc", description="Sort order: asc|desc"),
+    sort_by: Literal["created_at", "code", "expiry_date", "value", "used_count"] = Query("created_at", description="Sort field"),
+    sort_order: Literal["asc", "desc"] = Query("desc", description="Sort order"),
 ) -> dict:
     """List vouchers with filters, search, sorting and pagination (Owner only)."""
     vouchers, total = await voucher_service.list_vouchers(

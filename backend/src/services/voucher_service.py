@@ -10,6 +10,7 @@ from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import asc, desc, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.db_models import VoucherDB
@@ -162,8 +163,15 @@ async def create_voucher(
     )
 
     db.add(voucher)
-    await db.flush()
-    await db.commit()
+    try:
+        await db.flush()
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Mã voucher '{data.code}' đã tồn tại",
+        )
     await db.refresh(voucher)
 
     return voucher
@@ -207,6 +215,20 @@ async def update_voucher(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Giảm giá cố định không cần giới hạn tối đa",
+        )
+
+    # Validate total_uses >= used_count
+    if "total_uses" in update_data and update_data["total_uses"] < voucher.used_count:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Số lượt sử dụng không thể nhỏ hơn số đã dùng ({voucher.used_count})",
+        )
+
+    # Validate expiry_date not in the past
+    if "expiry_date" in update_data and update_data["expiry_date"] <= date.today():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ngày hết hạn phải ở tương lai",
         )
 
     for key, value in update_data.items():

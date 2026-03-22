@@ -14,7 +14,7 @@
  * - Framer Motion exit animation on conversion
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -348,6 +348,11 @@ function ConvertConfirmDialog({
 }) {
   const [createAccount, setCreateAccount] = useState(false);
 
+  // Reset checkbox when lead changes
+  useEffect(() => {
+    setCreateAccount(false);
+  }, [lead?.id]);
+
   if (!lead) return null;
 
   const cls = lead.classification as LeadClassification;
@@ -492,6 +497,14 @@ export default function LeadsBoardClient({
   // P-3: Debounce timer ref for search input
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
+
   // ─── Queries ─────────────────────────────────────────────────────────────
   // Only use initialData for default filters (no search/filter applied, page 1).
   // Otherwise TanStack treats initialData as "fresh" for all query key variants
@@ -618,10 +631,9 @@ export default function LeadsBoardClient({
       return { previous, snapshotKey };
     },
     onSuccess: (_data, variables) => {
-      const lead = convertTarget;
       setConvertTarget(null);
       showToast(
-        `Đã chuyển ${lead?.name || "lead"} thành khách hàng thành công!`,
+        `Đã chuyển lead thành khách hàng thành công!`,
         "success"
       );
       queryClient.invalidateQueries({ queryKey: ["leads"] });

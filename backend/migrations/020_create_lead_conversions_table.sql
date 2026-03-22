@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS lead_conversions (
   lead_email VARCHAR(255),
   lead_source VARCHAR(50),
   customer_profile_id UUID NOT NULL REFERENCES customer_profiles(id) ON DELETE CASCADE,
-  converted_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+  converted_by UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

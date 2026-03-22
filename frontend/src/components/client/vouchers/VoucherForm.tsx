@@ -24,7 +24,13 @@ const voucherSchema = z
     min_order_value: z.number().min(0, "Không được âm"),
     max_discount_value: z.number().positive("Phải lớn hơn 0").nullable(),
     description: z.string(),
-    expiry_date: z.string().min(1, "Ngày hết hạn là bắt buộc"),
+    expiry_date: z
+      .string()
+      .min(1, "Ngày hết hạn là bắt buộc")
+      .refine(
+        (val) => new Date(val) > new Date(),
+        { message: "Ngày hết hạn phải ở tương lai" }
+      ),
     total_uses: z.number().int().min(1, "Tối thiểu 1"),
   })
   .refine(
@@ -129,11 +135,15 @@ export default function VoucherForm({ voucher }: VoucherFormProps) {
           value={formData.code}
           onChange={(e) => handleChange("code", e.target.value)}
           placeholder="VD: TETLUXV26"
+          disabled={isEdit}
           className={`w-full px-4 py-2.5 rounded-lg border text-sm font-mono uppercase ${
-            errors.code ? "border-red-400 bg-red-50" : "border-stone-300 bg-white"
+            errors.code ? "border-red-400 bg-red-50" : isEdit ? "border-stone-200 bg-stone-100 text-stone-500 cursor-not-allowed" : "border-stone-300 bg-white"
           } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
           maxLength={50}
         />
+        {isEdit && (
+          <p className="text-xs text-stone-400 mt-1">Mã voucher không thể thay đổi sau khi tạo</p>
+        )}
         {errors.code && <p className="text-xs text-red-500 mt-1">{errors.code}</p>}
       </div>
 

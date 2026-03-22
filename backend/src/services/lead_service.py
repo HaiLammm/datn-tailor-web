@@ -23,7 +23,14 @@ from src.models.lead import LeadClassificationUpdate, LeadCreate, LeadFilter, Le
 from src.services.customer_service import link_customer_to_user_by_email
 
 # Default password for accounts created via lead conversion
-DEFAULT_CONVERSION_PASSWORD = "camonquykhach"
+# Generate a random temporary password; user must reset via OTP/email flow
+import secrets
+import string
+
+def _generate_temp_password(length: int = 16) -> str:
+    """Generate a random temporary password for lead-converted accounts."""
+    alphabet = string.ascii_letters + string.digits + "!@#$%"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
 async def list_leads(
@@ -284,7 +291,7 @@ async def convert_lead_to_customer(
 
     # 2. Check if customer with same phone already exists → reuse existing profile
     existing_customer: CustomerProfileDB | None = None
-    if lead.phone:
+    if lead.phone and lead.phone.strip():
         existing_result = await db.execute(
             select(CustomerProfileDB).where(
                 CustomerProfileDB.tenant_id == tenant_id,
@@ -321,14 +328,19 @@ async def convert_lead_to_customer(
         db.add(customer)
         await db.flush()  # Get customer.id
 
-    # 5. Optional: create user account with default password
+    # 5. Optional: create user account with temporary password
     # Login identifier: email if available, otherwise phone@local
     if create_account and not customer.user_id:
         login_email = (
             lead.email.lower()
             if lead.email
-            else f"{lead.phone}@local" if lead.phone else None
+            else f"{lead.phone}@local" if lead.phone and lead.phone.strip() else None
         )
+        if not login_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Không thể tạo tài khoản: Lead cần có email hoặc số điện thoại",
+            )
         if login_email:
             # Check if user with this email already exists
             existing_user = await db.execute(
@@ -337,7 +349,8 @@ async def convert_lead_to_customer(
             if existing_user.scalar_one_or_none() is None:
                 user = UserDB(
                     email=login_email,
-                    hashed_password=hash_password(DEFAULT_CONVERSION_PASSWORD),
+                    hashed_password=hash_password(_generate_temp_password()),
+                    must_change_password=True,
                     role="Customer",
                     is_active=True,
                     full_name=lead.name,

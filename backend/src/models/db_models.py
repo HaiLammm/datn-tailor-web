@@ -685,8 +685,8 @@ class LeadConversionDB(Base):
     customer_profile_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("customer_profiles.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    converted_by: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"), nullable=False
+    converted_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)

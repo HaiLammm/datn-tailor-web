@@ -25,7 +25,7 @@ export default async function OwnerVouchersPage({ searchParams }: VouchersPagePr
   }
 
   const params = await searchParams;
-  const currentPage = Math.max(1, parseInt(params.page ?? "1", 10));
+  const currentPage = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const searchQuery = params.search ?? "";
 
   const [response, stats] = await Promise.all([
@@ -92,6 +92,14 @@ export default async function OwnerVouchersPage({ searchParams }: VouchersPagePr
                 </span>
                 <span className="text-2xl font-mono font-bold text-emerald-700">
                   {(stats?.active_vouchers ?? 0).toString().padStart(2, "0")}
+                </span>
+              </div>
+              <div className="bg-white px-4 py-2 rounded-lg border border-stone-200 shadow-sm">
+                <span className="text-xs text-stone-400 block uppercase tracking-tighter font-bold">
+                  Tổng lượt dùng
+                </span>
+                <span className="text-2xl font-mono font-bold text-blue-700">
+                  {(stats?.total_redemptions ?? 0).toString().padStart(2, "0")}
                 </span>
               </div>
               <div className="bg-white px-4 py-2 rounded-lg border border-stone-200 shadow-sm">

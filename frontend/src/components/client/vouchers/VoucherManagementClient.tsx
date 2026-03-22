@@ -7,7 +7,7 @@
  * toggle active, delete confirmation, and link to create/edit.
  */
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { OwnerVoucher } from "@/types/voucher";
@@ -44,6 +44,22 @@ export default function VoucherManagementClient({
   // Delete dialog state
   const [deleteTarget, setDeleteTarget] = useState<OwnerVoucher | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -83,6 +99,12 @@ export default function VoucherManagementClient({
       setVouchers((prev) =>
         prev.map((v) => (v.id === voucher.id ? result.voucher! : v))
       );
+      showToast(
+        result.voucher.is_active ? "Đã kích hoạt voucher" : "Đã tạm dừng voucher",
+        "success"
+      );
+    } else {
+      showToast(result.error || "Không thể cập nhật trạng thái", "error");
     }
   };
 
@@ -95,8 +117,9 @@ export default function VoucherManagementClient({
       setVouchers((prev) => prev.filter((v) => v.id !== deleteTarget.id));
       setTotal((prev) => prev - 1);
       setDeleteTarget(null);
+      showToast("Đã xóa voucher thành công", "success");
     } else {
-      alert(result.error || "Không thể xóa voucher");
+      showToast(result.error || "Không thể xóa voucher", "error");
     }
 
     setDeleteLoading(false);
@@ -279,6 +302,22 @@ export default function VoucherManagementClient({
           </div>
         )}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
+            toast.type === "success"
+              ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+              : "bg-red-50 border border-red-200 text-red-700"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span>{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70">&#10005;</button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirm Dialog */}
       {deleteTarget && (
