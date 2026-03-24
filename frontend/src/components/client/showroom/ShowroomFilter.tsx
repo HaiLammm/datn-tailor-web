@@ -2,7 +2,7 @@
 
 /**
  * ShowroomFilter component - Story 2.3: Multi-Dimensional Product Filter
- * Refactored from dropdown-based to tag-based filter chips UI
+ * Vertical sidebar filter with dropdown selects
  * 5 filter dimensions: Dịp, Chất liệu, Màu sắc, Kích cỡ, Loại
  * Mobile: horizontal scrollable chip row per dimension
  * Desktop: horizontal chip bar with wrapping
@@ -151,13 +151,13 @@ export function ShowroomFilter() {
         </div>
       )}
 
-      {/* Filter dropdowns */}
-      <div className="flex flex-wrap gap-3">
+      {/* Filter dimensions - vertical stack */}
+      <div className="space-y-4">
         {filterDimensions.map((dimension) => (
-          <div key={dimension.key} className="flex flex-col">
+          <div key={dimension.key}>
             <label
               htmlFor={`filter-${dimension.key}`}
-              className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1"
+              className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 block"
             >
               {dimension.label}
             </label>
@@ -172,7 +172,7 @@ export function ShowroomFilter() {
                   handleRemoveFilter(dimension.key);
                 }
               }}
-              className="min-h-[44px] px-3 py-2 rounded-lg border text-sm bg-[#F9F7F2] text-[#333]
+              className="w-full min-h-[40px] px-3 py-2 rounded-lg border text-sm bg-[#F9F7F2] text-[#333]
                 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37]
                 transition-colors cursor-pointer"
               style={{

@@ -38,11 +38,24 @@ function ShowroomContentInner({ initialData }: ShowroomContentProps) {
 
   return (
     <>
-      {/* Filter Section */}
-      <ShowroomFilter />
+      {/* Mobile Filter - horizontal, shown only on small screens */}
+      <div className="md:hidden mb-4">
+        <ShowroomFilter />
+      </div>
+
+      <div className="flex gap-6">
+      {/* Filter Sidebar - hidden on mobile, shown on md+ */}
+      <aside className="hidden md:block w-64 flex-shrink-0">
+        <div className="sticky top-8">
+          <ShowroomFilter />
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
 
       {/* Loading overlay during re-fetch */}
-      <div className="mt-8 relative">
+      <div className="relative">
         {isFetching && garments.length > 0 && (
           <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center rounded-lg">
             <div className="flex items-center gap-2 text-gray-600">
@@ -119,6 +132,9 @@ function ShowroomContentInner({ initialData }: ShowroomContentProps) {
           <Pagination currentPage={page} totalPages={totalPages} total={total} />
         </div>
       )}
+
+      </div>{/* end flex-1 */}
+      </div>{/* end flex */}
     </>
   );
 }
