@@ -151,46 +151,43 @@ export function ShowroomFilter() {
         </div>
       )}
 
-      {/* Filter chip groups */}
-      <div className="space-y-3">
+      {/* Filter dropdowns */}
+      <div className="flex flex-wrap gap-3">
         {filterDimensions.map((dimension) => (
-          <div key={dimension.key} role="group" aria-label={`Lọc theo ${dimension.label}`}>
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 block">
+          <div key={dimension.key} className="flex flex-col">
+            <label
+              htmlFor={`filter-${dimension.key}`}
+              className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1"
+            >
               {dimension.label}
-            </span>
-            <div className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-x-visible scrollbar-hide">
-              {dimension.options.map((option) => {
-                const isActive = activeFilters[dimension.key] === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => handleChipToggle(dimension.key, option.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleChipToggle(dimension.key, option.value);
-                      }
-                    }}
-                    role="checkbox"
-                    aria-checked={isActive}
-                    aria-label={`${dimension.label}: ${option.label}`}
-                    className={`
-                      inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-normal
-                      whitespace-nowrap min-h-[44px] min-w-[44px] transition-all duration-150
-                      focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:ring-offset-1
-                      ${
-                        isActive
-                          ? "border-[#D4AF37] bg-[#D4AF37]/10 text-[#1A2B4C] border-2 font-medium"
-                          : "border-[#9E9E9E] bg-[#F9F7F2] text-[#333] border hover:border-[#D4AF37]/50"
-                      }
-                    `}
-                    style={{ fontFamily: "Inter, sans-serif" }}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
+            </label>
+            <select
+              id={`filter-${dimension.key}`}
+              value={activeFilters[dimension.key] || ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value) {
+                  handleChipToggle(dimension.key, value);
+                } else {
+                  handleRemoveFilter(dimension.key);
+                }
+              }}
+              className="min-h-[44px] px-3 py-2 rounded-lg border text-sm bg-[#F9F7F2] text-[#333]
+                focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37]
+                transition-colors cursor-pointer"
+              style={{
+                fontFamily: "Inter, sans-serif",
+                borderColor: activeFilters[dimension.key] ? "#D4AF37" : "#9E9E9E",
+              }}
+              aria-label={`Lọc theo ${dimension.label}`}
+            >
+              <option value="">Tất cả</option>
+              {dimension.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
         ))}
       </div>

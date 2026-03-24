@@ -1,15 +1,26 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useState, FormEvent, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+
+function getRoleRedirectUrl(role?: string): string {
+    switch (role) {
+        case "Owner":
+            return "/owner";
+        case "Tailor":
+            return "/tailor";
+        default:
+            return "/showroom";
+    }
+}
 
 /**
  * Login Form Component: Separated to be wrapped in Suspense.
  */
 function LoginForm() {
     const searchParams = useSearchParams();
-    const callbackUrl = searchParams.get("callbackUrl") || "/";
+    const callbackUrl = searchParams.get("callbackUrl");
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -31,8 +42,14 @@ function LoginForm() {
             if (result?.error) {
                 setError("Email hoặc mật khẩu không đúng. Vui lòng thử lại.");
             } else if (result?.ok) {
-                // Redirect will be handled by proxy.ts based on role
-                window.location.href = callbackUrl;
+                if (callbackUrl) {
+                    window.location.href = callbackUrl;
+                } else {
+                    // Fetch session to get role for redirect
+                    const sessionRes = await fetch("/api/auth/session");
+                    const session = await sessionRes.json();
+                    window.location.href = getRoleRedirectUrl(session?.user?.role);
+                }
             }
         } catch (err) {
             setError("Đã xảy ra lỗi. Vui lòng thử lại sau.");
@@ -45,7 +62,8 @@ function LoginForm() {
         setError("");
         setLoading(true);
         try {
-            await signIn("google", { callbackUrl });
+            // For Google OAuth, we use the signIn redirect callback in auth.ts
+            await signIn("google", { callbackUrl: callbackUrl || "/api/auth/role-redirect" });
         } catch (err) {
             setError("Không thể đăng nhập bằng Google. Vui lòng thử lại.");
             setLoading(false);

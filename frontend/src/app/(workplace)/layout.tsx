@@ -22,7 +22,7 @@ export default async function WorkplaceLayout({
 
   // Only Owner and Tailor can access workplace
   if (role !== "Owner" && role !== "Tailor") {
-    redirect("/");
+    redirect("/showroom");
   }
 
   return (
