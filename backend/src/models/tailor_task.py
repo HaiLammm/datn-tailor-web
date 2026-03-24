@@ -19,6 +19,7 @@ class TailorTaskResponse(BaseModel):
     garment_name: str
     customer_name: str
     status: str = Field(description="assigned | in_progress | completed")
+    production_step: str = Field(default="pending", description="pending | cutting | sewing | finishing | quality_check | done")
     deadline: str | None = None
     notes: str | None = None
     piece_rate: float | None = None
@@ -67,6 +68,14 @@ class StatusUpdateRequest(BaseModel):
 
     status: Literal["in_progress", "completed"] = Field(
         description="Target status: in_progress or completed (no backward transitions)"
+    )
+
+
+class ProductionStepUpdateRequest(BaseModel):
+    """Request body for production sub-step update (forward-only)."""
+
+    production_step: Literal["cutting", "sewing", "finishing", "quality_check", "done"] = Field(
+        description="Target production step (forward-only transitions)"
     )
 
 

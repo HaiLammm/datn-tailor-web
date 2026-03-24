@@ -13,7 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import OwnerOnly, OwnerOrTailor, TenantId
 from src.core.database import get_db
-from src.models.tailor_task import StatusUpdateRequest, TaskCreateRequest, TaskUpdateRequest
+from src.models.tailor_task import (
+    ProductionStepUpdateRequest,
+    StatusUpdateRequest,
+    TaskCreateRequest,
+    TaskUpdateRequest,
+)
 from src.services import tailor_task_service
 from src.services.notification_creator import (
     TASK_ASSIGNMENT_MESSAGE,
@@ -82,6 +87,39 @@ async def update_task_status(
     """
     try:
         result = await tailor_task_service.update_task_status(
+            db, task_id, body, user.id, tenant_id
+        )
+        return {"data": result.model_dump(mode="json"), "meta": {}}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
+        )
+
+
+@router.patch(
+    "/{task_id}/production-step",
+    response_model=dict,
+    summary="Cập nhật bước sản xuất",
+    description="Chuyển bước sản xuất: pending → cutting → sewing → finishing → quality_check → done.",
+)
+async def update_production_step(
+    task_id: uuid.UUID,
+    body: ProductionStepUpdateRequest,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Update production sub-step with forward-only validation.
+
+    Both Owner and Tailor can update. Auto-transitions task status
+    when step moves past 'pending' or reaches 'done'.
+    """
+    try:
+        result = await tailor_task_service.update_production_step(
             db, task_id, body, user.id, tenant_id
         )
         return {"data": result.model_dump(mode="json"), "meta": {}}

@@ -7,9 +7,10 @@
 
 import { useState } from "react";
 import { downloadOrderInvoice } from "@/app/actions/order-actions";
-import type { CustomerOrderDetail } from "@/types/order";
+import type { CustomerOrderDetail, TailorInfoForCustomer } from "@/types/order";
 import { OrderStatusBadge, OrderTypeBadge } from "./OrderStatusBadge";
 import { formatCurrency, formatDate, formatDateOnly } from "@/utils/order-formatters";
+import Avatar from "@/components/ui/Avatar";
 
 interface OrderDetailModalProps {
   order: CustomerOrderDetail | null;
@@ -29,6 +30,18 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   failed: "Thanh toán thất bại",
   refunded: "Đã hoàn tiền",
 };
+
+const PRODUCTION_STEPS: { key: string; label: string }[] = [
+  { key: "cutting", label: "Cắt vải" },
+  { key: "sewing", label: "May" },
+  { key: "finishing", label: "Hoàn thiện" },
+  { key: "quality_check", label: "Kiểm tra" },
+  { key: "done", label: "Hoàn tất" },
+];
+
+function getProductionStepIndex(step: string): number {
+  return PRODUCTION_STEPS.findIndex((s) => s.key === step);
+}
 
 const RENTAL_STATUS_LABELS: Record<string, { label: string; className: string }> = {
   active: { label: "Chưa trả", className: "text-blue-600" },
@@ -236,6 +249,108 @@ export default function OrderDetailModal({
               </div>
             </div>
           </div>
+
+          {/* Tailor info section */}
+          {order.tailor_info && order.tailor_info.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-800 text-sm mb-3">
+                Thợ may phụ trách
+              </h3>
+              <div className="space-y-3">
+                {order.tailor_info.map((tailor: TailorInfoForCustomer, idx: number) => {
+                  const stepIndex = getProductionStepIndex(tailor.production_step);
+                  return (
+                    <div
+                      key={`${tailor.full_name}-${tailor.garment_name}-${idx}`}
+                      className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2.5"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          src={tailor.avatar_url}
+                          name={tailor.full_name}
+                          size="md"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-900 truncate">
+                              {tailor.full_name}
+                            </span>
+                            <span className="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-medium">
+                              Thợ may
+                            </span>
+                          </div>
+                          {tailor.experience_years != null && (
+                            <p className="text-xs text-gray-500">
+                              {tailor.experience_years} năm kinh nghiệm
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 truncate">
+                            {tailor.garment_name}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Production sub-step progress bar */}
+                      {tailor.production_step !== "pending" && (
+                        <div className="relative flex items-center justify-between">
+                          <div className="absolute top-2.5 left-0 right-0 h-0.5 bg-gray-200" />
+                          <div
+                            className="absolute top-2.5 left-0 h-0.5 bg-indigo-500 transition-all"
+                            style={{
+                              width:
+                                stepIndex < 0
+                                  ? "0%"
+                                  : `${(stepIndex / (PRODUCTION_STEPS.length - 1)) * 100}%`,
+                            }}
+                          />
+                          {PRODUCTION_STEPS.map((step, sIdx) => {
+                            const done = sIdx <= stepIndex;
+                            const isCurrent = sIdx === stepIndex;
+                            return (
+                              <div
+                                key={step.key}
+                                className="relative flex flex-col items-center"
+                              >
+                                <div
+                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center z-10 transition-colors ${
+                                    done
+                                      ? "border-indigo-600 bg-indigo-600"
+                                      : "border-gray-300 bg-white"
+                                  } ${isCurrent ? "ring-2 ring-indigo-200" : ""}`}
+                                >
+                                  {done && (
+                                    <svg
+                                      className="w-2.5 h-2.5 text-white"
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                  )}
+                                </div>
+                                <span
+                                  className={`mt-1 text-xs text-center leading-tight ${
+                                    done ? "text-indigo-700 font-medium" : "text-gray-400"
+                                  }`}
+                                  style={{ maxWidth: "56px" }}
+                                >
+                                  {step.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Delivery Info */}
           <div>

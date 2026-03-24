@@ -59,6 +59,17 @@ class CustomerOrderSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TailorInfoForCustomer(BaseModel):
+    """Tailor info visible to customer — privacy-safe fields only."""
+
+    full_name: str
+    avatar_url: str | None = None
+    role: str
+    experience_years: int | None = None
+    production_step: str
+    garment_name: str
+
+
 class CustomerOrderDetail(BaseModel):
     """Full order detail including items, delivery info, and timeline."""
 
@@ -74,6 +85,7 @@ class CustomerOrderDetail(BaseModel):
     items: list[CustomerOrderItemResponse] = []
     delivery_info: CustomerOrderDeliveryInfo
     timeline: list[OrderTimelineEntry] = []
+    tailor_info: list[TailorInfoForCustomer] | None = None
 
     model_config = {"from_attributes": True}
 

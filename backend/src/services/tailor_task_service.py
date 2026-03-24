@@ -17,6 +17,7 @@ from src.models.tailor_task import (
     OrderInfoForTask,
     OwnerTaskItem,
     OwnerTaskListResponse,
+    ProductionStepUpdateRequest,
     StatusUpdateRequest,
     TailorIncomeResponse,
     TailorMonthlyIncome,
@@ -33,6 +34,9 @@ VALID_TRANSITIONS = {
     "assigned": "in_progress",
     "in_progress": "completed",
 }
+
+# Production sub-steps: forward-only transitions
+PRODUCTION_STEPS = ["pending", "cutting", "sewing", "finishing", "quality_check", "done"]
 
 
 def _task_to_response(task: TailorTaskDB, now: datetime) -> TailorTaskResponse:
@@ -66,6 +70,7 @@ def _task_to_response(task: TailorTaskDB, now: datetime) -> TailorTaskResponse:
         garment_name=task.garment_name,
         customer_name=task.customer_name,
         status=task.status,
+        production_step=task.production_step,
         deadline=task.deadline.isoformat() if task.deadline else None,
         notes=task.notes,
         piece_rate=float(task.piece_rate) if task.piece_rate else None,
@@ -198,6 +203,69 @@ async def update_task_status(
     task.updated_at = datetime.now(timezone.utc)
 
     if request.status == "completed":
+        task.completed_at = datetime.now(timezone.utc)
+
+    await db.flush()
+
+    now = datetime.now(timezone.utc)
+    return _task_to_response(task, now)
+
+
+async def update_production_step(
+    db: AsyncSession,
+    task_id: uuid.UUID,
+    request: ProductionStepUpdateRequest,
+    user_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> TailorTaskResponse:
+    """Update production sub-step with forward-only validation.
+
+    Enforces:
+    - Multi-tenant isolation
+    - Ownership: assigned tailor or owner can update
+    - Forward-only: new step index must be greater than current
+    - Auto-transitions: step past 'pending' → status 'in_progress';
+      step 'done' → status 'completed' + completed_at
+    """
+    query = select(TailorTaskDB).where(
+        TailorTaskDB.id == task_id,
+        TailorTaskDB.tenant_id == tenant_id,
+    )
+    result = await db.execute(query)
+    task = result.scalar_one_or_none()
+
+    if task is None:
+        raise ValueError("Không tìm thấy công việc")
+
+    # Ownership check: only assigned tailor or owner (assigned_by) can update
+    if user_id != task.assigned_to and user_id != task.assigned_by:
+        raise PermissionError("Bạn không có quyền cập nhật bước sản xuất của công việc này")
+
+    if task.production_step not in PRODUCTION_STEPS:
+        raise ValueError(
+            f"Bước sản xuất hiện tại '{task.production_step}' không hợp lệ. "
+            f"Vui lòng liên hệ quản trị viên."
+        )
+
+    current_index = PRODUCTION_STEPS.index(task.production_step)
+    new_index = PRODUCTION_STEPS.index(request.production_step)
+
+    if new_index <= current_index:
+        raise ValueError(
+            f"Chuyển bước không hợp lệ: '{task.production_step}' → '{request.production_step}'. "
+            f"Chỉ được chuyển tiếp, không được quay lại."
+        )
+
+    task.production_step = request.production_step
+    task.updated_at = datetime.now(timezone.utc)
+
+    # Auto-transition status: step past 'pending' → in_progress
+    if task.status == "assigned" and request.production_step != "pending":
+        task.status = "in_progress"
+
+    # Auto-completion: step 'done' → completed
+    if request.production_step == "done":
+        task.status = "completed"
         task.completed_at = datetime.now(timezone.utc)
 
     await db.flush()

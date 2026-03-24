@@ -13,7 +13,7 @@ from sqlalchemy import func, or_, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.db_models import GarmentDB, OrderDB, OrderItemDB
+from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, TailorTaskDB, UserDB
 from src.models.order import OrderStatus
 from src.models.order_customer import (
     CustomerOrderDeliveryInfo,
@@ -23,6 +23,7 @@ from src.models.order_customer import (
     CustomerOrderListResponse,
     CustomerOrderSummary,
     OrderTimelineEntry,
+    TailorInfoForCustomer,
 )
 
 # Default tenant (all orders use this tenant)
@@ -311,6 +312,28 @@ async def get_order_detail(
     timeline = _build_timeline(order.status, order.created_at, order.updated_at)
     delivery_info = _build_delivery_info(order)
 
+    # Query tailor tasks for this order (privacy-safe fields only)
+    task_query = (
+        select(TailorTaskDB, UserDB)
+        .join(UserDB, TailorTaskDB.assigned_to == UserDB.id)
+        .where(TailorTaskDB.order_id == order.id)
+    )
+    task_results = (await db.execute(task_query)).all()
+
+    tailor_info: list[TailorInfoForCustomer] | None = None
+    if task_results:
+        tailor_info = [
+            TailorInfoForCustomer(
+                full_name=user.full_name or "Thợ may",
+                avatar_url=user.avatar_url,
+                role=user.role,
+                experience_years=user.experience_years,
+                production_step=task.production_step,
+                garment_name=task.garment_name,
+            )
+            for task, user in task_results
+        ]
+
     return CustomerOrderDetail(
         id=order.id,
         order_number=_build_order_number(order.id, order.created_at),
@@ -324,4 +347,5 @@ async def get_order_detail(
         items=item_responses,
         delivery_info=delivery_info,
         timeline=timeline,
+        tailor_info=tailor_info,
     )

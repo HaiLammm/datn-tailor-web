@@ -63,6 +63,7 @@ export interface OrderResponse {
   is_internal?: boolean;
   items: OrderItemResponse[];
   created_at: string;
+  tailor_info?: TailorInfoForCustomer[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,12 +187,22 @@ export interface CustomerOrderSummary {
   created_at: string;
 }
 
+export interface TailorInfoForCustomer {
+  full_name: string;
+  avatar_url: string | null;
+  role: string;
+  experience_years: number | null;
+  production_step: string;
+  garment_name: string;
+}
+
 export interface CustomerOrderDetail extends CustomerOrderSummary {
   payment_method: string;
   shipping_note?: string | null;
   items: CustomerOrderItem[];
   delivery_info: CustomerOrderDeliveryInfo;
   timeline: OrderTimelineEntry[];
+  tailor_info: TailorInfoForCustomer[] | null;
 }
 
 export interface CustomerOrderListMeta {

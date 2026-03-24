@@ -62,7 +62,11 @@ class UserDB(Base):
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
-    
+
+    # Tailor Assignment Tracking
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    experience_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -462,6 +466,9 @@ class TailorTaskDB(Base):
     customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="assigned", index=True
+    )
+    production_step: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="pending"
     )
     deadline: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
