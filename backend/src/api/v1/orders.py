@@ -11,7 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import OwnerOnly, TenantId
+from src.api.dependencies import OptionalCurrentUser, OwnerOnly, TenantId
 from src.core.database import get_db
 from src.models.order import (
     InternalOrderCreate,
@@ -64,18 +64,21 @@ async def create_internal_order_endpoint(
 )
 async def create_order_endpoint(
     order_data: OrderCreate,
+    user: OptionalCurrentUser = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Create a new order with server-verified prices.
 
     Backend is SSOT for prices — never trusts client-side price data
     (Authoritative Server Pattern).
+    If user is authenticated, links order to their account via customer_id.
 
     Returns:
         API Response Wrapper: {"data": {...}, "meta": {}}
     """
     tenant_id = get_default_tenant_id()
-    result = await order_service.create_order(db, order_data, tenant_id)
+    customer_id = user.id if user else None
+    result = await order_service.create_order(db, order_data, tenant_id, customer_id=customer_id)
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 

@@ -13,6 +13,7 @@ from src.models.db_models import UserDB
 from src.services.auth_service import get_user_by_email
 
 security_scheme = HTTPBearer()
+optional_security_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_user_from_token(
@@ -93,7 +94,34 @@ def require_roles(*allowed_roles: str):
     return role_checker
 
 
+async def get_optional_user_from_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> UserDB | None:
+    """Get current user if authenticated, otherwise return None.
+
+    Used for endpoints that work for both guests and authenticated users.
+    """
+    if credentials is None:
+        return None
+
+    payload = decode_access_token(credentials.credentials)
+    if payload is None:
+        return None
+
+    email = payload.get("sub")
+    if email is None:
+        return None
+
+    user = await get_user_by_email(db, email)
+    if user is None or not user.is_active:
+        return None
+
+    return user
+
+
 # Common role dependencies
+OptionalCurrentUser = Annotated[UserDB | None, Depends(get_optional_user_from_token)]
 CurrentUser = Annotated[UserDB, Depends(get_current_user_from_token)]
 OwnerOnly = Annotated[UserDB, Depends(require_roles("Owner"))]
 OwnerOrTailor = Annotated[UserDB, Depends(require_roles("Owner", "Tailor"))]

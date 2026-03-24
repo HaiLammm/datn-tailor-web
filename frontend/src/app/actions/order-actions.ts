@@ -44,11 +44,18 @@ export async function createOrder(
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
   try {
+    // Send auth token if user is logged in to link order to their account
+    const session = await auth();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (session?.accessToken) {
+      headers["Authorization"] = `Bearer ${session.accessToken}`;
+    }
+
     const response = await fetch(`${BACKEND_URL}/api/v1/orders`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(orderData),
       signal: controller.signal,
     });

@@ -134,11 +134,12 @@ async def _validate_and_price_items(
 
 
 async def create_order(
-    db: AsyncSession, order_data: OrderCreate, tenant_id: UUID
+    db: AsyncSession, order_data: OrderCreate, tenant_id: UUID, *, customer_id: UUID | None = None
 ) -> OrderResponse:
     """Create a new order with verified prices (Authoritative Server Pattern).
 
     Backend is SSOT for prices - never trust client-side price data.
+    If customer_id is provided, links order to authenticated customer.
     """
     order_items, item_details, total_amount = await _validate_and_price_items(
         db, order_data.items, tenant_id, skip_availability_check=False
@@ -147,6 +148,7 @@ async def create_order(
     # Create OrderDB
     order = OrderDB(
         tenant_id=tenant_id,
+        customer_id=customer_id,
         customer_name=order_data.customer_name,
         customer_phone=order_data.customer_phone,
         shipping_address=order_data.shipping_address.model_dump(),
