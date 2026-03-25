@@ -63,6 +63,16 @@ DEFAULT_TEMPLATES = [
         ),
         "is_default": True,
     },
+    {
+        "name": "Gan voucher tai khoan",
+        "channel": "account",
+        "subject": None,
+        "body": (
+            "Voucher {{voucher_code}} ({{voucher_value}}) da duoc gan vao tai khoan cua {{name}}.\n"
+            "Han su dung: {{expiry_date}}"
+        ),
+        "is_default": True,
+    },
 ]
 
 

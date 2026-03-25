@@ -153,17 +153,41 @@ export function OrderConfirmation({ order }: OrderConfirmationProps) {
             ))}
           </div>
 
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-            <span className="text-base font-semibold text-[#1A1A2E]">
-              Tổng Cộng
-            </span>
-            <span
-              className="text-xl font-bold text-[#D4AF37]"
-              style={{ fontFamily: "JetBrains Mono, monospace" }}
-              data-testid="order-total"
-            >
-              {formatPrice(Number(order.total_amount))}
-            </span>
+          <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+            {order.discount_amount > 0 && (
+              <>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[#6B7280]">Tạm tính</span>
+                  <span
+                    className="text-[#1A1A2E]"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    {formatPrice(Number(order.subtotal_amount))}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-green-600">Giảm giá voucher</span>
+                  <span
+                    className="text-green-600 font-medium"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    -{formatPrice(Number(order.discount_amount))}
+                  </span>
+                </div>
+              </>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-base font-semibold text-[#1A1A2E]">
+                Tổng Cộng
+              </span>
+              <span
+                className="text-xl font-bold text-[#D4AF37]"
+                style={{ fontFamily: "JetBrains Mono, monospace" }}
+                data-testid="order-total"
+              >
+                {formatPrice(Number(order.total_amount))}
+              </span>
+            </div>
           </div>
         </div>
 

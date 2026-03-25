@@ -8,6 +8,7 @@ import {
   GarmentOccasion,
   GarmentStatus,
 } from "@/types/garment";
+import { auth } from "@/auth";
 
 /**
  * Story 5.1 + 2.3: Digital Showroom Catalog with Multi-Dimensional Filtering
@@ -51,8 +52,11 @@ export default async function ShowroomPage({ searchParams }: ShowroomPageProps) 
 
   // Fetch initial garment list on server (SSR/ISR) with current filters
   const response = await fetchGarments(filters);
-
   const initialData = response?.data ?? undefined;
+
+  // Check auth for voucher discount preview
+  const session = await auth();
+  const isAuthenticated = !!session?.user;
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
@@ -70,7 +74,7 @@ export default async function ShowroomPage({ searchParams }: ShowroomPageProps) 
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <ShowroomContent initialData={initialData} />
+        <ShowroomContent initialData={initialData} isAuthenticated={isAuthenticated} />
       </main>
 
       {/* Footer */}

@@ -1,18 +1,23 @@
 "use client";
 
 /**
- * OrderSummary - Story 3.2: Render Cart Checkout Details
- * Displays cart totals and proceed-to-payment button.
+ * OrderSummary - Story 3.2 + Voucher Apply
+ * Displays cart totals, applied vouchers, and proceed-to-payment button.
  */
 
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/utils/format";
+import type { CartAppliedVoucher } from "@/types/cart";
 
 interface OrderSummaryProps {
   itemCount: number;
   subtotal: number;
   hasUnavailableItems: boolean;
   isVerifying: boolean;
+  appliedVouchers?: CartAppliedVoucher[];
+  totalDiscount?: number;
+  onOpenVoucherSelector?: () => void;
+  isAuthenticated?: boolean;
 }
 
 export function OrderSummary({
@@ -20,9 +25,14 @@ export function OrderSummary({
   subtotal,
   hasUnavailableItems,
   isVerifying,
+  appliedVouchers = [],
+  totalDiscount = 0,
+  onOpenVoucherSelector,
+  isAuthenticated = false,
 }: OrderSummaryProps) {
   const router = useRouter();
   const canProceed = itemCount > 0 && !hasUnavailableItems && !isVerifying;
+  const finalTotal = Math.max(0, subtotal - totalDiscount);
 
   return (
     <div
@@ -50,6 +60,47 @@ export function OrderSummary({
             {formatPrice(subtotal)}
           </span>
         </div>
+
+        {/* Voucher section */}
+        {isAuthenticated && onOpenVoucherSelector && (
+          <div className="pt-1">
+            {appliedVouchers.length > 0 ? (
+              <div className="space-y-2">
+                {appliedVouchers.map((v) => (
+                  <div
+                    key={v.voucher_id}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="text-[#6B7280] flex items-center gap-1.5">
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${v.type === "percent" ? "bg-indigo-500" : "bg-emerald-500"}`} />
+                      {v.code}
+                    </span>
+                    <span
+                      className="text-green-600 font-medium"
+                      style={{ fontFamily: "JetBrains Mono, monospace" }}
+                    >
+                      -{formatPrice(v.discount_amount)}
+                    </span>
+                  </div>
+                ))}
+                <button
+                  onClick={onOpenVoucherSelector}
+                  className="text-xs text-[#D4AF37] hover:underline font-medium"
+                >
+                  Thay đổi voucher
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onOpenVoucherSelector}
+                className="w-full py-2 px-3 rounded-lg border border-dashed border-[#D4AF37] text-[#D4AF37] text-sm font-medium hover:bg-amber-50 transition-colors"
+              >
+                + Chọn Voucher
+              </button>
+            )}
+          </div>
+        )}
+
         <hr className="border-gray-200" />
         <div className="flex items-center justify-between">
           <span className="text-base font-semibold text-[#1A1A2E]">
@@ -60,9 +111,14 @@ export function OrderSummary({
             style={{ fontFamily: "JetBrains Mono, monospace" }}
             data-testid="order-total"
           >
-            {formatPrice(subtotal)}
+            {formatPrice(finalTotal)}
           </span>
         </div>
+        {totalDiscount > 0 && (
+          <p className="text-xs text-green-600 text-right">
+            Tiết kiệm {formatPrice(totalDiscount)}
+          </p>
+        )}
       </div>
 
       {hasUnavailableItems && (

@@ -1,6 +1,6 @@
 # Unified Story 6.4: Tuong Tac Broadcasting & Template SMS / SNS
 
-Status: review
+Status: done
 
 ## Phase 1 — Requirements (Original)
 > Khong co story Phase 1 tuong ung — story duoc tao moi trong Phase 2

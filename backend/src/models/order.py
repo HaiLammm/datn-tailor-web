@@ -70,6 +70,7 @@ class OrderCreate(BaseModel):
     shipping_note: str | None = Field(None, max_length=500)
     payment_method: PaymentMethod = PaymentMethod.cod
     items: list[OrderItemCreate] = Field(..., min_length=1)
+    voucher_codes: list[str] = Field(default_factory=list)
 
     @field_validator("customer_phone")
     @classmethod
@@ -103,7 +104,10 @@ class OrderResponse(BaseModel):
     id: UUID
     status: OrderStatus
     payment_status: PaymentStatus = PaymentStatus.pending
+    subtotal_amount: Decimal
+    discount_amount: Decimal = Decimal("0")
     total_amount: Decimal
+    applied_voucher_ids: list[str] = []
     payment_method: PaymentMethod
     payment_url: str | None = None
     customer_name: str
@@ -153,6 +157,8 @@ class OrderListItem(BaseModel):
     id: UUID
     status: OrderStatus
     payment_status: PaymentStatus
+    subtotal_amount: Decimal
+    discount_amount: Decimal = Decimal("0")
     total_amount: Decimal
     payment_method: PaymentMethod
     customer_name: str

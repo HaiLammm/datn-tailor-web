@@ -612,7 +612,14 @@ async def send_campaign(
     if campaign.channel in ("sms", "zalo"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Kenh '{campaign.channel}' chua duoc cau hinh. Hien tai chi ho tro Email.",
+            detail=f"Kenh '{campaign.channel}' chua duoc cau hinh. Hien tai chi ho tro Email va Account.",
+        )
+
+    # Account channel requires voucher_id
+    if campaign.channel == "account" and not campaign.voucher_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kênh 'Account' yêu cầu chọn voucher để gán cho khách hàng",
         )
 
     # Load template
@@ -683,6 +690,58 @@ async def send_campaign(
         )
         db_records = {r.email: r for r in result.scalars().all()}
 
+        # Account channel: assign voucher directly to customer accounts (no email)
+        if campaign.channel == "account":
+            sent = 0
+            failed = 0
+            now = datetime.now(timezone.utc)
+            for r in recipients:
+                rec = db_records.get(r["email"])
+                if r.get("user_id") and campaign.voucher_id:
+                    try:
+                        existing = await db.execute(
+                            select(UserVoucherDB).where(
+                                UserVoucherDB.user_id == r["user_id"],
+                                UserVoucherDB.voucher_id == campaign.voucher_id,
+                            )
+                        )
+                        if not existing.scalar_one_or_none():
+                            db.add(UserVoucherDB(
+                                tenant_id=campaign.tenant_id,
+                                user_id=r["user_id"],
+                                voucher_id=campaign.voucher_id,
+                            ))
+                        sent += 1
+                        if rec:
+                            rec.status = "sent"
+                            rec.sent_at = now
+                    except Exception as e:
+                        failed += 1
+                        logger.warning("Voucher assign failed for %s: %s", r["email"], e)
+                        if rec:
+                            rec.status = "failed"
+                            rec.error_message = str(e)
+                else:
+                    failed += 1
+                    if rec:
+                        rec.status = "failed"
+                        rec.error_message = "Recipient has no account"
+
+            campaign.sent_count = sent
+            campaign.failed_count = failed
+            campaign.status = "sent" if sent > 0 else "failed"
+            campaign.sent_at = now
+            campaign.updated_at = now
+            await db.flush()
+            await db.commit()
+            await db.refresh(campaign)
+
+            logger.info(
+                "Campaign %s (account channel): %d assigned, %d failed",
+                campaign.id, sent, failed,
+            )
+            return campaign
+
         # Send emails with concurrency limit — gather results, then update ORM sequentially
         semaphore = asyncio.Semaphore(_SEND_CONCURRENCY)
 
@@ -709,7 +768,11 @@ async def send_campaign(
         # Update ORM objects sequentially (safe for AsyncSession)
         sent = 0
         failed = 0
+        voucher_assign_failures = 0
         now = datetime.now(timezone.utc)
+        # Build email→recipient mapping for voucher assignment
+        email_to_recipient = {r["email"]: r for r in recipients}
+
         for email, success in results:
             rec = db_records.get(email)
             if success:
@@ -717,11 +780,44 @@ async def send_campaign(
                 if rec:
                     rec.status = "sent"
                     rec.sent_at = now
+
+                # Assign voucher to recipient's account (if campaign has voucher + recipient has user_id)
+                if campaign.voucher_id:
+                    r_data = email_to_recipient.get(email)
+                    if r_data and r_data.get("user_id"):
+                        try:
+                            # Check if already assigned
+                            existing = await db.execute(
+                                select(UserVoucherDB).where(
+                                    UserVoucherDB.user_id == r_data["user_id"],
+                                    UserVoucherDB.voucher_id == campaign.voucher_id,
+                                )
+                            )
+                            if not existing.scalar_one_or_none():
+                                db.add(UserVoucherDB(
+                                    tenant_id=campaign.tenant_id,
+                                    user_id=r_data["user_id"],
+                                    voucher_id=campaign.voucher_id,
+                                ))
+                        except Exception as e:
+                            voucher_assign_failures += 1
+                            logger.error(
+                                "Failed to assign voucher %s to user %s: %s",
+                                campaign.voucher_id, r_data["user_id"], e
+                            )
+                            if rec:
+                                rec.error_message = f"Email sent, voucher assign failed: {e}"
             else:
                 failed += 1
                 if rec:
                     rec.status = "failed"
                     rec.error_message = "SMTP send failed"
+
+        if voucher_assign_failures > 0:
+            logger.error(
+                "Campaign %s: %d voucher assignment(s) failed out of %d sent emails",
+                campaign.id, voucher_assign_failures, sent,
+            )
 
         # Update campaign final state
         campaign.sent_count = sent

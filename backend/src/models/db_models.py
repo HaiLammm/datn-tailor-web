@@ -287,7 +287,10 @@ class OrderDB(Base):
     payment_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending", index=True
     )
+    subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0"))
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    applied_voucher_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -593,6 +596,7 @@ class VoucherDB(Base):
     total_uses: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     used_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    visibility: Mapped[str] = mapped_column(String(10), nullable=False, default="private")  # 'public' | 'private'
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -632,7 +636,9 @@ class UserVoucherDB(Base):
     )
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    used_in_order_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    used_in_order_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+    )
     assigned_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )

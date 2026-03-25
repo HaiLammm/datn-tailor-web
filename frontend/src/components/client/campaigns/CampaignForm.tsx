@@ -24,7 +24,7 @@ import type { OwnerVoucher } from "@/types/voucher";
 
 const campaignSchema = z.object({
   name: z.string().trim().min(1, "Ten chien dich la bat buoc").max(200, "Toi da 200 ky tu"),
-  channel: z.enum(["email", "sms", "zalo"] as const),
+  channel: z.enum(["email", "sms", "zalo", "account"] as const),
   template_id: z.string().min(1, "Vui long chon template"),
   segment: z.enum([
     "all_customers",
@@ -83,6 +83,7 @@ export default function CampaignForm({
 
   const currentSegment = segments.find((s) => s.segment === formData.segment);
   const isEmailChannel = formData.channel === "email";
+  const isAccountChannel = formData.channel === "account";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,8 +123,8 @@ export default function CampaignForm({
         </div>
       )}
 
-      {/* Channel warning for SMS/Zalo */}
-      {!isEmailChannel && (
+      {/* Channel info banners */}
+      {formData.channel === "sms" || formData.channel === "zalo" ? (
         <div className="px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800 flex gap-2">
           <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -133,7 +134,18 @@ export default function CampaignForm({
             Ban co the tao chien dich nhung chua the gui. Vui long chon kenh <strong>Email</strong> de gui ngay.
           </span>
         </div>
-      )}
+      ) : isAccountChannel ? (
+        <div className="px-4 py-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800 flex gap-2">
+          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            Voucher se duoc <strong>gan truc tiep</strong> vao tai khoan khach hang.
+            Khong gui email — khach hang se thay voucher trong trang ca nhan.
+            <strong> Bat buoc chon voucher.</strong>
+          </span>
+        </div>
+      ) : null}
 
       {/* Campaign Name */}
       <div>
@@ -159,7 +171,7 @@ export default function CampaignForm({
           Kenh gui <span className="text-red-500">*</span>
         </label>
         <div className="flex gap-3">
-          {(["email", "sms", "zalo"] as ChannelType[]).map((ch) => (
+          {(["email", "sms", "zalo", "account"] as ChannelType[]).map((ch) => (
             <button
               key={ch}
               type="button"
@@ -255,11 +267,15 @@ export default function CampaignForm({
         )}
       </div>
 
-      {/* Voucher (optional) */}
+      {/* Voucher */}
       <div>
         <label className="block text-sm font-medium text-stone-700 mb-1">
           Voucher dinh kem{" "}
-          <span className="text-xs text-stone-400 font-normal">(tuy chon)</span>
+          {isAccountChannel ? (
+            <span className="text-red-500">*</span>
+          ) : (
+            <span className="text-xs text-stone-400 font-normal">(tuy chon)</span>
+          )}
         </label>
         <select
           value={formData.voucher_id ?? ""}
@@ -268,14 +284,14 @@ export default function CampaignForm({
           }
           className="w-full px-4 py-2.5 rounded-lg border border-stone-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
-          <option value="">-- Khong dinh kem voucher --</option>
+          <option value="">{isAccountChannel ? "-- Chon voucher (bat buoc) --" : "-- Khong dinh kem voucher --"}</option>
           {vouchers.map((v) => (
             <option key={v.id} value={v.id}>
               {v.code} —{" "}
               {v.type === "percent"
                 ? `${parseFloat(v.value)}%`
                 : `${parseInt(v.value, 10).toLocaleString("vi-VN")}đ`}{" "}
-              (het han {v.expiry_date})
+              ({v.visibility === "public" ? "Công khai" : "Riêng tư"} · het han {v.expiry_date})
             </option>
           ))}
         </select>

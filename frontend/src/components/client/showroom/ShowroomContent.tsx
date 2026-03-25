@@ -6,20 +6,59 @@
  * Receives server-side initial data as props.
  */
 
-import { Suspense, useCallback } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GarmentListResponse } from "@/types/garment";
 import { GarmentGrid } from "./GarmentGrid";
 import { ShowroomFilter } from "./ShowroomFilter";
 import { Pagination } from "./Pagination";
 import { useGarments } from "./useGarments";
+import type { VoucherItem } from "@/types/voucher";
+import { getMyVouchers } from "@/app/actions/profile-actions";
 
 interface ShowroomContentProps {
   initialData?: GarmentListResponse;
+  isAuthenticated?: boolean;
 }
 
-function ShowroomContentInner({ initialData }: ShowroomContentProps) {
+/**
+ * Select the best voucher per type from active vouchers.
+ * "Best" = highest effective discount potential.
+ */
+function selectBestVouchers(vouchers: VoucherItem[]): { percent?: VoucherItem; fixed?: VoucherItem } {
+  const active = vouchers.filter((v) => v.status === "active" && v.visibility === "private");
+  let bestPercent: VoucherItem | undefined;
+  let bestFixed: VoucherItem | undefined;
+
+  for (const v of active) {
+    if (v.type === "percent") {
+      if (!bestPercent || parseFloat(v.value) > parseFloat(bestPercent.value)) {
+        bestPercent = v;
+      }
+    } else {
+      if (!bestFixed || parseFloat(v.value) > parseFloat(bestFixed.value)) {
+        bestFixed = v;
+      }
+    }
+  }
+
+  return { percent: bestPercent, fixed: bestFixed };
+}
+
+function ShowroomContentInner({ initialData, isAuthenticated }: ShowroomContentProps) {
   const router = useRouter();
+  const [bestVouchers, setBestVouchers] = useState<{ percent?: VoucherItem; fixed?: VoucherItem }>({});
+
+  // Fetch vouchers for authenticated users to show discount preview
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    getMyVouchers().then((result) => {
+      if (result.success && result.data) {
+        setBestVouchers(selectBestVouchers(result.data.vouchers));
+      }
+    });
+  }, [isAuthenticated]);
+
   const {
     garments,
     total,
@@ -121,7 +160,7 @@ function ShowroomContentInner({ initialData }: ShowroomContentProps) {
                 {total} sản phẩm
               </p>
             </div>
-            <GarmentGrid garments={garments} />
+            <GarmentGrid garments={garments} bestVouchers={bestVouchers} />
           </>
         )}
       </div>
@@ -139,10 +178,10 @@ function ShowroomContentInner({ initialData }: ShowroomContentProps) {
   );
 }
 
-export function ShowroomContent({ initialData }: ShowroomContentProps) {
+export function ShowroomContent({ initialData, isAuthenticated }: ShowroomContentProps) {
   return (
     <Suspense fallback={<div className="text-center py-8">Đang tải...</div>}>
-      <ShowroomContentInner initialData={initialData} />
+      <ShowroomContentInner initialData={initialData} isAuthenticated={isAuthenticated} />
     </Suspense>
   );
 }

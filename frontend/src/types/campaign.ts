@@ -5,7 +5,7 @@
  * to customer segments via email (with SMS/Zalo stubs).
  */
 
-export type ChannelType = "email" | "sms" | "zalo";
+export type ChannelType = "email" | "sms" | "zalo" | "account";
 export type CampaignStatus = "draft" | "scheduled" | "sending" | "sent" | "failed";
 export type RecipientStatus = "pending" | "sent" | "failed" | "opened" | "clicked";
 export type SegmentType =
@@ -171,6 +171,7 @@ export const CHANNEL_LABELS: Record<ChannelType, string> = {
   email: "Email",
   sms: "SMS",
   zalo: "Zalo OA",
+  account: "Tài Khoản",
 };
 
 export const STATUS_LABELS: Record<CampaignStatus, string> = {

@@ -9,6 +9,7 @@ import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
 import { createOrder } from "@/app/actions/order-actions";
+import { previewVoucherDiscount } from "@/app/actions/voucher-actions";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
 import { formatPrice } from "@/utils/format";
 import type { PaymentMethod, ShippingAddress } from "@/types/order";
@@ -99,6 +100,10 @@ export function ShippingFormClient() {
   const items = useCartStore((state) => state.items);
   const cartTotal = useCartStore((state) => state.cartTotal);
   const clearCart = useCartStore((state) => state.clearCart);
+  const appliedVouchers = useCartStore((state) => state.appliedVouchers);
+  const clearVouchers = useCartStore((state) => state.clearVouchers);
+  const totalDiscount = useCartStore((state) => state.totalDiscount);
+  const finalTotal = useCartStore((state) => state.finalTotal);
 
   // Guard: redirect to showroom if cart is empty
   useEffect(() => {
@@ -169,6 +174,20 @@ export function ShippingFormClient() {
 
     startTransition(async () => {
       try {
+        // Re-validate vouchers before order submission
+        let voucherCodes = appliedVouchers.map((v) => v.code);
+        if (voucherCodes.length > 0) {
+          const previewResult = await previewVoucherDiscount(voucherCodes, cartTotal());
+          if (!previewResult.success) {
+            clearVouchers();
+            setSubmitError(
+              (previewResult.error || "Voucher không còn hiệu lực") +
+              ". Voucher đã được gỡ — vui lòng kiểm tra lại đơn hàng."
+            );
+            return;
+          }
+          voucherCodes = previewResult.data!.vouchers.map((v) => v.code);
+        }
         const result = await createOrder({
           customer_name: formData.fullName.trim(),
           customer_phone: formData.phone.trim(),
@@ -176,6 +195,7 @@ export function ShippingFormClient() {
           shipping_note: formData.shippingNote.trim() || undefined,
           payment_method: paymentMethod,
           items: orderItems,
+          voucher_codes: voucherCodes.length > 0 ? voucherCodes : undefined,
         });
 
         if (!result.success || !result.data) {
@@ -545,6 +565,21 @@ export function ShippingFormClient() {
                     {items.length}
                   </span>
                 </div>
+                {appliedVouchers.length > 0 && (
+                  <div className="space-y-1.5">
+                    {appliedVouchers.map((v) => (
+                      <div key={v.voucher_id} className="flex items-center justify-between text-sm">
+                        <span className="text-[#6B7280] flex items-center gap-1">
+                          <span className={`inline-block w-1.5 h-1.5 rounded-full ${v.type === "percent" ? "bg-indigo-500" : "bg-emerald-500"}`} />
+                          {v.code}
+                        </span>
+                        <span className="text-green-600 font-medium" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+                          -{formatPrice(v.discount_amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <hr className="border-gray-200" />
                 <div className="flex items-center justify-between">
                   <span className="text-base font-semibold text-[#1A1A2E]">
@@ -555,9 +590,14 @@ export function ShippingFormClient() {
                     style={{ fontFamily: "JetBrains Mono, monospace" }}
                     data-testid="order-total"
                   >
-                    {formatPrice(cartTotal())}
+                    {formatPrice(finalTotal())}
                   </span>
                 </div>
+                {totalDiscount() > 0 && (
+                  <p className="text-xs text-green-600 text-right">
+                    Tiết kiệm {formatPrice(totalDiscount())}
+                  </p>
+                )}
               </div>
               {/* Item list compact */}
               <div className="space-y-2">

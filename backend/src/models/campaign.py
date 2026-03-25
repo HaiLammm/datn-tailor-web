@@ -13,10 +13,11 @@ from pydantic import BaseModel, field_validator
 
 
 class ChannelType(str, Enum):
-    """Supported broadcast channels. Email is functional; SMS/Zalo are stubs."""
+    """Supported broadcast channels. Email is functional; SMS/Zalo are stubs; Account assigns directly."""
     email = "email"
     sms = "sms"
     zalo = "zalo"
+    account = "account"  # Direct voucher assignment to customer accounts
 
 
 class CampaignStatus(str, Enum):

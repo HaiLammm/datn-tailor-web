@@ -13,12 +13,17 @@ from enum import Enum
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class VoucherType(str, Enum):
     PERCENT = "percent"
     FIXED = "fixed"
+
+
+class VoucherVisibility(str, Enum):
+    PUBLIC = "public"
+    PRIVATE = "private"
 
 
 class VoucherStatus(str, Enum):
@@ -39,6 +44,7 @@ class VoucherResponse(BaseModel):
     max_discount_value: Optional[Decimal] = None
     description: Optional[str] = None
     expiry_date: date
+    visibility: str = "private"
     status: VoucherStatus
     assigned_at: datetime
 
@@ -59,6 +65,7 @@ class VoucherCreateRequest(BaseModel):
     description: Optional[str] = None
     expiry_date: date
     total_uses: int = 1
+    visibility: VoucherVisibility = VoucherVisibility.PRIVATE
 
     @field_validator("code")
     @classmethod
@@ -100,6 +107,7 @@ class VoucherUpdateRequest(BaseModel):
     description: Optional[str] = None
     expiry_date: Optional[date] = None
     total_uses: Optional[int] = None
+    visibility: Optional[VoucherVisibility] = None
 
     @field_validator("value")
     @classmethod
@@ -137,6 +145,7 @@ class OwnerVoucherResponse(BaseModel):
     total_uses: int
     used_count: int
     is_active: bool
+    visibility: str = "private"
     created_at: datetime
     updated_at: datetime
 
@@ -150,3 +159,39 @@ class VoucherStatsResponse(BaseModel):
     active_vouchers: int
     total_redemptions: int
     redemption_rate: float
+
+
+# --- Voucher Checkout schemas ---
+
+
+class VoucherDiscountDetail(BaseModel):
+    """Detail of a single voucher's discount calculation."""
+
+    voucher_id: UUID
+    code: str
+    type: VoucherType
+    visibility: str = "private"
+    value: Decimal
+    discount_amount: Decimal  # actual discount calculated for this voucher
+
+
+class DiscountPreviewRequest(BaseModel):
+    """Request schema for previewing voucher discounts."""
+
+    voucher_codes: list[str] = Field(..., min_length=1)
+    order_subtotal: Decimal
+
+    @field_validator("order_subtotal")
+    @classmethod
+    def validate_subtotal(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Tổng đơn hàng phải lớn hơn 0")
+        return v
+
+
+class DiscountPreviewResponse(BaseModel):
+    """Response schema for voucher discount preview."""
+
+    vouchers: list[VoucherDiscountDetail]
+    total_discount: Decimal
+    final_total: Decimal

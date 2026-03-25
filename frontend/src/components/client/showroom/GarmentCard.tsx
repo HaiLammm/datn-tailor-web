@@ -12,12 +12,55 @@ import Link from "next/link";
 import { Garment } from "@/types/garment";
 import { StatusBadge } from "./StatusBadge";
 import { AddToCartButton } from "./AddToCartButton";
+import type { VoucherItem } from "@/types/voucher";
 
 interface GarmentCardProps {
   garment: Garment;
+  bestVouchers?: { percent?: VoucherItem; fixed?: VoucherItem };
 }
 
-export function GarmentCard({ garment }: GarmentCardProps) {
+/**
+ * Calculate best discount preview for a garment price.
+ * Applies percent first, then fixed (same order as backend).
+ */
+function calcDiscountPreview(
+  price: number,
+  bestVouchers?: { percent?: VoucherItem; fixed?: VoucherItem }
+): { discountedPrice: number; totalSaved: number } | null {
+  if (!bestVouchers) return null;
+  const { percent, fixed } = bestVouchers;
+  if (!percent && !fixed) return null;
+
+  let remaining = price;
+  let totalSaved = 0;
+
+  // Check min_order_value for each voucher against this item price
+  if (percent) {
+    const minOrder = parseFloat(percent.min_order_value);
+    if (price >= minOrder) {
+      let discount = remaining * (parseFloat(percent.value) / 100);
+      if (percent.max_discount_value) {
+        discount = Math.min(discount, parseFloat(percent.max_discount_value));
+      }
+      remaining -= discount;
+      totalSaved += discount;
+    }
+  }
+
+  if (fixed) {
+    const minOrder = parseFloat(fixed.min_order_value);
+    if (price >= minOrder) {
+      const discount = Math.min(parseFloat(fixed.value), remaining);
+      remaining -= discount;
+      totalSaved += discount;
+    }
+  }
+
+  if (totalSaved <= 0) return null;
+  return { discountedPrice: Math.max(0, remaining), totalSaved };
+}
+
+export function GarmentCard({ garment, bestVouchers }: GarmentCardProps) {
   const priceFormatted = new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
@@ -112,7 +155,26 @@ export function GarmentCard({ garment }: GarmentCardProps) {
           <div className="flex items-center justify-between mb-2">
             <div>
               <p className="text-xs text-gray-500">Giá thuê</p>
-              <p className="text-lg font-bold text-[#D4AF37]">{priceFormatted}</p>
+              {(() => {
+                const rentalPrice = parseFloat(garment.rental_price);
+                const preview = calcDiscountPreview(rentalPrice, bestVouchers);
+                if (preview) {
+                  const discountFormatted = new Intl.NumberFormat("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  }).format(preview.discountedPrice);
+                  return (
+                    <>
+                      <p className="text-sm text-gray-400 line-through">{priceFormatted}</p>
+                      <p className="text-lg font-bold text-[#DC2626]">{discountFormatted}</p>
+                      <p className="text-xs text-green-600">
+                        Tiết kiệm {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(preview.totalSaved)}
+                      </p>
+                    </>
+                  );
+                }
+                return <p className="text-lg font-bold text-[#D4AF37]">{priceFormatted}</p>;
+              })()}
             </div>
             <Link
               href={`/showroom/${garment.id}`}

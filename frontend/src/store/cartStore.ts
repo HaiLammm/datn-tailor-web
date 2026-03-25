@@ -7,7 +7,7 @@
 import { create } from "zustand";
 import { devtools, persist, createJSONStorage } from "zustand/middleware";
 
-import type { CartItem, CartStore } from "@/types/cart";
+import type { CartAppliedVoucher, CartItem, CartStore } from "@/types/cart";
 
 /**
  * Check if an item is a duplicate of an existing cart item.
@@ -35,6 +35,7 @@ export const useCartStore = create<CartStore>()(
     persist(
       (set, get) => ({
         items: [],
+        appliedVouchers: [],
 
         addItem: (item: CartItem) =>
           set(
@@ -65,12 +66,56 @@ export const useCartStore = create<CartStore>()(
             "updateItem"
           ),
 
-        clearCart: () => set({ items: [] }, false, "clearCart"),
+        clearCart: () => set({ items: [], appliedVouchers: [] }, false, "clearCart"),
 
         cartCount: () => get().items.length,
 
         cartTotal: () =>
           get().items.reduce((sum, item) => sum + item.total_price, 0),
+
+        applyVoucher: (voucher: CartAppliedVoucher) =>
+          set(
+            (state) => {
+              if (voucher.visibility === "public") {
+                // Public: replace any existing public voucher (max 1 public per order)
+                const filtered = state.appliedVouchers.filter(
+                  (v) => v.visibility !== "public"
+                );
+                return { appliedVouchers: [...filtered, voucher] };
+              } else {
+                // Private: replace if same voucher_id (each code once per order)
+                const filtered = state.appliedVouchers.filter(
+                  (v) => v.voucher_id !== voucher.voucher_id
+                );
+                return { appliedVouchers: [...filtered, voucher] };
+              }
+            },
+            false,
+            "applyVoucher"
+          ),
+
+        removeVoucher: (voucherId: string) =>
+          set(
+            (state) => ({
+              appliedVouchers: state.appliedVouchers.filter(
+                (v) => v.voucher_id !== voucherId
+              ),
+            }),
+            false,
+            "removeVoucher"
+          ),
+
+        clearVouchers: () =>
+          set({ appliedVouchers: [] }, false, "clearVouchers"),
+
+        totalDiscount: () =>
+          get().appliedVouchers.reduce((sum, v) => sum + v.discount_amount, 0),
+
+        finalTotal: () => {
+          const subtotal = get().cartTotal();
+          const discount = get().totalDiscount();
+          return Math.max(0, subtotal - discount);
+        },
       }),
       {
         name: "tailor-cart",

@@ -20,6 +20,7 @@ import re
 import time
 from collections import defaultdict
 from datetime import date as date_type, datetime, timezone
+from decimal import Decimal
 from uuid import UUID as PyUUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -37,7 +38,8 @@ from src.models.customer_profile import (
 )
 from src.models.db_models import AppointmentDB, CustomerProfileDB, NotificationDB, UserVoucherDB, VoucherDB
 from src.models.notification import NotificationResponse
-from src.models.voucher import VoucherStatus
+from src.models.voucher import DiscountPreviewRequest, DiscountPreviewResponse, VoucherStatus
+from src.services import voucher_service
 from src.services.measurement_service import get_default_measurement, get_measurements_history
 from src.services.notification_creator import APPOINTMENT_MESSAGES, create_notification
 
@@ -619,8 +621,38 @@ async def get_my_vouchers(
             "max_discount_value": str(v.max_discount_value) if v.max_discount_value is not None else None,
             "description": v.description,
             "expiry_date": v.expiry_date.isoformat(),
+            "visibility": v.visibility,
             "status": status.value,
             "assigned_at": uv.assigned_at.isoformat(),
         })
 
     return {"data": {"vouchers": vouchers, "voucher_count": len(vouchers)}, "meta": {}}
+
+
+@router.post("/vouchers/preview-discount", response_model=dict)
+async def preview_voucher_discount(
+    request: DiscountPreviewRequest,
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Preview discount calculation for selected vouchers.
+
+    Validates vouchers and returns calculated discount amounts
+    without actually applying them. Used for checkout preview.
+    """
+    tenant_id = current_user.tenant_id
+
+    voucher_data, total_discount = await voucher_service.validate_and_calculate_multi_discount(
+        db, tenant_id, current_user.id, request.voucher_codes, request.order_subtotal
+    )
+
+    details = voucher_service.get_discount_details(voucher_data)
+    final_total = max(request.order_subtotal - total_discount, Decimal("0"))
+
+    response = DiscountPreviewResponse(
+        vouchers=details,
+        total_discount=total_discount,
+        final_total=final_total,
+    )
+
+    return {"data": response.model_dump(mode="json"), "meta": {}}

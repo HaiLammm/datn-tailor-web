@@ -13,6 +13,11 @@ from sqlalchemy.orm import selectinload
 
 from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, PaymentTransactionDB, TailorTaskDB, UserDB
 from src.services.notification_creator import ORDER_STATUS_MESSAGES, create_notification
+from src.services.voucher_service import (
+    apply_vouchers_to_order,
+    refund_vouchers_for_order,
+    validate_and_calculate_multi_discount,
+)
 from src.models.order import (
     InternalOrderCreate,
     OrderCreate,
@@ -141,9 +146,28 @@ async def create_order(
     Backend is SSOT for prices - never trust client-side price data.
     If customer_id is provided, links order to authenticated customer.
     """
-    order_items, item_details, total_amount = await _validate_and_price_items(
+    order_items, item_details, subtotal = await _validate_and_price_items(
         db, order_data.items, tenant_id, skip_availability_check=False
     )
+
+    # Voucher discount (only for authenticated customers with voucher codes)
+    discount_amount = Decimal("0")
+    applied_voucher_ids: list[str] = []
+    voucher_apply_data: list = []
+
+    if order_data.voucher_codes and not customer_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vui lòng đăng nhập để sử dụng voucher",
+        )
+
+    if order_data.voucher_codes and customer_id:
+        voucher_apply_data, discount_amount = await validate_and_calculate_multi_discount(
+            db, tenant_id, customer_id, order_data.voucher_codes, subtotal
+        )
+        applied_voucher_ids = [str(v[0].id) for v in voucher_apply_data]
+
+    final_total = max(subtotal - discount_amount, Decimal("0"))
 
     # Create OrderDB
     order = OrderDB(
@@ -155,12 +179,20 @@ async def create_order(
         shipping_note=order_data.shipping_note,
         payment_method=order_data.payment_method.value,
         status="pending",
-        total_amount=total_amount,
+        subtotal_amount=subtotal,
+        discount_amount=discount_amount,
+        total_amount=final_total,
+        applied_voucher_ids=applied_voucher_ids,
     )
     order.items = order_items
 
     db.add(order)
     await db.flush()
+
+    # Apply vouchers (mark as used, link to order)
+    if voucher_apply_data:
+        await apply_vouchers_to_order(db, voucher_apply_data, order.id)
+
     await db.commit()
     await db.refresh(order)
 
@@ -195,7 +227,10 @@ async def create_order(
         id=order.id,
         status=order.status,
         payment_status=order.payment_status,
+        subtotal_amount=order.subtotal_amount,
+        discount_amount=order.discount_amount,
         total_amount=order.total_amount,
+        applied_voucher_ids=[str(v) for v in (order.applied_voucher_ids or [])],
         payment_method=order.payment_method,
         payment_url=payment_url,
         customer_name=order.customer_name,
@@ -250,7 +285,10 @@ async def create_internal_order(
         status="confirmed",
         payment_status="paid",
         is_internal=True,
+        subtotal_amount=total_amount,
+        discount_amount=Decimal("0"),
         total_amount=total_amount,
+        applied_voucher_ids=[],
     )
     order.items = order_items
 
@@ -277,7 +315,10 @@ async def create_internal_order(
         id=order.id,
         status=order.status,
         payment_status=order.payment_status,
+        subtotal_amount=order.subtotal_amount,
+        discount_amount=order.discount_amount,
         total_amount=order.total_amount,
+        applied_voucher_ids=[str(v) for v in (order.applied_voucher_ids or [])],
         payment_method=order.payment_method,
         customer_name=order.customer_name,
         customer_phone=order.customer_phone,
@@ -329,7 +370,10 @@ async def get_order(
         id=order.id,
         status=order.status,
         payment_status=order.payment_status,
+        subtotal_amount=order.subtotal_amount,
+        discount_amount=order.discount_amount,
         total_amount=order.total_amount,
+        applied_voucher_ids=[str(v) for v in (order.applied_voucher_ids or [])],
         payment_method=order.payment_method,
         customer_name=order.customer_name,
         customer_phone=order.customer_phone,
@@ -469,6 +513,8 @@ async def list_orders(
             id=o.id,
             status=o.status,
             payment_status=o.payment_status,
+            subtotal_amount=o.subtotal_amount,
+            discount_amount=o.discount_amount,
             total_amount=o.total_amount,
             payment_method=o.payment_method,
             customer_name=o.customer_name,
@@ -584,6 +630,10 @@ async def update_order_status(
                 },
             )
 
+    # Refund vouchers on cancellation
+    if new_status == "cancelled" and order.applied_voucher_ids:
+        await refund_vouchers_for_order(db, order.id, tenant_id=order.tenant_id)
+
     order.status = new_status
     order.updated_at = datetime.now(timezone.utc)
     # Capture fields before commit (for notification, since session may expire objects)
@@ -642,7 +692,10 @@ async def update_order_status(
         id=order.id,
         status=order.status,
         payment_status=order.payment_status,
+        subtotal_amount=order.subtotal_amount,
+        discount_amount=order.discount_amount,
         total_amount=order.total_amount,
+        applied_voucher_ids=[str(v) for v in (order.applied_voucher_ids or [])],
         payment_method=order.payment_method,
         customer_name=order.customer_name,
         customer_phone=order.customer_phone,
@@ -712,7 +765,10 @@ async def get_order_with_transactions(
         id=order.id,
         status=order.status,
         payment_status=order.payment_status,
+        subtotal_amount=order.subtotal_amount,
+        discount_amount=order.discount_amount,
         total_amount=order.total_amount,
+        applied_voucher_ids=[str(v) for v in (order.applied_voucher_ids or [])],
         payment_method=order.payment_method,
         customer_name=order.customer_name,
         customer_phone=order.customer_phone,

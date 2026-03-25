@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { OwnerVoucher, VoucherFormData, VoucherType } from "@/types/voucher";
+import { OwnerVoucher, VoucherFormData, VoucherType, VoucherVisibility } from "@/types/voucher";
 import { createVoucher, updateVoucher } from "@/app/actions/voucher-actions";
 
 const voucherSchema = z
@@ -32,6 +32,7 @@ const voucherSchema = z
         { message: "Ngày hết hạn phải ở tương lai" }
       ),
     total_uses: z.number().int().min(1, "Tối thiểu 1"),
+    visibility: z.enum(["public", "private"] as const).default("private"),
   })
   .refine(
     (data) => {
@@ -67,6 +68,7 @@ export default function VoucherForm({ voucher }: VoucherFormProps) {
     description: voucher?.description ?? "",
     expiry_date: voucher?.expiry_date ?? "",
     total_uses: voucher?.total_uses ?? 1,
+    visibility: (voucher?.visibility as VoucherVisibility) ?? "private",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -145,6 +147,42 @@ export default function VoucherForm({ voucher }: VoucherFormProps) {
           <p className="text-xs text-stone-400 mt-1">Mã voucher không thể thay đổi sau khi tạo</p>
         )}
         {errors.code && <p className="text-xs text-red-500 mt-1">{errors.code}</p>}
+      </div>
+
+      {/* Visibility */}
+      <div>
+        <label className="block text-sm font-medium text-stone-700 mb-2">
+          Phạm vi voucher <span className="text-red-500">*</span>
+        </label>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => handleChange("visibility", "private")}
+            className={`flex-1 py-2.5 px-3 rounded-lg border-2 text-sm font-medium transition-all ${
+              formData.visibility === "private"
+                ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                : "border-stone-300 bg-white text-stone-600 hover:border-stone-400"
+            }`}
+          >
+            Riêng tư (Private)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleChange("visibility", "public")}
+            className={`flex-1 py-2.5 px-3 rounded-lg border-2 text-sm font-medium transition-all ${
+              formData.visibility === "public"
+                ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                : "border-stone-300 bg-white text-stone-600 hover:border-stone-400"
+            }`}
+          >
+            Công khai (Public)
+          </button>
+        </div>
+        <p className="text-xs text-stone-400 mt-1">
+          {formData.visibility === "private"
+            ? "Chỉ gán cho khách hàng cụ thể qua chiến dịch hoặc thủ công."
+            : "Tất cả khách hàng có thể dùng nếu biết mã. Mỗi khách dùng 1 lần."}
+        </p>
       </div>
 
       {/* Type + Value row */}

@@ -7,6 +7,7 @@
  */
 
 export type VoucherType = 'percent' | 'fixed';
+export type VoucherVisibility = 'public' | 'private';
 export type VoucherStatus = 'active' | 'expired' | 'used';
 
 export interface VoucherItem {
@@ -25,6 +26,7 @@ export interface VoucherItem {
   description: string | null;
   /** ISO date string "YYYY-MM-DD" */
   expiry_date: string;
+  visibility: VoucherVisibility;
   status: VoucherStatus;
   assigned_at: string;
 }
@@ -52,6 +54,7 @@ export interface OwnerVoucher {
   total_uses: number;
   used_count: number;
   is_active: boolean;
+  visibility: VoucherVisibility;
   created_at: string;
   updated_at: string;
 }
@@ -64,6 +67,7 @@ export interface VoucherFormData {
   max_discount_value: number | null;
   description: string;
   expiry_date: string;
+  visibility: VoucherVisibility;
   total_uses: number;
 }
 
@@ -90,4 +94,37 @@ export interface VoucherDetailApiResponse {
 
 export interface VoucherStatsApiResponse {
   data: VoucherStats;
+}
+
+// --- Voucher Checkout types ---
+
+export interface AppliedVoucher {
+  /** user_vouchers.id — assignment record */
+  id: string;
+  /** vouchers.id — master voucher */
+  voucher_id: string;
+  code: string;
+  type: VoucherType;
+  value: number;
+  discount_amount: number;
+}
+
+export interface DiscountPreviewRequest {
+  voucher_codes: string[];
+  order_subtotal: number;
+}
+
+export interface VoucherDiscountDetail {
+  voucher_id: string;
+  code: string;
+  type: VoucherType;
+  visibility: VoucherVisibility;
+  value: string;
+  discount_amount: string;
+}
+
+export interface DiscountPreviewResponse {
+  vouchers: VoucherDiscountDetail[];
+  total_discount: string;
+  final_total: string;
 }

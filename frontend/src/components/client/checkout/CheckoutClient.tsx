@@ -1,33 +1,45 @@
 "use client";
 
 /**
- * CheckoutClient - Story 3.2: Render Cart Checkout Details
+ * CheckoutClient - Story 3.2 + Voucher Apply
  * Main checkout client component: displays cart items, verifies with backend,
- * handles remove/update actions with Optimistic UI.
+ * handles remove/update actions with Optimistic UI, and voucher selection.
  */
 
 import { useEffect, useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
 import { verifyCartItems } from "@/app/actions/cart-actions";
+import { previewVoucherDiscount } from "@/app/actions/voucher-actions";
 import type { VerifyResult } from "@/app/actions/cart-actions";
 import { CheckoutItemRow } from "./CheckoutItemRow";
 import { OrderSummary } from "./OrderSummary";
+import { VoucherSelector } from "./VoucherSelector";
 
 type VerifyState = "idle" | "loading" | "success" | "error";
 
 export function CheckoutClient() {
   const router = useRouter();
+  const { data: session } = useSession();
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
   const updateItem = useCartStore((state) => state.updateItem);
   const cartTotal = useCartStore((state) => state.cartTotal);
+  const appliedVouchers = useCartStore((state) => state.appliedVouchers);
+  const applyVoucher = useCartStore((state) => state.applyVoucher);
+  const removeVoucher = useCartStore((state) => state.removeVoucher);
+  const totalDiscount = useCartStore((state) => state.totalDiscount);
+
+  const clearVouchers = useCartStore((state) => state.clearVouchers);
 
   const [verifyResults, setVerifyResults] = useState<
     Record<string, VerifyResult>
   >({});
   const [verifyState, setVerifyState] = useState<VerifyState>("idle");
   const [, startTransition] = useTransition();
+  const [showVoucherSelector, setShowVoucherSelector] = useState(false);
+  const [voucherWarning, setVoucherWarning] = useState<string | null>(null);
 
   // Redirect to showroom if cart is empty
   useEffect(() => {
@@ -88,6 +100,37 @@ export function CheckoutClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-validate applied vouchers on checkout load
+  // Catches deactivated/expired vouchers that are still in localStorage
+  useEffect(() => {
+    if (appliedVouchers.length === 0 || items.length === 0) return;
+
+    const subtotal = cartTotal();
+    const codes = appliedVouchers.map((v) => v.code);
+
+    previewVoucherDiscount(codes, subtotal).then((result) => {
+      if (!result.success) {
+        // Voucher(s) no longer valid — clear and warn
+        clearVouchers();
+        setVoucherWarning(
+          result.error || "Một số voucher không còn hiệu lực và đã được gỡ khỏi đơn hàng."
+        );
+      } else if (result.data) {
+        // Update discount amounts in case they changed (e.g., cart total changed)
+        for (const detail of result.data.vouchers) {
+          const existing = appliedVouchers.find((v) => v.code === detail.code);
+          if (existing && parseFloat(detail.discount_amount) !== existing.discount_amount) {
+            applyVoucher({
+              ...existing,
+              discount_amount: parseFloat(detail.discount_amount),
+            });
+          }
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleRemove = (id: string) => {
     removeItem(id);
   };
@@ -97,10 +140,23 @@ export function CheckoutClient() {
     return result && !result.is_available;
   });
 
+  const isAuthenticated = !!session?.user;
+
   // Don't render if cart will redirect
   if (items.length === 0) {
     return null;
   }
+
+  const summaryProps = {
+    itemCount: items.length,
+    subtotal: cartTotal(),
+    hasUnavailableItems,
+    isVerifying: verifyState === "loading",
+    appliedVouchers,
+    totalDiscount: totalDiscount(),
+    onOpenVoucherSelector: () => setShowVoucherSelector(true),
+    isAuthenticated,
+  };
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
@@ -111,6 +167,21 @@ export function CheckoutClient() {
         >
           Xem Lại Giỏ Hàng
         </h1>
+
+        {/* Voucher re-validation warning */}
+        {voucherWarning && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800 flex items-center justify-between">
+            <span>{voucherWarning}</span>
+            <button
+              onClick={() => setVoucherWarning(null)}
+              className="ml-3 text-amber-600 hover:text-amber-800 flex-shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Items list */}
@@ -168,12 +239,7 @@ export function CheckoutClient() {
           {/* Order Summary - desktop sidebar, mobile sticky bottom */}
           <div className="lg:col-span-4">
             <div className="hidden lg:block">
-              <OrderSummary
-                itemCount={items.length}
-                subtotal={cartTotal()}
-                hasUnavailableItems={hasUnavailableItems}
-                isVerifying={verifyState === "loading"}
-              />
+              <OrderSummary {...summaryProps} />
             </div>
           </div>
         </div>
@@ -181,13 +247,18 @@ export function CheckoutClient() {
 
       {/* Mobile sticky OrderSummary */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-30">
-        <OrderSummary
-          itemCount={items.length}
-          subtotal={cartTotal()}
-          hasUnavailableItems={hasUnavailableItems}
-          isVerifying={verifyState === "loading"}
-        />
+        <OrderSummary {...summaryProps} />
       </div>
+
+      {/* Voucher Selector Modal */}
+      <VoucherSelector
+        subtotal={cartTotal()}
+        appliedVouchers={appliedVouchers}
+        onApply={applyVoucher}
+        onRemove={removeVoucher}
+        isOpen={showVoucherSelector}
+        onClose={() => setShowVoucherSelector(false)}
+      />
     </div>
   );
 }

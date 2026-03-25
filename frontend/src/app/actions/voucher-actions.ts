@@ -10,6 +10,7 @@
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import {
+  DiscountPreviewResponse,
   OwnerVoucher,
   VoucherDetailApiResponse,
   VoucherFormData,
@@ -313,6 +314,55 @@ export async function deleteVoucher(
 
     revalidatePath("/owner/vouchers");
     return { success: true };
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === "AbortError") return { success: false, error: "Timeout" };
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Unknown error" };
+  }
+}
+
+
+// --- Voucher Checkout Actions (Customer) ---
+
+/**
+ * Preview voucher discount calculation (authenticated customer)
+ */
+export async function previewVoucherDiscount(
+  voucherCodes: string[],
+  orderSubtotal: number
+): Promise<{ success: boolean; data?: DiscountPreviewResponse; error?: string }> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Vui lòng đăng nhập để sử dụng voucher" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const response = await fetch(`${BACKEND_URL}/api/v1/customers/me/vouchers/preview-discount`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        voucher_codes: voucherCodes,
+        order_subtotal: orderSubtotal,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      const errorMsg = errorData?.detail || `HTTP ${response.status}`;
+      return { success: false, error: typeof errorMsg === "string" ? errorMsg : JSON.stringify(errorMsg) };
+    }
+
+    const json = await response.json();
+    return { success: true, data: json.data };
   } catch (error) {
     if (error instanceof Error) {
       if (error.name === "AbortError") return { success: false, error: "Timeout" };

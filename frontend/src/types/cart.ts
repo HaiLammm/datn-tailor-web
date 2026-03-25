@@ -22,8 +22,21 @@ export interface CartItem {
   total_price: number;      // unit_price × days (rent) hoặc unit_price (buy)
 }
 
+export interface CartAppliedVoucher {
+  /** user_vouchers.id */
+  id: string;
+  /** vouchers.id */
+  voucher_id: string;
+  code: string;
+  type: "percent" | "fixed";
+  visibility: "public" | "private";
+  value: number;
+  discount_amount: number;
+}
+
 export interface CartState {
   items: CartItem[];
+  appliedVouchers: CartAppliedVoucher[];
 }
 
 export interface CartStore extends CartState {
@@ -33,4 +46,9 @@ export interface CartStore extends CartState {
   clearCart: () => void;
   cartCount: () => number;
   cartTotal: () => number;
+  applyVoucher: (voucher: CartAppliedVoucher) => void;
+  removeVoucher: (voucherId: string) => void;
+  clearVouchers: () => void;
+  totalDiscount: () => number;
+  finalTotal: () => number;
 }

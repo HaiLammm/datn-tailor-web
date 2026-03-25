@@ -9,13 +9,14 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import asc, desc, func, select
+from sqlalchemy import asc, desc, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.db_models import VoucherDB
+from src.models.db_models import UserVoucherDB, VoucherDB
 from src.models.voucher import (
     VoucherCreateRequest,
+    VoucherDiscountDetail,
     VoucherStatsResponse,
     VoucherUpdateRequest,
 )
@@ -160,6 +161,7 @@ async def create_voucher(
         description=data.description,
         expiry_date=data.expiry_date,
         total_uses=data.total_uses,
+        visibility=data.visibility.value,
     )
 
     db.add(voucher)
@@ -232,7 +234,7 @@ async def update_voucher(
         )
 
     for key, value in update_data.items():
-        if key == "type" and value is not None:
+        if key in ("type", "visibility") and value is not None:
             value = value.value if hasattr(value, "value") else value
         setattr(voucher, key, value)
 
@@ -342,3 +344,272 @@ async def get_voucher_stats(
         total_redemptions=total_redemptions,
         redemption_rate=round(redemption_rate, 1),
     )
+
+
+# ---------------------------------------------------------------------------
+# Voucher Checkout Functions
+# ---------------------------------------------------------------------------
+
+
+async def validate_voucher_for_checkout(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    voucher_code: str,
+    order_subtotal: Decimal,
+) -> tuple[VoucherDB, UserVoucherDB]:
+    """Validate a voucher code for checkout use.
+
+    Visibility-based rules:
+    - PUBLIC: auto-assign if not yet assigned, check lifetime (1 use per account)
+    - PRIVATE: must be pre-assigned via campaign/owner, reject if not assigned
+
+    Returns:
+        Tuple of (VoucherDB, UserVoucherDB)
+
+    Raises:
+        HTTPException 400: Validation failures
+    """
+    # Find voucher by code + tenant
+    result = await db.execute(
+        select(VoucherDB).where(
+            VoucherDB.tenant_id == tenant_id,
+            VoucherDB.code == voucher_code.strip().upper(),
+            VoucherDB.is_active == True,  # noqa: E712
+        ).with_for_update()
+    )
+    voucher = result.scalar_one_or_none()
+
+    if not voucher:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Mã voucher '{voucher_code}' không tồn tại hoặc đã ngừng hoạt động",
+        )
+
+    # Check expiry
+    if voucher.expiry_date < date.today():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Mã voucher '{voucher.code}' đã hết hạn",
+        )
+
+    # Check if voucher still has uses available
+    if voucher.used_count >= voucher.total_uses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Mã voucher '{voucher.code}' đã hết lượt sử dụng",
+        )
+
+    # Check user assignment
+    uv_result = await db.execute(
+        select(UserVoucherDB).where(
+            UserVoucherDB.user_id == user_id,
+            UserVoucherDB.voucher_id == voucher.id,
+        ).with_for_update()
+    )
+    user_voucher = uv_result.scalar_one_or_none()
+
+    if not user_voucher:
+        if voucher.visibility == "private":
+            # Private voucher: must be pre-assigned
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Bạn chưa được gán voucher '{voucher.code}'",
+            )
+        # Public voucher: check lifetime usage before auto-assign
+        lifetime_result = await db.execute(
+            select(UserVoucherDB).where(
+                UserVoucherDB.user_id == user_id,
+                UserVoucherDB.voucher_id == voucher.id,
+                UserVoucherDB.is_used == True,  # noqa: E712
+            )
+        )
+        if lifetime_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Bạn đã sử dụng voucher '{voucher.code}' trước đó",
+            )
+        # Auto-assign public voucher (unique constraint prevents duplicates from races)
+        try:
+            user_voucher = UserVoucherDB(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                voucher_id=voucher.id,
+            )
+            db.add(user_voucher)
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Bạn đã sử dụng voucher '{voucher.code}' trước đó",
+            )
+    else:
+        # Existing assignment — check if public voucher already used lifetime
+        if voucher.visibility == "public" and user_voucher.is_used:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Bạn đã sử dụng voucher '{voucher.code}' trước đó",
+            )
+        if user_voucher.is_used:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Voucher '{voucher.code}' đã được sử dụng",
+            )
+
+    # Check min_order_value
+    if order_subtotal < voucher.min_order_value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Đơn hàng tối thiểu {voucher.min_order_value:,.0f}₫ để dùng voucher '{voucher.code}'",
+        )
+
+    return voucher, user_voucher
+
+
+def calculate_single_discount(voucher: VoucherDB, amount: Decimal) -> Decimal:
+    """Calculate discount for a single voucher on a given amount.
+
+    - Percent type: amount * (value/100), capped at max_discount_value
+    - Fixed type: min(value, amount) — cannot exceed order amount
+
+    Returns:
+        Discount amount as Decimal, rounded to 2 decimal places
+    """
+    if voucher.type == "percent":
+        discount = amount * (voucher.value / Decimal("100"))
+        if voucher.max_discount_value is not None:
+            discount = min(discount, voucher.max_discount_value)
+    else:  # fixed
+        discount = min(voucher.value, amount)
+
+    return discount.quantize(Decimal("0.01"))
+
+
+async def validate_and_calculate_multi_discount(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+    voucher_codes: list[str],
+    order_subtotal: Decimal,
+) -> tuple[list[tuple[VoucherDB, UserVoucherDB, Decimal]], Decimal]:
+    """Validate multiple voucher codes and calculate combined discount.
+
+    Rules:
+    - Public vouchers: max 1 per order, 1 lifetime per account
+    - Private vouchers: multiple unique codes allowed, each code max 1x per order
+    - Percent vouchers applied first (sequentially), then fixed vouchers
+
+    Returns:
+        Tuple of (list of (voucher, user_voucher, discount_amount), total_discount)
+    """
+    # Deduplicate codes (same code twice → just use once)
+    unique_codes = list(dict.fromkeys(code.strip().upper() for code in voucher_codes))
+
+    # Validate all vouchers
+    validated: list[tuple[VoucherDB, UserVoucherDB]] = []
+    for code in unique_codes:
+        voucher, user_voucher = await validate_voucher_for_checkout(
+            db, tenant_id, user_id, code, order_subtotal,
+        )
+        validated.append((voucher, user_voucher))
+
+    # Enforce: max 1 public voucher per order
+    public_count = sum(1 for v, _ in validated if v.visibility == "public")
+    if public_count > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Chỉ được sử dụng tối đa 1 voucher công khai (public) mỗi đơn hàng",
+        )
+
+    # Sort: percent vouchers first, then fixed (for correct sequential discount)
+    validated.sort(key=lambda x: (0 if x[0].type == "percent" else 1))
+
+    # Calculate discounts sequentially
+    results: list[tuple[VoucherDB, UserVoucherDB, Decimal]] = []
+    remaining = order_subtotal
+    total_discount = Decimal("0")
+
+    for voucher, user_voucher in validated:
+        discount = calculate_single_discount(voucher, remaining)
+        results.append((voucher, user_voucher, discount))
+        remaining -= discount
+        total_discount += discount
+
+    return results, total_discount
+
+
+async def apply_vouchers_to_order(
+    db: AsyncSession,
+    voucher_data: list[tuple[VoucherDB, UserVoucherDB, Decimal]],
+    order_id: uuid.UUID,
+) -> None:
+    """Mark vouchers as used and link to order.
+
+    Sets is_used=True, used_at, used_in_order_id on UserVoucherDB.
+    Increments used_count on VoucherDB.
+    """
+    now = datetime.now(timezone.utc)
+    for voucher, user_voucher, _discount in voucher_data:
+        user_voucher.is_used = True
+        user_voucher.used_at = now
+        user_voucher.used_in_order_id = order_id
+        # Atomic SQL-level increment to prevent lost updates under concurrency
+        await db.execute(
+            update(VoucherDB)
+            .where(VoucherDB.id == voucher.id)
+            .values(used_count=VoucherDB.used_count + 1)
+        )
+    await db.flush()
+
+
+async def refund_vouchers_for_order(
+    db: AsyncSession,
+    order_id: uuid.UUID,
+    tenant_id: uuid.UUID | None = None,
+) -> None:
+    """Refund all vouchers applied to a cancelled order.
+
+    Resets is_used, clears used_at/used_in_order_id, decrements used_count.
+    Optional tenant_id for defense-in-depth multi-tenant isolation.
+    """
+    filters = [
+        UserVoucherDB.used_in_order_id == order_id,
+        UserVoucherDB.is_used == True,  # noqa: E712
+    ]
+    if tenant_id is not None:
+        filters.append(UserVoucherDB.tenant_id == tenant_id)
+
+    result = await db.execute(select(UserVoucherDB).where(*filters))
+    user_vouchers = result.scalars().all()
+
+    for uv in user_vouchers:
+        uv.is_used = False
+        uv.used_at = None
+        uv.used_in_order_id = None
+
+        # Atomic SQL-level decrement to prevent lost updates
+        await db.execute(
+            update(VoucherDB)
+            .where(VoucherDB.id == uv.voucher_id, VoucherDB.used_count > 0)
+            .values(used_count=VoucherDB.used_count - 1)
+        )
+
+    await db.flush()
+
+
+def get_discount_details(
+    voucher_data: list[tuple[VoucherDB, UserVoucherDB, Decimal]],
+) -> list[VoucherDiscountDetail]:
+    """Convert voucher apply data to response details."""
+    return [
+        VoucherDiscountDetail(
+            voucher_id=voucher.id,
+            code=voucher.code,
+            type=voucher.type,
+            visibility=voucher.visibility,
+            value=voucher.value,
+            discount_amount=discount,
+        )
+        for voucher, _uv, discount in voucher_data
+    ]

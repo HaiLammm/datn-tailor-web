@@ -36,6 +36,7 @@ export interface CreateOrderInput {
     end_date?: string;
     rental_days?: number;
   }[];
+  voucher_codes?: string[];
 }
 
 export interface OrderItemResponse {
@@ -53,7 +54,10 @@ export interface OrderResponse {
   id: string;
   status: OrderStatus;
   payment_status: PaymentStatus;
+  subtotal_amount: number;
+  discount_amount: number;
   total_amount: number;
+  applied_voucher_ids: string[];
   payment_method: PaymentMethod;
   payment_url?: string | null;
   customer_name: string;
@@ -86,6 +90,8 @@ export interface OrderListItem {
   id: string;
   status: OrderStatus;
   payment_status: PaymentStatus;
+  subtotal_amount: number;
+  discount_amount: number;
   total_amount: number;
   payment_method: PaymentMethod;
   customer_name: string;
