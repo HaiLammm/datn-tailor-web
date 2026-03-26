@@ -5,11 +5,14 @@
 - **Discovery:** Linh (digital designer) discovers the shop online. She browses the Homepage, views new Áo dài collections, and applies filters (Season: Tết, Style: Modern).
 - **Shopping:**
     - Linh opens a Product Detail page, views HD images with zoom, reads the size chart, and selects "Rent" with a calendar date range (borrow/return).
-    - She adds 2 items to Cart (1 buy, 1 rent), reviews quantities and total price breakdown.
-- **Checkout:** Linh enters shipping info, selects e-wallet payment, confirms the order. She receives an order confirmation notification.
+    - She adds 3 items to Cart (1 buy, 1 rent, 1 bespoke), reviews quantities and total price breakdown.
+- **Measurement Gate (Bespoke):** For the bespoke item, the system checks Linh's measurement profile. Since she has no measurements on file, the system prompts her to book an in-store measurement appointment. After the appointment, the owner records her measurements and the bespoke order proceeds.
+- **Checkout:** Linh completes service-type-aware checkout: full payment for the buy item, deposit + CCCD for the rental (with pickup/return dates), and deposit for the bespoke item. She receives an order confirmation notification with payment breakdown.
 - **Booking:** Linh books an in-store bespoke consultation via the Appointment Booking calendar. She selects a date/time, fills in personal info and special requests, and receives a confirmation.
 - **Bespoke Consultation:** At the shop, Linh and the tailor use the **Adaptive Canvas** to adjust style. She sees the **Comparison Overlay** between standard and custom patterns.
-- **Follow-up:** Linh checks her Profile Dashboard for order status, rental return dates, and upcoming appointments.
+- **Remaining Payment & Handover:** When the bespoke and rental orders are ready, Linh receives a notification. She pays the remaining balance online, then picks up her items at the shop.
+- **Rental Return:** When Linh returns the rented Áo dài, the owner inspects the condition (Good) and the system returns her CCCD.
+- **Follow-up:** Linh checks her Profile Dashboard for order status, rental return dates, security deposit/CCCD return status, and upcoming appointments.
 
 ## Journey 2: Minh (F2) - "Digital Craftsmanship" (Tailor)
 
@@ -22,7 +25,7 @@
 ## Journey 3: Cô Lan - "Digital Command Center" (Owner/Founder)
 
 - **Morning Dashboard:** Cô Lan opens the Owner Dashboard on her phone. She sees today's revenue summary, 5 pending orders, 2 appointments, and an alert: "3 garments due for production within 7 days."
-- **Order Management:** She reviews new orders, updates statuses (Confirmed → In Production), and assigns bespoke tasks to Minh.
+- **Order Approval:** She reviews new pending orders — 2 buy orders, 1 rental, and 1 bespoke. She approves each one: buy/rental orders are auto-routed to warehouse preparation, the bespoke order auto-creates a TailorTask for Minh with the customer's measurement data attached.
 - **Appointment Review:** Cô Lan checks the Appointment List, filters by today's date, and prepares for 2 walk-in consultations.
 - **Inventory & Rentals:** She updates rental statuses — marks a returned Áo dài as "Maintenance (dry cleaning)" and the system calculates the next available date.
 - **CRM & Marketing:**

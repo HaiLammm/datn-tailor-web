@@ -107,3 +107,14 @@
 - **FR79 (Channel Integration):** System supports outreach via Zalo and Facebook messaging APIs.
 - **FR80 (Template Messages):** Owner can use and customize pre-built message templates for campaigns.
 - **FR81 (Campaign Analytics):** System tracks message open rate, click-through rate, and voucher redemption per campaign.
+
+## 16. Unified Order Workflow
+- **FR82 (Bespoke Measurement Gate):** When a customer selects "Bespoke Order", the system checks the customer's measurement profile. If no measurements exist, the system redirects to the Appointment Booking page. If measurements exist, the system displays the measurement summary with last-updated timestamp for customer confirmation or re-measurement request.
+- **FR83 (Service-Type Payment):** System supports 3 payment modes by service type: Buy (100% upfront payment), Rent (Deposit + CCCD or Security Deposit), Bespoke (Deposit only).
+- **FR84 (Rental Security Requirement):** Rental orders require recording either a government-issued ID (CCCD) or a cash security deposit, plus scheduled pickup and return dates at checkout.
+- **FR85 (Owner Order Approval):** Owner must approve pending orders before they enter production or preparation. Order transitions from `pending` to `confirmed` upon Owner approval.
+- **FR86 (Auto-Routing on Approval):** Upon Owner confirmation, the system automatically creates a TailorTask with attached measurement data for bespoke orders, or routes to warehouse preparation queue for rent/buy orders.
+- **FR87 (Service-Type Preparation Steps):** Preparation sub-steps are differentiated by service type: Rent (Cleaning → Altering → Ready), Buy (QC → Packaging). Bespoke follows existing production sub-steps (Cutting → Sewing → Fitting → Finishing).
+- **FR88 (Readiness Status):** System marks orders as `ready_to_ship` or `ready_for_pickup` when all preparation sub-steps are complete, and notifies the customer.
+- **FR89 (Remaining Balance Payment):** For deposit-based orders, customers pay the remaining balance (order total minus deposit) before product handover.
+- **FR90 (Security Return on Rental Close):** For rental orders, the system returns the security deposit (cash) or CCCD to the customer after the returned product passes Owner's condition inspection (Good/Damaged/Lost).

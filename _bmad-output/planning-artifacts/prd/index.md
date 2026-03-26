@@ -9,9 +9,12 @@ inputDocuments:
   - '_bmad-output/planning-artifacts/product-brief-tailor_project-2026-02-17.md'
   - '_bmad-output/planning-artifacts/research/technical-semantic-to-geometric-translation-architecture-2026-02-17.md'
   - '_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-10.md'
+  - '_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-26.md'
 stepsCompleted: ['step-e-01-discovery', 'step-e-02-review', 'step-e-03-edit']
-lastEdited: '2026-03-10'
+lastEdited: '2026-03-26'
 editHistory:
+  - date: '2026-03-26'
+    changes: 'Added Epic 10 (Unified Order Workflow). 9 new FRs (FR82-FR90): bespoke measurement gate, service-type checkout (Buy/Rent/Bespoke), owner order approval, auto-routing, preparation sub-steps, remaining payment, rental security return. Updated Product Scope, User Journeys (Linh + Cô Lan).'
   - date: '2026-03-10'
     changes: 'Major pivot: Expanded MVP from AI Bespoke Tool to E-commerce + Booking + AI Bespoke Platform. Added 53 new FRs (FR29-FR81), 9 new NFRs, expanded user journeys, overhauled product scope. Fixed validation report findings: information density, measurement methods, implementation leakage.'
 ---
@@ -63,6 +66,7 @@ editHistory:
     - [13. Tailor Dashboard](./functional-requirements.md#13-tailor-dashboard)
     - [14. Customer Management](./functional-requirements.md#14-customer-management)
     - [15. CRM & Marketing](./functional-requirements.md#15-crm--marketing)
+    - [16. Unified Order Workflow](./functional-requirements.md#16-unified-order-workflow)
   - [Non-Functional Requirements (NFRs)](./non-functional-requirements-nfrs.md)
     - [1. Performance & Scalability](./non-functional-requirements-nfrs.md#1-performance--scalability)
     - [2. Accuracy & Reliability](./non-functional-requirements-nfrs.md#2-accuracy--reliability)

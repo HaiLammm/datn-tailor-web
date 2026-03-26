@@ -4,6 +4,10 @@ workflowType: 'architecture'
 lastStep: 8
 status: 'complete'
 completedAt: '2026-03-10T15:42:18+07:00'
+lastUpdated: '2026-03-26'
+updateHistory:
+  - date: '2026-03-26'
+    changes: 'Sprint Change Proposal Epic 10 (Unified Order Workflow): Added Order Status Pipeline (3 service-type flows), Payment Model (multi-transaction), 4 new API endpoints, Frontend measurement gate + service-type checkout + approve flow.'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd/index.md
   - _bmad-output/planning-artifacts/prd/executive-summary.md
@@ -17,6 +21,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/product-brief-tailor_project-2026-02-17.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/project-context.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-03-26.md
 workflowType: 'architecture'
 project_name: 'tailor_project'
 user_name: 'Lem'
@@ -136,6 +141,54 @@ pip install fastapi "uvicorn[standard]" pydantic pydantic-settings sqlalchemy as
 - **Database Choice:** PostgreSQL 17 + `pgvector` 0.8.x định tuyến qua `asyncpg`. Hỗ trợ luồng dữ liệu E-commerce thuần quan hệ ACID (Orders, Inventory) kết hợp song hành với lưu trữ Data JSON bất biến (Immutable State của bản vẽ AI).
 - **Validation:** Pydantic V2 trên Backend làm màng lọc toàn vẹn dữ liệu cho Hình học cấu trúc áo dài (Hard Constraints) và Dữ liệu giỏ hàng.
 
+#### Order Status Pipeline (Unified Order Workflow — Epic 10)
+
+Hệ thống phân biệt 3 luồng trạng thái theo `service_type`:
+
+**Buy (Mua sẵn):**
+```
+pending → confirmed → preparing (QC → Packaging) → ready_to_ship | ready_for_pickup → shipped → delivered → completed
+```
+
+**Rent (Thuê):**
+```
+pending → confirmed → preparing (Cleaning → Altering → Ready) → ready_to_ship | ready_for_pickup → shipped → delivered → renting → returned → completed
+```
+
+**Bespoke (Đặt may):**
+```
+pending_measurement → pending → confirmed → in_production (Cutting → Sewing → Fitting → Finishing) → ready_to_ship | ready_for_pickup → shipped → delivered → completed
+```
+
+- `pending_measurement`: Chỉ áp dụng cho Bespoke — đơn chờ khách xác nhận hoặc cập nhật số đo.
+- `confirmed`: Owner phê duyệt đơn hàng. Auto-routing: Bespoke → tạo TailorTask, Rent/Buy → chuyển kho (preparing).
+- `preparing`: Sub-steps phân biệt theo service_type (Rent: Cleaning/Altering/Ready, Buy: QC/Packaging).
+- `ready_to_ship` / `ready_for_pickup`: Sản phẩm sẵn sàng giao/nhận.
+- `renting`: Chỉ Rent — khách đang giữ đồ, hệ thống theo dõi thời gian.
+- `returned`: Chỉ Rent — khách trả đồ, Owner kiểm tra tình trạng.
+
+#### Payment Model (Multi-Transaction)
+
+Mở rộng từ mô hình thanh toán 1 lần sang hỗ trợ nhiều giao dịch trên 1 đơn hàng:
+
+**Bảng `payment_transactions`:**
+- `id` (UUID), `tenant_id`, `order_id` (FK → orders)
+- `payment_type`: `full` | `deposit` | `remaining` | `security_deposit`
+- `amount` (NUMERIC 12,2), `method`, `status` (pending/paid/failed/refunded), `gateway_ref`
+- `created_at`, `updated_at`
+
+**Fields mở rộng trên `orders`:**
+- `service_type`: `buy` | `rent` | `bespoke` (default: `buy` — backward compatible)
+- `security_type`: `cccd` | `cash_deposit` (nullable, chỉ Rent)
+- `security_value`: VARCHAR (số CCCD hoặc số tiền cọc thế chân)
+- `pickup_date`, `return_date`: TIMESTAMPTZ (nullable, chỉ Rent)
+- `deposit_amount`, `remaining_amount`: NUMERIC 12,2 (nullable)
+
+**Thanh toán theo service_type:**
+- Buy: 1 transaction (`full`)
+- Rent: 2-3 transactions (`deposit` + optional `security_deposit` + `remaining`)
+- Bespoke: 2 transactions (`deposit` + `remaining`)
+
 ### Authentication & Security
 
 - **Authentication Method:** Dùng **Auth.js v5 (NextAuth)**. Lưu trữ JWT qua chuẩn **HttpOnly Secure Cookie**.
@@ -146,10 +199,30 @@ pip install fastapi "uvicorn[standard]" pydantic pydantic-settings sqlalchemy as
 - **Communication:** Thuần RESTful API Backend qua FastAPI, không dùng WebSockets để tính hình học (Morphing ở Client via UI <200ms).
 - **E-commerce Payments:** Giải pháp thiết kế theo mô hình **Webhook & Background Tasks**. Hệ thống Frontend gọi Backend khởi tạo Order Pending -> Chuyển sang URL VNPay/Stripe -> Trả về kết quả qua Webhook Backend -> Trigger background task gửi email và cập nhật Inventory. Hạn chế hoàn toàn rủi ro nghẽn cổ chai kịch bản Timeout.
 
+#### Unified Order Workflow Endpoints (Epic 10)
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| POST | `/api/v1/orders/check-measurement` | Customer | Kiểm tra customer có measurement profile hợp lệ trước bespoke checkout. Trả về `{ has_measurements, last_updated, measurements_summary }` |
+| POST | `/api/v1/orders/{id}/approve` | OwnerOnly | Owner phê duyệt đơn pending → confirmed. Auto-routing: tạo TailorTask (bespoke) hoặc chuyển preparing (rent/buy) |
+| POST | `/api/v1/orders/{id}/pay-remaining` | Customer | Thanh toán remaining balance. Khởi tạo payment gateway cho số tiền `remaining_amount`. Webhook xử lý kết quả |
+| POST | `/api/v1/orders/{id}/refund-security` | OwnerOnly | Hoàn trả security deposit (cash) hoặc CCCD cho đơn thuê sau kiểm tra tình trạng sản phẩm |
+
+**Pattern Notes:**
+- `check-measurement` là read-only check, không tạo side effects. Trả 200 với data hoặc 404 nếu customer chưa có profile.
+- `approve` trigger background task: tạo TailorTask + gửi notification cho thợ may (bespoke) hoặc gửi notification cho kho (rent/buy).
+- `pay-remaining` tái sử dụng Webhook & Background Task pattern đã có từ checkout payment (Story 4.1).
+- `refund-security` tạo payment_transaction type `security_deposit` với status `refunded` và gửi notification cho customer.
+
 ### Frontend Architecture
 
 - **E-commerce State & Cart Management:** Kết hợp linh hoạt **Zustand** (Local UI, Cart UI nhanh nhạy) và **TanStack Query** (Background Syncing + Cache Invalidation). Dữ liệu Inventory và Giá trị giỏ hàng cuối cùng đều phải được Backend quyết định (Authoritative Server) khi Checkout, Zustand chỉ phục vụ mặt trải nghiệm (Optimistic UI - Zero-Thought Commerce).
 - **Component Design System:** Radix UI cho các Control nguyên thủy không bị định hướng sẵn Styles, được tùy biến thông qua Tailwind CSS V4 và Framer Motion. Thiết kế này giúp đảm bảo chuẩn tiếp cận WCAG 2.1 Level A. Cấu trúc Component được chia tách rõ rệt dựa trên route phân nhóm `(customer)` cho giao diện mua hàng và `(workplace)` cho hệ thống quản lý lệnh.
+- **Unified Order Workflow UI (Epic 10):**
+  - **Measurement Gate** (`(customer)/measurement-gate/`): Screen kiểm tra số đo trước bespoke checkout. Nếu chưa có → CTA redirect Booking Calendar. Nếu đã có → hiển thị summary + confirm/request re-measure. Route guard chỉ active khi cart chứa item `service_type=bespoke`.
+  - **Service-Type Checkout**: Checkout form render dynamic theo `service_type` của items trong cart: Buy (full payment), Rent (deposit + CCCD/security toggle + pickup/return dates), Bespoke (deposit + measurement badge). Tái sử dụng Zustand cart store + TanStack Query cho backend validation.
+  - **Owner Approve Flow** (`(workplace)/owner/orders/`): Nút "Phê duyệt" trên Order Board cho đơn `pending`. Order type badges phân biệt visual (Buy xanh, Rent vàng, Bespoke tím). Toast hiển thị routing destination sau approve.
+  - **Remaining Payment** (`(customer)/profile/orders/`): Payment screen cho remaining balance khi đơn `ready`. Tái sử dụng payment gateway integration đã có.
 
 ### Infrastructure & Deployment
 
@@ -256,7 +329,8 @@ frontend/
 │   │   ├── (customer)/           # Chế độ Boutique (E-commerce & Booking)
 │   │   │   ├── showroom/         # Catalog sản phẩm
 │   │   │   ├── design-session/   # Tương tác áo dài (Canvas AI)
-│   │   │   └── checkout/         # Thanh toán
+│   │   │   ├── checkout/         # Thanh toán (service-type-aware)
+│   │   │   └── measurement-gate/ # Xác thực số đo trước bespoke checkout
 │   │   ├── (workplace)/          # Chế độ Command (Role: Owner, Tailor)
 │   │   │   ├── layout.tsx        # Chứa Role-based Guards
 │   │   │   ├── tailor/           # Trạm làm việc của thợ may (View bản vẽ)

@@ -41,6 +41,13 @@
   - Voucher System: CRUD, percentage/fixed discount types, usage conditions, analytics, email/SMS distribution.
   - Outreach Campaigns: bulk messaging, Zalo/Facebook integration, message templates, campaign analytics.
 
+- **Unified Order Workflow (Epic 10):**
+  - Bespoke Measurement Gate: measurement profile verification before bespoke checkout, redirect to booking if absent.
+  - Service-Type Checkout: differentiated payment flows — Buy (100%), Rent (Deposit + CCCD or Security Deposit), Bespoke (Deposit).
+  - Owner Order Approval: manual confirmation before production/preparation entry, auto-routing to tailor (bespoke) or warehouse (rent/buy).
+  - Service-Type Preparation: Rent (Cleaning → Altering → Ready), Buy (QC → Packaging), Bespoke (existing production sub-steps).
+  - Handover & Completion: remaining balance payment, delivery tracking, rental return with condition inspection, security deposit/CCCD return.
+
 ### AI Core (Epic 2-4, deferred to post E-commerce launch)
 
 - **Physical-Emotional Compiler:** Adjective → Geometric Delta translation.

@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-03-22  # Story 6.4 → done
+last_updated: 2026-03-26  # Epic 10 added (Sprint Change Proposal 2026-03-26)
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -114,3 +114,13 @@ development_status:
   9-4-manual-override: done # FIXED: Moved OverrideError to types/override.ts to fix Server Actions build
   9-5-cat-export-ban-thiet-ke-so: done
   epic-9-retrospective: optional
+
+  epic-10: backlog  # Sprint Change Proposal 2026-03-26: Unified Order Workflow (5-Phase)
+  10-1-db-migration-service-type-model: backlog
+  10-2-measurement-gate-cho-dat-may: backlog
+  10-3-checkout-phan-loai-dich-vu: backlog
+  10-4-owner-approve-va-auto-routing: backlog
+  10-5-sub-steps-chuan-bi-thue-va-mua: backlog
+  10-6-remaining-payment-va-handover: backlog
+  10-7-rental-return-va-security-refund: backlog
+  epic-10-retrospective: optional
