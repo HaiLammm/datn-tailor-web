@@ -291,6 +291,14 @@ class OrderDB(Base):
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0"))
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     applied_voucher_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Epic 10: Unified Order Workflow (Migration 025)
+    service_type: Mapped[str] = mapped_column(String(10), nullable=False, default="buy")
+    security_type: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    security_value: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pickup_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    return_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deposit_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    remaining_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -304,6 +312,9 @@ class OrderDB(Base):
     )
     payment_transactions: Mapped[list["PaymentTransactionDB"]] = relationship(
         "PaymentTransactionDB", back_populates="order", cascade="all, delete-orphan"
+    )
+    order_payments: Mapped[list["OrderPaymentDB"]] = relationship(
+        "OrderPaymentDB", back_populates="order", cascade="all, delete-orphan"
     )
 
 
@@ -339,6 +350,42 @@ class OrderItemDB(Base):
     # Relationships
     order: Mapped["OrderDB"] = relationship("OrderDB", back_populates="items")
     garment: Mapped["GarmentDB"] = relationship("GarmentDB")
+
+
+class OrderPaymentDB(Base):
+    """ORM model for the `order_payments` table (Epic 10).
+
+    Business-level multi-transaction payment tracking for the Unified Order Workflow.
+    Tracks: full payment (Buy), deposit + remaining (Bespoke), deposit + security + remaining (Rent).
+
+    NOT to be confused with PaymentTransactionDB (`payment_transactions`) which stores
+    gateway webhook audit trail for idempotency (Story 4.1 — different schema/purpose).
+    """
+
+    __tablename__ = "order_payments"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    payment_type: Mapped[str] = mapped_column(String(20), nullable=False)  # full|deposit|remaining|security_deposit
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    method: Mapped[str] = mapped_column(String(20), nullable=False)         # cod|vnpay|momo|cash|internal
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    gateway_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    order: Mapped["OrderDB"] = relationship("OrderDB", back_populates="order_payments")
 
 
 class PaymentTransactionDB(Base):
