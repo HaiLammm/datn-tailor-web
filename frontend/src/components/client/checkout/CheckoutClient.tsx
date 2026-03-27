@@ -41,12 +41,22 @@ export function CheckoutClient() {
   const [showVoucherSelector, setShowVoucherSelector] = useState(false);
   const [voucherWarning, setVoucherWarning] = useState<string | null>(null);
 
+  const hasBespokeItems = useCartStore((state) => state.hasBespokeItems);
+  const measurementConfirmed = useCartStore((state) => state.measurement_confirmed);
+
   // Redirect to showroom if cart is empty
   useEffect(() => {
     if (items.length === 0) {
       router.replace("/showroom");
     }
   }, [items.length, router]);
+
+  // Story 10.3: Redirect to measurement gate if bespoke items without confirmed measurement
+  useEffect(() => {
+    if (hasBespokeItems() && !measurementConfirmed) {
+      router.replace("/measurement-gate");
+    }
+  }, [hasBespokeItems, measurementConfirmed, router]);
 
   // Verify cart items on mount and after changes
   const runVerification = useCallback(async () => {

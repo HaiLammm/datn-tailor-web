@@ -11,14 +11,24 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, PaymentTransactionDB, TailorTaskDB, UserDB
-from src.services.notification_creator import ORDER_STATUS_MESSAGES, create_notification
+from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, OrderPaymentDB, PaymentTransactionDB, TailorTaskDB, UserDB
+from src.services.notification_creator import (
+    ORDER_APPROVED_BESPOKE_MESSAGE,
+    ORDER_APPROVED_WAREHOUSE_MESSAGE,
+    ORDER_READY_PICKUP_MESSAGE,
+    ORDER_READY_SHIP_MESSAGE,
+    ORDER_STATUS_MESSAGES,
+    create_notification,
+)
 from src.services.voucher_service import (
     apply_vouchers_to_order,
     refund_vouchers_for_order,
     validate_and_calculate_multi_discount,
 )
 from src.models.order import (
+    ApproveOrderRequest,
+    ApproveOrderResponse,
+    BUY_PREP_STEPS,
     InternalOrderCreate,
     OrderCreate,
     OrderFilterParams,
@@ -31,6 +41,10 @@ from src.models.order import (
     PaginationMeta,
     PaymentMethod,
     PaymentTransactionResponse,
+    RENT_PREP_STEPS,
+    ServiceType,
+    UpdatePreparationStepRequest,
+    UpdatePreparationStepResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,7 +114,21 @@ async def _validate_and_price_items(
                 )
             unit_price = garment.sale_price
             item_total = unit_price
+        elif item.transaction_type == "bespoke":
+            if garment.sale_price is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": {
+                            "code": "ERR_ITEM_NOT_FOR_BESPOKE",
+                            "message": f"San pham khong ho tro dat may: {garment.name}",
+                        }
+                    },
+                )
+            unit_price = garment.sale_price
+            item_total = unit_price
         else:
+            # rent
             unit_price = garment.rental_price
             days = item.rental_days if item.rental_days else 1
             item_total = unit_price * days
@@ -169,6 +197,25 @@ async def create_order(
 
     final_total = max(subtotal - discount_amount, Decimal("0"))
 
+    # Story 10.3: Determine order-level service_type by highest-complexity item
+    item_types = {i.transaction_type for i in order_data.items}
+    if "bespoke" in item_types:
+        order_service_type = "bespoke"
+    elif "rent" in item_types:
+        order_service_type = "rent"
+    else:
+        order_service_type = "buy"
+
+    # Story 10.3: Calculate deposit/remaining based on service_type
+    deposit_amount: Decimal | None = None
+    remaining_amount: Decimal | None = None
+    if order_service_type == "rent":
+        deposit_amount = (final_total * Decimal("0.30")).quantize(Decimal("0.01"))
+        remaining_amount = final_total - deposit_amount
+    elif order_service_type == "bespoke":
+        deposit_amount = (final_total * Decimal("0.50")).quantize(Decimal("0.01"))
+        remaining_amount = final_total - deposit_amount
+
     # Create OrderDB
     order = OrderDB(
         tenant_id=tenant_id,
@@ -183,11 +230,40 @@ async def create_order(
         discount_amount=discount_amount,
         total_amount=final_total,
         applied_voucher_ids=applied_voucher_ids,
+        # Story 10.3: Service-type fields
+        service_type=order_service_type,
+        deposit_amount=deposit_amount,
+        remaining_amount=remaining_amount,
     )
+
+    # Story 10.3: Set rental-specific fields
+    if order_service_type == "rent" and order_data.rental_fields:
+        order.pickup_date = datetime.combine(
+            order_data.rental_fields.pickup_date, datetime.min.time()
+        ).replace(tzinfo=timezone.utc)
+        order.return_date = datetime.combine(
+            order_data.rental_fields.return_date, datetime.min.time()
+        ).replace(tzinfo=timezone.utc)
+        order.security_type = order_data.rental_fields.security_type.value
+        order.security_value = order_data.rental_fields.security_value
+
     order.items = order_items
 
     db.add(order)
     await db.flush()
+
+    # Story 10.3: Create OrderPaymentDB record
+    payment_type = "full" if order_service_type == "buy" else "deposit"
+    payment_amount = final_total if order_service_type == "buy" else deposit_amount
+    payment_record = OrderPaymentDB(
+        tenant_id=tenant_id,
+        order_id=order.id,
+        payment_type=payment_type,
+        amount=payment_amount,
+        method=order_data.payment_method.value,
+        status="pending",
+    )
+    db.add(payment_record)
 
     # Apply vouchers (mark as used, link to order)
     if voucher_apply_data:
@@ -240,6 +316,13 @@ async def create_order(
         is_internal=False,
         items=response_items,
         created_at=order.created_at,
+        service_type=order.service_type,
+        deposit_amount=order.deposit_amount,
+        remaining_amount=order.remaining_amount,
+        security_type=order.security_type,
+        security_value=order.security_value,
+        pickup_date=order.pickup_date,
+        return_date=order.return_date,
     )
 
 
@@ -382,6 +465,13 @@ async def get_order(
         is_internal=order.is_internal,
         items=response_items,
         created_at=order.created_at,
+        service_type=order.service_type,
+        deposit_amount=order.deposit_amount,
+        remaining_amount=order.remaining_amount,
+        security_type=order.security_type,
+        security_value=order.security_value,
+        pickup_date=order.pickup_date,
+        return_date=order.return_date,
     )
 
 
@@ -390,14 +480,25 @@ async def get_order(
 # ---------------------------------------------------------------------------
 
 # Valid forward-only transition matrix
+# Note: branching statuses (preparing, confirmed) are handled by dedicated service functions.
+# pending transitions via approve_order() (Story 10.4), not update_order_status().
 _VALID_TRANSITIONS: dict[str, str | None] = {
-    "pending": "confirmed",
-    "confirmed": None,       # auto → in_progress via task assignment
+    "pending": None,            # transitions via approve_order() only (Story 10.4)
+    "confirmed": None,         # auto → in_progress via task assignment; or → preparing via approve
     "in_progress": "checked",  # requires all tailor tasks completed
     "checked": "shipped",      # requires paid or COD
     "shipped": "delivered",
     "delivered": None,
     "cancelled": None,
+    # Epic 10: new statuses (Stories 10.5–10.7 use update_order_status for these)
+    "pending_measurement": "pending",
+    "preparing": None,           # branching: → ready_to_ship or → ready_for_pickup (Story 10.5)
+    "ready_to_ship": "shipped",
+    "ready_for_pickup": "delivered",
+    "in_production": "ready_to_ship",
+    "renting": "returned",
+    "returned": "completed",
+    "completed": None,
 }
 
 
@@ -500,7 +601,9 @@ async def list_orders(
                 shippable_ids.add(o.id)
 
     def _next_status(o: OrderDB) -> str | None:
-        if o.status in ("cancelled", "delivered", "confirmed"):
+        # pending uses approve_order() — no generic next status button shown
+        if o.status in ("cancelled", "delivered", "confirmed", "pending",
+                        "completed", "preparing", "renting", "returned"):
             return None
         if o.status == "in_progress":
             return "checked" if o.id in checkable_ids else None
@@ -523,6 +626,8 @@ async def list_orders(
             transaction_types=list({item.transaction_type for item in o.items}),
             created_at=o.created_at,
             next_valid_status=_next_status(o),
+            service_type=ServiceType(o.service_type) if o.service_type else ServiceType.buy,
+            preparation_step=o.preparation_step,
         )
         for o in orders
     ]
@@ -704,6 +809,13 @@ async def update_order_status(
         is_internal=order.is_internal,
         items=response_items,
         created_at=order.created_at,
+        service_type=order.service_type,
+        deposit_amount=order.deposit_amount,
+        remaining_amount=order.remaining_amount,
+        security_type=order.security_type,
+        security_value=order.security_value,
+        pickup_date=order.pickup_date,
+        return_date=order.return_date,
     )
 
 
@@ -777,6 +889,459 @@ async def get_order_with_transactions(
         is_internal=order.is_internal,
         items=response_items,
         created_at=order.created_at,
+        service_type=order.service_type,
+        deposit_amount=order.deposit_amount,
+        remaining_amount=order.remaining_amount,
+        security_type=order.security_type,
+        security_value=order.security_value,
+        pickup_date=order.pickup_date,
+        return_date=order.return_date,
     )
 
     return order_response, transactions
+
+
+async def approve_order(
+    db: AsyncSession,
+    order_id: UUID,
+    tenant_id: UUID,
+    owner_id: UUID,
+    request: ApproveOrderRequest,
+) -> ApproveOrderResponse:
+    """Approve a pending order and auto-route based on service type (Story 10.4).
+
+    Business rules:
+    - Order must be status='pending' and belong to tenant.
+    - Bespoke orders require assigned_to (tailor UUID) in request.
+    - Bespoke: pending→confirmed→in_progress (via create_task side-effect) + TailorTask created.
+    - Rent/Buy: pending→confirmed→preparing.
+    - Customer notification sent after routing.
+
+    All transitions happen atomically in a single DB transaction.
+    """
+    # Import here to avoid circular import at module level
+    from src.services.tailor_task_service import create_task
+    from src.models.tailor_task import TaskCreateRequest
+
+    # Fetch and lock order for update
+    result = await db.execute(
+        select(OrderDB)
+        .options(selectinload(OrderDB.items).selectinload(OrderItemDB.garment))
+        .where(OrderDB.id == order_id, OrderDB.tenant_id == tenant_id)
+        .with_for_update()
+    )
+    order = result.scalar_one_or_none()
+
+    if order is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": {
+                    "code": "ERR_ORDER_NOT_FOUND",
+                    "message": "Đơn hàng không tồn tại",
+                }
+            },
+        )
+
+    if order.status != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": {
+                    "code": "ERR_INVALID_STATUS",
+                    "message": f"Chỉ có thể phê duyệt đơn hàng ở trạng thái chờ xác nhận. Trạng thái hiện tại: '{order.status}'",
+                }
+            },
+        )
+
+    service_type = order.service_type or "buy"
+
+    # Bespoke orders require tailor assignment
+    if service_type == "bespoke" and request.assigned_to is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_TAILOR_REQUIRED",
+                    "message": "Đơn đặt may cần chỉ định thợ may (assigned_to) khi phê duyệt",
+                }
+            },
+        )
+
+    # Capture fields before any mutations (for notification after commit)
+    _customer_id = order.customer_id
+    _tenant_id = order.tenant_id
+    _order_id_str = str(order.id)
+    _is_internal = order.is_internal
+
+    # Step 1: Transition pending → confirmed
+    order.status = "confirmed"
+    order.updated_at = datetime.now(timezone.utc)
+    await db.flush()  # Flush so create_task() sees 'confirmed'
+
+    task_id: UUID | None = None
+
+    if service_type == "bespoke":
+        # Step 2a (bespoke): Build measurement notes for TailorTask
+        measurement_notes = request.notes or ""
+        if order.customer_id:
+            try:
+                measurement_data = await check_customer_measurement(db, order.customer_id, tenant_id)
+                if measurement_data.get("has_measurements") and measurement_data.get("measurements_summary"):
+                    summary = measurement_data["measurements_summary"]
+                    lines = ["[Số đo khách hàng đã xác nhận]"]
+                    field_labels = {
+                        "neck": "Cổ",
+                        "shoulder_width": "Rộng vai",
+                        "bust": "Vòng ngực",
+                        "waist": "Eo",
+                        "hip": "Hông",
+                        "top_length": "Dài thân",
+                        "height": "Chiều cao",
+                    }
+                    for field, label in field_labels.items():
+                        val = summary.get(field)
+                        if val is not None:
+                            lines.append(f"  {label}: {val} cm")
+                    measurement_notes = "\n".join(lines)
+                    if request.notes:
+                        measurement_notes = f"{measurement_notes}\n\nGhi chú: {request.notes}"
+            except Exception:
+                logger.warning("Could not load measurement data for bespoke task, continuing without it")
+                measurement_notes = request.notes or ""
+
+        # Step 2b (bespoke): Create TailorTask — auto-transitions confirmed → in_progress
+        task_request = TaskCreateRequest(
+            order_id=order_id,
+            assigned_to=request.assigned_to,
+            notes=measurement_notes if measurement_notes else None,
+        )
+        try:
+            task_item = await create_task(db, task_request, owner_id, tenant_id)
+            task_id = UUID(task_item.id)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_TASK_CREATION_FAILED",
+                        "message": str(e),
+                    }
+                },
+            ) from e
+        except PermissionError as e:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": {
+                        "code": "ERR_PERMISSION_DENIED",
+                        "message": str(e),
+                    }
+                },
+            ) from e
+        except Exception as e:
+            logger.error("Unexpected error creating bespoke task for order %s: %s", _order_id_str, e)
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": {
+                        "code": "ERR_TASK_CREATION_FAILED",
+                        "message": "Không thể tạo công việc cho thợ may. Vui lòng thử lại.",
+                    }
+                },
+            ) from e
+
+        # create_task() already committed (pending→confirmed→in_progress + task)
+        new_status = "in_progress"
+        routing_destination = "tailor"
+
+        # Customer notification (new transaction since create_task committed)
+        if _customer_id is not None and not _is_internal:
+            try:
+                title, msg_template = ORDER_APPROVED_BESPOKE_MESSAGE
+                message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+                await create_notification(
+                    db=db,
+                    user_id=_customer_id,
+                    tenant_id=_tenant_id,
+                    notification_type="order_approved",
+                    title=title,
+                    message=message,
+                    data={"order_id": _order_id_str},
+                )
+            except Exception:
+                logger.warning("Failed to create approval notification for bespoke order %s", _order_id_str)
+
+    else:
+        # Step 2b (rent/buy): Transition confirmed → preparing + init sub-step (Story 10.5)
+        order.status = "preparing"
+        order.preparation_step = RENT_PREP_STEPS[0] if service_type == "rent" else BUY_PREP_STEPS[0]
+        order.updated_at = datetime.now(timezone.utc)
+        await db.flush()
+        await db.commit()
+
+        new_status = "preparing"
+        routing_destination = "warehouse"
+
+        # Customer notification (new transaction after commit)
+        if _customer_id is not None and not _is_internal:
+            try:
+                title, msg_template = ORDER_APPROVED_WAREHOUSE_MESSAGE
+                message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+                await create_notification(
+                    db=db,
+                    user_id=_customer_id,
+                    tenant_id=_tenant_id,
+                    notification_type="order_approved",
+                    title=title,
+                    message=message,
+                    data={"order_id": _order_id_str},
+                )
+            except Exception:
+                logger.warning("Failed to create approval notification for order %s", _order_id_str)
+
+    return ApproveOrderResponse(
+        order_id=order_id,
+        new_status=new_status,
+        service_type=service_type,
+        routing_destination=routing_destination,
+        task_id=task_id,
+    )
+
+
+async def update_preparation_step(
+    db: AsyncSession,
+    order_id: UUID,
+    tenant_id: UUID,
+    request: UpdatePreparationStepRequest,
+) -> UpdatePreparationStepResponse:
+    """Advance preparation sub-step for a Buy/Rent order in 'preparing' status (Story 10.5).
+
+    Business rules:
+    - Order must be status='preparing' and belong to tenant.
+    - Forward-only transitions within service-type-specific step list.
+    - On last step: delivery_mode required ('ship' or 'pickup') to transition out of preparing.
+    - Customer notification sent when order becomes ready.
+    """
+    result = await db.execute(
+        select(OrderDB)
+        .where(OrderDB.id == order_id, OrderDB.tenant_id == tenant_id)
+        .with_for_update()
+    )
+    order = result.scalar_one_or_none()
+
+    if order is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "ERR_ORDER_NOT_FOUND", "message": "Đơn hàng không tồn tại"}},
+        )
+
+    if order.status != "preparing":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_INVALID_STATUS",
+                    "message": f"Chỉ có thể cập nhật bước chuẩn bị khi đơn hàng ở trạng thái 'preparing'. Trạng thái hiện tại: '{order.status}'",
+                }
+            },
+        )
+
+    # Patch #4: Raise error if service_type is missing (data integrity)
+    service_type = order.service_type
+    if not service_type:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_MISSING_SERVICE_TYPE",
+                    "message": "Đơn hàng thiếu loại dịch vụ (service_type). Vui lòng liên hệ quản trị viên.",
+                }
+            },
+        )
+    steps = RENT_PREP_STEPS if service_type == "rent" else BUY_PREP_STEPS
+
+    # Patch #5: Explicit None check with clear error message
+    current_step = order.preparation_step
+    if current_step is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_PREP_NOT_INITIALIZED",
+                    "message": "Bước chuẩn bị chưa được khởi tạo cho đơn hàng này. Vui lòng liên hệ quản trị viên.",
+                }
+            },
+        )
+    if current_step not in steps:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_INVALID_STEP",
+                    "message": f"Bước chuẩn bị hiện tại '{current_step}' không hợp lệ cho loại dịch vụ '{service_type}'",
+                }
+            },
+        )
+
+    new_step = request.preparation_step
+    if new_step not in steps:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_INVALID_STEP",
+                    "message": f"Bước '{new_step}' không hợp lệ cho loại dịch vụ '{service_type}'. Các bước hợp lệ: {', '.join(steps)}",
+                }
+            },
+        )
+
+    current_index = steps.index(current_step)
+    new_index = steps.index(new_step)
+
+    # Patch #11 + Decision 1A: Strictly sequential — must advance exactly +1
+    if new_index == current_index:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_SAME_STEP",
+                    "message": f"Đơn hàng đã ở bước '{current_step}'. Vui lòng chọn bước tiếp theo.",
+                }
+            },
+        )
+    if new_index < current_index:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_BACKWARD_STEP",
+                    "message": f"Chuyển bước không hợp lệ: '{current_step}' → '{new_step}'. Chỉ được chuyển tiếp, không được quay lại.",
+                }
+            },
+        )
+    if new_index != current_index + 1:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_SKIP_STEP",
+                    "message": f"Không được bỏ qua bước. Bước tiếp theo phải là '{steps[current_index + 1]}', không phải '{new_step}'.",
+                }
+            },
+        )
+
+    # Capture before mutation
+    _customer_id = order.customer_id
+    _tenant_id = order.tenant_id
+    _order_id_str = str(order.id)
+    _is_internal = order.is_internal
+
+    is_last_step = new_index == len(steps) - 1
+    is_completed = False
+
+    if is_last_step:
+        # Last step reached — transition out of preparing
+        delivery_mode = request.delivery_mode
+        if delivery_mode not in ("ship", "pickup"):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_DELIVERY_MODE_REQUIRED",
+                        "message": "Cần chọn hình thức giao hàng (ship/pickup) khi hoàn thành bước chuẩn bị cuối cùng.",
+                    }
+                },
+            )
+
+        new_status = "ready_to_ship" if delivery_mode == "ship" else "ready_for_pickup"
+        order.status = new_status
+        order.preparation_step = None
+        order.updated_at = datetime.now(timezone.utc)
+        is_completed = True
+    else:
+        order.preparation_step = new_step
+        order.updated_at = datetime.now(timezone.utc)
+
+    # Patch #1: Create notification before commit for atomicity
+    delivery_mode = request.delivery_mode  # safe to read here; validated above if is_last_step
+    if is_completed and _customer_id is not None and not _is_internal:
+        try:
+            msg_tuple = ORDER_READY_SHIP_MESSAGE if delivery_mode == "ship" else ORDER_READY_PICKUP_MESSAGE
+            title, msg_template = msg_tuple
+            message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+            await create_notification(
+                db=db,
+                user_id=_customer_id,
+                tenant_id=_tenant_id,
+                notification_type="order_ready",
+                title=title,
+                message=message,
+                data={"order_id": _order_id_str},
+            )
+        except Exception:
+            logger.warning("Failed to create ready notification for order %s", _order_id_str)
+
+    await db.flush()
+    await db.commit()
+
+    return UpdatePreparationStepResponse(
+        order_id=order_id,
+        preparation_step=order.preparation_step,
+        status=order.status,
+        service_type=service_type,
+        is_completed=is_completed,
+    )
+
+
+async def check_customer_measurement(
+    db: AsyncSession, customer_id: UUID, tenant_id: UUID
+) -> dict:
+    """Check if customer has valid measurements for bespoke gate (Story 10.2).
+
+    Looks up CustomerProfileDB by user_id, then finds default MeasurementDB.
+
+    Args:
+        db: Database session
+        customer_id: User ID (from JWT token, NOT customer_profile_id)
+        tenant_id: Tenant ID for multi-tenant isolation
+
+    Returns:
+        Dict with has_measurements, last_updated, measurements_summary
+    """
+    from src.models.db_models import CustomerProfileDB
+
+    # Step 1: Find customer profile by user_id
+    profile_result = await db.execute(
+        select(CustomerProfileDB).where(
+            CustomerProfileDB.user_id == customer_id,
+            CustomerProfileDB.tenant_id == tenant_id,
+            CustomerProfileDB.is_deleted == False,  # noqa: E712
+        )
+    )
+    profile = profile_result.scalar_one_or_none()
+
+    if profile is None:
+        return {"has_measurements": False, "last_updated": None, "measurements_summary": None}
+
+    # Step 2: Get default measurement via existing service
+    from src.services.measurement_service import get_default_measurement
+
+    measurement = await get_default_measurement(db, profile.id, tenant_id)
+
+    if measurement is None:
+        return {"has_measurements": False, "last_updated": None, "measurements_summary": None}
+
+    return {
+        "has_measurements": True,
+        "last_updated": measurement.updated_at or measurement.created_at,
+        "measurements_summary": {
+            "neck": float(measurement.neck) if measurement.neck else None,
+            "shoulder_width": float(measurement.shoulder_width) if measurement.shoulder_width else None,
+            "bust": float(measurement.bust) if measurement.bust else None,
+            "waist": float(measurement.waist) if measurement.waist else None,
+            "hip": float(measurement.hip) if measurement.hip else None,
+            "top_length": float(measurement.top_length) if measurement.top_length else None,
+            "height": float(measurement.height) if measurement.height else None,
+        },
+    }

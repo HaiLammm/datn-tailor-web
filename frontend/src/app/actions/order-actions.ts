@@ -8,6 +8,8 @@
 
 import { auth } from "@/auth";
 import type {
+  ApproveOrderRequest,
+  ApproveOrderResponse,
   CreateOrderInput,
   CustomerOrderDetail,
   CustomerOrderFilter,
@@ -18,6 +20,8 @@ import type {
   OrderListResponse,
   OrderResponse,
   OrderStatus,
+  UpdatePreparationStepRequest,
+  UpdatePreparationStepResponse,
 } from "@/types/order";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
@@ -573,5 +577,171 @@ export async function fetchOrderDetail(
       throw new Error("Yêu cầu hết thời gian. Vui lòng thử lại.");
     }
     throw error;
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Story 10.4: Owner Approve & Auto-routing
+// ---------------------------------------------------------------------------
+
+/**
+ * Approve a pending order and auto-route to tailor or warehouse (Owner only).
+ * Bespoke orders require assigned_to in request body.
+ * Throws on error so TanStack Query useMutation can handle error state.
+ */
+export async function approveOrder(
+  orderId: string,
+  request: ApproveOrderRequest
+): Promise<ApproveOrderResponse> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) throw new Error("Chưa đăng nhập. Vui lòng đăng nhập lại.");
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/orders/${orderId}/approve`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(request),
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(
+        err?.detail?.error?.message ||
+          err?.error?.message ||
+          err?.detail ||
+          `Lỗi phê duyệt đơn hàng (HTTP ${response.status})`
+      );
+    }
+
+    const result = await response.json();
+    return result.data as ApproveOrderResponse;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Yêu cầu hết thời gian. Vui lòng thử lại.");
+    }
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Story 10.5: Preparation sub-step tracking
+// ---------------------------------------------------------------------------
+
+/**
+ * Advance preparation sub-step for a Buy/Rent order (Owner only).
+ * Throws on error so TanStack Query useMutation can handle error state.
+ */
+export async function updatePreparationStep(
+  orderId: string,
+  request: UpdatePreparationStepRequest
+): Promise<UpdatePreparationStepResponse> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) throw new Error("Chưa đăng nhập. Vui lòng đăng nhập lại.");
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/orders/${orderId}/update-preparation`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(request),
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(
+        err?.detail?.error?.message ||
+          err?.error?.message ||
+          err?.detail ||
+          `Lỗi cập nhật bước chuẩn bị (HTTP ${response.status})`
+      );
+    }
+
+    const result = await response.json();
+    return result.data as UpdatePreparationStepResponse;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Yêu cầu hết thời gian. Vui lòng thử lại.");
+    }
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Story 10.2: Measurement Gate — Check customer measurements for bespoke
+// ---------------------------------------------------------------------------
+
+export interface MeasurementCheckResult {
+  has_measurements: boolean;
+  last_updated: string | null;
+  measurements_summary: Record<string, number | null> | null;
+}
+
+/**
+ * Check if authenticated customer has measurements for bespoke orders.
+ * Requires authentication — returns null if not logged in.
+ */
+export async function checkMeasurement(): Promise<MeasurementCheckResult | null> {
+  const session = await auth();
+  if (!session?.accessToken) {
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/v1/orders/check-measurement`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.accessToken}`,
+      },
+      body: "{}",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.status === 401) {
+      return null;
+    }
+
+    if (!response.ok) {
+      console.error(`checkMeasurement: HTTP ${response.status}`);
+      return null;
+    }
+
+    const result = await response.json();
+    return result.data as MeasurementCheckResult;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error("checkMeasurement error:", error);
+    return null;
   }
 }

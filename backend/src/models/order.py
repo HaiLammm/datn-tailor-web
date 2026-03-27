@@ -6,7 +6,7 @@ from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 _VN_PHONE_RE = re.compile(r"^(0[35789])\d{8}$")
 
@@ -66,6 +66,11 @@ class PaymentStatus(str, Enum):
     refunded = "refunded"
 
 
+# Story 10.5: Preparation sub-step definitions per service type
+RENT_PREP_STEPS = ["cleaning", "altering", "ready"]
+BUY_PREP_STEPS = ["qc", "packaging", "ready"]
+
+
 class ShippingAddress(BaseModel):
     """Vietnamese shipping address format."""
 
@@ -75,11 +80,27 @@ class ShippingAddress(BaseModel):
     address_detail: str = Field(..., min_length=5, description="So nha, ten duong")
 
 
+class RentalCheckoutFields(BaseModel):
+    """Rental-specific checkout fields (Story 10.3)."""
+
+    pickup_date: date
+    return_date: date
+    security_type: SecurityType
+    security_value: str = Field(..., min_length=1, max_length=50)
+
+    @field_validator("return_date")
+    @classmethod
+    def return_after_pickup(cls, v: date, info) -> date:
+        if "pickup_date" in info.data and v <= info.data["pickup_date"]:
+            raise ValueError("Ngay tra phai sau ngay nhan")
+        return v
+
+
 class OrderItemCreate(BaseModel):
     """Schema for creating an order item."""
 
     garment_id: UUID
-    transaction_type: str = Field(..., pattern=r"^(buy|rent)$")
+    transaction_type: str = Field(..., pattern=r"^(buy|rent|bespoke)$")
     size: str | None = None
     start_date: date | None = None
     end_date: date | None = None
@@ -96,6 +117,9 @@ class OrderCreate(BaseModel):
     payment_method: PaymentMethod = PaymentMethod.cod
     items: list[OrderItemCreate] = Field(..., min_length=1)
     voucher_codes: list[str] = Field(default_factory=list)
+    # Story 10.3: Service-type checkout fields
+    rental_fields: RentalCheckoutFields | None = None
+    measurement_confirmed: bool = False
 
     @field_validator("customer_phone")
     @classmethod
@@ -106,6 +130,17 @@ class OrderCreate(BaseModel):
             msg = "So dien thoai khong hop le (VN format: 0xx xxx xxxx)"
             raise ValueError(msg)
         return cleaned
+
+    @model_validator(mode="after")
+    def validate_service_type_requirements(self) -> "OrderCreate":
+        """Cross-field validation: rental_fields required for rent, measurement for bespoke."""
+        has_rent = any(i.transaction_type == "rent" for i in self.items)
+        has_bespoke = any(i.transaction_type == "bespoke" for i in self.items)
+        if has_rent and self.rental_fields is None:
+            raise ValueError("rental_fields bat buoc cho don thue")
+        if has_bespoke and not self.measurement_confirmed:
+            raise ValueError("Phai xac nhan so do truoc khi dat may")
+        return self
 
 
 class OrderItemResponse(BaseModel):
@@ -146,6 +181,13 @@ class OrderResponse(BaseModel):
     service_type: ServiceType = ServiceType.buy
     deposit_amount: Decimal | None = None
     remaining_amount: Decimal | None = None
+    # Story 10.3: Rental/security fields
+    security_type: str | None = None
+    security_value: str | None = None
+    pickup_date: datetime | None = None
+    return_date: datetime | None = None
+    # Story 10.5: Preparation sub-step tracking
+    preparation_step: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -171,7 +213,7 @@ class OrderFilterParams(BaseModel):
 
     status: list[OrderStatus] | None = None
     payment_status: list[PaymentStatus] | None = None
-    transaction_type: str | None = Field(None, pattern=r"^(buy|rent)$")
+    transaction_type: str | None = Field(None, pattern=r"^(buy|rent|bespoke)$")
     is_internal: bool | None = None
     search: str | None = Field(None, max_length=255)
     page: int = Field(1, ge=1)
@@ -196,6 +238,10 @@ class OrderListItem(BaseModel):
     transaction_types: list[str] = []
     created_at: datetime
     next_valid_status: str | None = None
+    # Epic 10: service type for badge display
+    service_type: ServiceType = ServiceType.buy
+    # Story 10.5: Preparation sub-step tracking
+    preparation_step: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -246,3 +292,62 @@ class OrderPaymentRecord(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class MeasurementCheckResponse(BaseModel):
+    """Response schema for measurement gate check (Story 10.2).
+
+    Returns whether the customer has valid measurements for bespoke orders.
+    """
+
+    has_measurements: bool
+    last_updated: datetime | None = None
+    measurements_summary: dict[str, float | None] | None = None
+
+
+class ApproveOrderRequest(BaseModel):
+    """Request body for Owner order approval (Story 10.4).
+
+    assigned_to is required for bespoke orders (auto-creates TailorTask).
+    """
+
+    assigned_to: UUID | None = None  # Tailor user ID — required for bespoke
+    notes: str | None = Field(None, max_length=2000)
+
+
+class ApproveOrderResponse(BaseModel):
+    """Response for order approval with routing destination (Story 10.4)."""
+
+    order_id: UUID
+    new_status: str
+    service_type: str
+    routing_destination: str  # "tailor" | "warehouse"
+    task_id: UUID | None = None
+
+
+# ── Story 10.5: Preparation Sub-step Tracking ────────────────────────────────
+
+
+class UpdatePreparationStepRequest(BaseModel):
+    """Request body for advancing preparation sub-step (Story 10.5).
+
+    preparation_step: target step (forward-only).
+    delivery_mode: required when advancing to the last step (triggers status transition).
+    """
+
+    preparation_step: str = Field(..., description="Target preparation step (forward-only)")
+    delivery_mode: str | None = Field(
+        None,
+        pattern=r"^(ship|pickup)$",
+        description="Required on last step: 'ship' → ready_to_ship, 'pickup' → ready_for_pickup",
+    )
+
+
+class UpdatePreparationStepResponse(BaseModel):
+    """Response for preparation step update (Story 10.5)."""
+
+    order_id: UUID
+    preparation_step: str | None  # None if completed (moved out of preparing)
+    status: str
+    service_type: str
+    is_completed: bool  # True if order moved out of preparing

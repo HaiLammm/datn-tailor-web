@@ -10,7 +10,7 @@ import { parsePrice } from "@/utils/format";
 
 export interface VerifyCartItem {
   garment_id: string;
-  transaction_type: "buy" | "rent";
+  transaction_type: "buy" | "rent" | "bespoke";
 }
 
 export interface VerifyResult {

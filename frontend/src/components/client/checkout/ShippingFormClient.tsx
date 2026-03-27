@@ -11,8 +11,10 @@ import { useCartStore } from "@/store/cartStore";
 import { createOrder } from "@/app/actions/order-actions";
 import { previewVoucherDiscount } from "@/app/actions/voucher-actions";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
+import { RentalCheckoutFields } from "./RentalCheckoutFields";
+import { BespokeCheckoutBadge } from "./BespokeCheckoutBadge";
 import { formatPrice } from "@/utils/format";
-import type { PaymentMethod, ShippingAddress } from "@/types/order";
+import type { PaymentMethod, SecurityType, ShippingAddress } from "@/types/order";
 
 /** Validate that a payment URL is a safe relative path (mock MVP) or known gateway domain. */
 function isSafePaymentUrl(url: string): boolean {
@@ -95,6 +97,20 @@ const INITIAL_FORM: ShippingFormData = {
   shippingNote: "",
 };
 
+interface RentalFieldsData {
+  pickup_date: string;
+  return_date: string;
+  security_type: SecurityType;
+  security_value: string;
+}
+
+const INITIAL_RENTAL_FIELDS: RentalFieldsData = {
+  pickup_date: "",
+  return_date: "",
+  security_type: "cccd",
+  security_value: "",
+};
+
 export function ShippingFormClient() {
   const router = useRouter();
   const items = useCartStore((state) => state.items);
@@ -104,6 +120,17 @@ export function ShippingFormClient() {
   const clearVouchers = useCartStore((state) => state.clearVouchers);
   const totalDiscount = useCartStore((state) => state.totalDiscount);
   const finalTotal = useCartStore((state) => state.finalTotal);
+  const measurementConfirmed = useCartStore((state) => state.measurement_confirmed);
+  const hasBespokeItems = useCartStore((state) => state.hasBespokeItems);
+
+  // Story 10.3: Service-type detection
+  const hasRentItems = items.some((i) => i.transaction_type === "rent");
+  const hasBespoke = hasBespokeItems();
+
+  // Determine order-level service type for deposit display
+  const orderServiceType = hasBespoke ? "bespoke" : hasRentItems ? "rent" : "buy";
+  const depositRate = orderServiceType === "bespoke" ? 0.5 : orderServiceType === "rent" ? 0.3 : 1;
+  const depositAmount = Math.round(finalTotal() * depositRate);
 
   // Guard: redirect to showroom if cart is empty
   useEffect(() => {
@@ -112,7 +139,15 @@ export function ShippingFormClient() {
     }
   }, [items.length, router]);
 
+  // Story 10.3: Redirect to measurement gate if bespoke items without confirmed measurement
+  useEffect(() => {
+    if (hasBespoke && !measurementConfirmed) {
+      router.replace("/measurement-gate");
+    }
+  }, [hasBespoke, measurementConfirmed, router]);
+
   const [formData, setFormData] = useState<ShippingFormData>(INITIAL_FORM);
+  const [rentalFields, setRentalFields] = useState<RentalFieldsData>(INITIAL_RENTAL_FIELDS);
   const [errors, setErrors] = useState<FormErrors>({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -151,6 +186,26 @@ export function ShippingFormClient() {
     if (items.length === 0) {
       router.replace("/showroom");
       return;
+    }
+
+    // Story 10.3: Validate rental fields if cart has rent items
+    if (hasRentItems) {
+      if (!rentalFields.pickup_date || !rentalFields.return_date) {
+        setSubmitError("Vui long chon ngay nhan va ngay tra.");
+        return;
+      }
+      if (rentalFields.return_date <= rentalFields.pickup_date) {
+        setSubmitError("Ngay tra phai sau ngay nhan.");
+        return;
+      }
+      if (!rentalFields.security_value.trim()) {
+        setSubmitError(
+          rentalFields.security_type === "cccd"
+            ? "Vui long nhap so CCCD."
+            : "Vui long nhap so tien coc."
+        );
+        return;
+      }
     }
 
     setSubmitError(null);
@@ -196,6 +251,16 @@ export function ShippingFormClient() {
           payment_method: paymentMethod,
           items: orderItems,
           voucher_codes: voucherCodes.length > 0 ? voucherCodes : undefined,
+          // Story 10.3: Service-type checkout fields
+          rental_fields: hasRentItems
+            ? {
+                pickup_date: rentalFields.pickup_date,
+                return_date: rentalFields.return_date,
+                security_type: rentalFields.security_type,
+                security_value: rentalFields.security_value.trim(),
+              }
+            : undefined,
+          measurement_confirmed: hasBespoke ? measurementConfirmed : undefined,
         });
 
         if (!result.success || !result.data) {
@@ -504,6 +569,19 @@ export function ShippingFormClient() {
                 </div>
               </div>
 
+              {/* Story 10.3: Bespoke measurement badge */}
+              {hasBespoke && (
+                <BespokeCheckoutBadge measurementConfirmed={measurementConfirmed} />
+              )}
+
+              {/* Story 10.3: Rental checkout fields */}
+              {hasRentItems && (
+                <RentalCheckoutFields
+                  value={rentalFields}
+                  onChange={setRentalFields}
+                />
+              )}
+
               {/* Payment Method */}
               <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 mb-6">
                 <PaymentMethodSelector
@@ -583,7 +661,7 @@ export function ShippingFormClient() {
                 <hr className="border-gray-200" />
                 <div className="flex items-center justify-between">
                   <span className="text-base font-semibold text-[#1A1A2E]">
-                    Tổng cộng
+                    Tong gia tri
                   </span>
                   <span
                     className="text-lg font-bold text-[#D4AF37]"
@@ -593,9 +671,39 @@ export function ShippingFormClient() {
                     {formatPrice(finalTotal())}
                   </span>
                 </div>
+                {/* Story 10.3: Deposit display for rent/bespoke */}
+                {orderServiceType !== "buy" && (
+                  <div className="mt-2 space-y-1.5 pt-2 border-t border-dashed border-gray-200">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[#6B7280]">
+                        Dat coc ({Math.round(depositRate * 100)}%)
+                      </span>
+                      <span
+                        className="text-[#1A1A2E] font-semibold"
+                        style={{ fontFamily: "JetBrains Mono, monospace" }}
+                        data-testid="deposit-amount"
+                      >
+                        {formatPrice(depositAmount)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-[#6B7280]">Con lai</span>
+                      <span
+                        className="text-[#6B7280]"
+                        style={{ fontFamily: "JetBrains Mono, monospace" }}
+                        data-testid="remaining-amount"
+                      >
+                        {formatPrice(finalTotal() - depositAmount)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-600">
+                      Ban chi thanh toan {formatPrice(depositAmount)} ngay bay gio
+                    </p>
+                  </div>
+                )}
                 {totalDiscount() > 0 && (
-                  <p className="text-xs text-green-600 text-right">
-                    Tiết kiệm {formatPrice(totalDiscount())}
+                  <p className="text-xs text-green-600 text-right mt-1">
+                    Tiet kiem {formatPrice(totalDiscount())}
                   </p>
                 )}
               </div>

@@ -3,7 +3,7 @@
  * CartItem, CartState, CartStore types for Zustand cart store.
  */
 
-export type CartTransactionType = "buy" | "rent";
+export type CartTransactionType = "buy" | "rent" | "bespoke";
 
 export interface CartItem {
   id: string;               // UUID v4 (generated client-side)
@@ -37,6 +37,8 @@ export interface CartAppliedVoucher {
 export interface CartState {
   items: CartItem[];
   appliedVouchers: CartAppliedVoucher[];
+  /** Story 10.2: Whether bespoke measurement has been confirmed via gate */
+  measurement_confirmed: boolean;
 }
 
 export interface CartStore extends CartState {
@@ -51,4 +53,8 @@ export interface CartStore extends CartState {
   clearVouchers: () => void;
   totalDiscount: () => number;
   finalTotal: () => number;
+  /** Story 10.2: Set measurement confirmation state */
+  setMeasurementConfirmed: (confirmed: boolean) => void;
+  /** Story 10.2: Check if cart contains bespoke items */
+  hasBespokeItems: () => boolean;
 }

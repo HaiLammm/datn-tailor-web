@@ -84,6 +84,28 @@ TASK_ASSIGNMENT_MESSAGE = (
     "Bạn được giao công việc mới: {garment_name} - Hạn chót: {deadline}.",
 )
 
+# Triggered when Owner approves order and routes to warehouse/tailor (Story 10.4)
+ORDER_APPROVED_WAREHOUSE_MESSAGE = (
+    "Đơn hàng đang chuẩn bị",
+    "Đơn hàng {order_code} đã được phê duyệt và đang chuẩn bị tại kho.",
+)
+
+ORDER_APPROVED_BESPOKE_MESSAGE = (
+    "Đơn hàng đặt may đã xác nhận",
+    "Đơn hàng {order_code} đã được phê duyệt và giao cho thợ may thực hiện.",
+)
+
+# Triggered when order preparation completes and is ready for delivery/pickup (Story 10.5)
+ORDER_READY_SHIP_MESSAGE = (
+    "Đơn hàng sẵn sàng giao",
+    "Đơn hàng {order_code} đã chuẩn bị xong và sẵn sàng giao hàng.",
+)
+
+ORDER_READY_PICKUP_MESSAGE = (
+    "Đơn hàng sẵn sàng nhận",
+    "Đơn hàng {order_code} đã chuẩn bị xong. Vui lòng đến tiệm nhận hàng.",
+)
+
 
 async def create_notification(
     db: AsyncSession,

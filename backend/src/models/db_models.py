@@ -299,6 +299,8 @@ class OrderDB(Base):
     return_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deposit_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     remaining_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # Story 10.5: Preparation sub-step tracking (NULL when not in preparing status)
+    preparation_step: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )

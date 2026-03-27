@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-03-26  # Story 10.1 implemented (review)
+last_updated: 2026-03-27  # Story 10.5 review
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -116,11 +116,11 @@ development_status:
   epic-9-retrospective: optional
 
   epic-10: in-progress  # Sprint Change Proposal 2026-03-26: Unified Order Workflow (5-Phase)
-  10-1-db-migration-service-type-model: review
-  10-2-measurement-gate-cho-dat-may: backlog
-  10-3-checkout-phan-loai-dich-vu: backlog
-  10-4-owner-approve-va-auto-routing: backlog
-  10-5-sub-steps-chuan-bi-thue-va-mua: backlog
+  10-1-db-migration-service-type-model: done
+  10-2-measurement-gate-cho-dat-may: done
+  10-3-checkout-phan-loai-dich-vu: review
+  10-4-owner-approve-va-auto-routing: review
+  10-5-sub-steps-chuan-bi-thue-va-mua: review
   10-6-remaining-payment-va-handover: backlog
   10-7-rental-return-va-security-refund: backlog
   epic-10-retrospective: optional

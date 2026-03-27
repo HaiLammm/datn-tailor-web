@@ -20,7 +20,7 @@ function isDuplicate(existing: CartItem, newItem: CartItem): boolean {
   ) {
     return false;
   }
-  if (newItem.transaction_type === "buy") {
+  if (newItem.transaction_type === "buy" || newItem.transaction_type === "bespoke") {
     return existing.size === newItem.size;
   }
   // rent: compare dates
@@ -36,6 +36,7 @@ export const useCartStore = create<CartStore>()(
       (set, get) => ({
         items: [],
         appliedVouchers: [],
+        measurement_confirmed: false,
 
         addItem: (item: CartItem) =>
           set(
@@ -50,7 +51,15 @@ export const useCartStore = create<CartStore>()(
 
         removeItem: (id: string) =>
           set(
-            (state) => ({ items: state.items.filter((i) => i.id !== id) }),
+            (state) => {
+              const newItems = state.items.filter((i) => i.id !== id);
+              // Story 10.2: Reset measurement_confirmed if no bespoke items remain
+              const hasBespoke = newItems.some((i) => i.transaction_type === "bespoke");
+              return {
+                items: newItems,
+                measurement_confirmed: hasBespoke ? state.measurement_confirmed : false,
+              };
+            },
             false,
             "removeItem"
           ),
@@ -66,7 +75,7 @@ export const useCartStore = create<CartStore>()(
             "updateItem"
           ),
 
-        clearCart: () => set({ items: [], appliedVouchers: [] }, false, "clearCart"),
+        clearCart: () => set({ items: [], appliedVouchers: [], measurement_confirmed: false }, false, "clearCart"),
 
         cartCount: () => get().items.length,
 
@@ -116,6 +125,13 @@ export const useCartStore = create<CartStore>()(
           const discount = get().totalDiscount();
           return Math.max(0, subtotal - discount);
         },
+
+        // Story 10.2: Measurement Gate
+        setMeasurementConfirmed: (confirmed: boolean) =>
+          set({ measurement_confirmed: confirmed }, false, "setMeasurementConfirmed"),
+
+        hasBespokeItems: () =>
+          get().items.some((i) => i.transaction_type === "bespoke"),
       }),
       {
         name: "tailor-cart",

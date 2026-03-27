@@ -11,7 +11,16 @@ export type OrderStatus =
   | "checked"
   | "shipped"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  // Epic 10: new statuses
+  | "pending_measurement"
+  | "preparing"
+  | "ready_to_ship"
+  | "ready_for_pickup"
+  | "in_production"
+  | "renting"
+  | "returned"
+  | "completed";
 
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
@@ -22,6 +31,16 @@ export interface ShippingAddress {
   address_detail: string;
 }
 
+export type ServiceType = "buy" | "rent" | "bespoke";
+export type SecurityType = "cccd" | "cash_deposit";
+
+export interface RentalCheckoutFields {
+  pickup_date: string;
+  return_date: string;
+  security_type: SecurityType;
+  security_value: string;
+}
+
 export interface CreateOrderInput {
   customer_name: string;
   customer_phone: string;
@@ -30,13 +49,15 @@ export interface CreateOrderInput {
   payment_method: PaymentMethod;
   items: {
     garment_id: string;
-    transaction_type: "buy" | "rent";
+    transaction_type: "buy" | "rent" | "bespoke";
     size?: string;
     start_date?: string;
     end_date?: string;
     rental_days?: number;
   }[];
   voucher_codes?: string[];
+  rental_fields?: RentalCheckoutFields;
+  measurement_confirmed?: boolean;
 }
 
 export interface OrderItemResponse {
@@ -68,6 +89,13 @@ export interface OrderResponse {
   items: OrderItemResponse[];
   created_at: string;
   tailor_info?: TailorInfoForCustomer[] | null;
+  service_type?: ServiceType;
+  deposit_amount?: number | null;
+  remaining_amount?: number | null;
+  security_type?: string | null;
+  security_value?: string | null;
+  pickup_date?: string | null;
+  return_date?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,12 +128,59 @@ export interface OrderListItem {
   transaction_types: string[];
   created_at: string;
   next_valid_status: string | null;
+  // Epic 10: service type for badge display
+  service_type?: ServiceType;
+  // Story 10.5: preparation sub-step tracking
+  preparation_step?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Story 10.4: Owner Approve & Auto-routing types
+// ---------------------------------------------------------------------------
+
+export interface ApproveOrderRequest {
+  assigned_to?: string;  // Tailor UUID — required for bespoke
+  notes?: string;
+}
+
+export interface ApproveOrderResponse {
+  order_id: string;
+  new_status: string;
+  service_type: string;
+  routing_destination: string;  // "tailor" | "warehouse"
+  task_id?: string | null;
+}
+
+// Story 10.5: Preparation sub-step constants
+export const RENT_PREP_STEPS = [
+  { key: "cleaning", label: "Giặt/Là" },
+  { key: "altering", label: "Chỉnh sửa" },
+  { key: "ready", label: "Sẵn sàng" },
+] as const;
+
+export const BUY_PREP_STEPS = [
+  { key: "qc", label: "Kiểm tra CL" },
+  { key: "packaging", label: "Đóng gói" },
+  { key: "ready", label: "Sẵn sàng" },
+] as const;
+
+export interface UpdatePreparationStepRequest {
+  preparation_step: string;
+  delivery_mode?: "ship" | "pickup";
+}
+
+export interface UpdatePreparationStepResponse {
+  order_id: string;
+  preparation_step: string | null;
+  status: string;
+  service_type: string;
+  is_completed: boolean;
 }
 
 export interface OrderListParams {
   status?: OrderStatus[];
   payment_status?: PaymentStatus[];
-  transaction_type?: "buy" | "rent";
+  transaction_type?: "buy" | "rent" | "bespoke";
   is_internal?: boolean;
   search?: string;
   page?: number;

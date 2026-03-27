@@ -11,15 +11,19 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import OptionalCurrentUser, OwnerOnly, TenantId
+from src.api.dependencies import CurrentUser, OptionalCurrentUser, OwnerOnly, TenantId
 from src.core.database import get_db
 from src.models.order import (
+    ApproveOrderRequest,
     InternalOrderCreate,
+    MeasurementCheckResponse,
     OrderCreate,
     OrderFilterParams,
     OrderStatus,
     OrderStatusUpdate,
     PaymentStatus,
+    RentalCheckoutFields,
+    UpdatePreparationStepRequest,
 )
 from src.services import order_service
 
@@ -32,6 +36,25 @@ def get_default_tenant_id() -> uuid.UUID:
     TODO: In production, extract from subdomain or request context.
     """
     return uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+@router.post(
+    "/check-measurement",
+    response_model=dict,
+    summary="Check customer measurements for bespoke gate (Story 10.2)",
+)
+async def check_measurement_endpoint(
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Check if authenticated customer has valid measurements for bespoke orders.
+
+    Returns measurement summary if available, or indicates no measurements exist.
+    Customer must be authenticated (JWT required).
+    """
+    tenant_id = get_default_tenant_id()
+    result = await order_service.check_customer_measurement(db, user.id, tenant_id)
+    return {"data": MeasurementCheckResponse(**result).model_dump(mode="json"), "meta": {}}
 
 
 @router.post(
@@ -122,7 +145,7 @@ async def list_orders_endpoint(
     db: AsyncSession = Depends(get_db),
     status_filter: Optional[list[OrderStatus]] = Query(None, alias="status"),
     payment_status: Optional[list[PaymentStatus]] = Query(None),
-    transaction_type: Optional[str] = Query(None, pattern=r"^(buy|rent)$"),
+    transaction_type: Optional[str] = Query(None, pattern=r"^(buy|rent|bespoke)$"),
     is_internal: Optional[bool] = Query(None),
     search: Optional[str] = Query(None, max_length=255),
     page: int = Query(1, ge=1),
@@ -176,6 +199,52 @@ async def update_order_status_endpoint(
         API Response Wrapper: {"data": {...}}
     """
     result = await order_service.update_order_status(db, order_id, tenant_id, update)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{order_id}/approve",
+    response_model=dict,
+    summary="Approve order and auto-route (Owner only, Story 10.4)",
+    description="Approve a pending order. Bespoke orders are auto-routed to tailor with TailorTask created. Rent/Buy orders are routed to warehouse (preparing).",
+)
+async def approve_order_endpoint(
+    order_id: uuid.UUID,
+    request: ApproveOrderRequest,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Approve a pending order with auto-routing based on service type.
+
+    Owner only — tenant-scoped.
+    Bespoke orders require assigned_to (tailor UUID) in request body.
+
+    Returns:
+        API Response Wrapper: {"data": ApproveOrderResponse}
+    """
+    result = await order_service.approve_order(db, order_id, tenant_id, user.id, request)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{order_id}/update-preparation",
+    response_model=dict,
+    summary="Advance preparation sub-step (Owner only, Story 10.5)",
+    description="Advance the preparation sub-step for a Buy/Rent order in 'preparing' status. Forward-only transitions. On last step, delivery_mode is required.",
+)
+async def update_preparation_step_endpoint(
+    order_id: uuid.UUID,
+    request: UpdatePreparationStepRequest,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Advance preparation sub-step for order in preparing status.
+
+    Owner only — tenant-scoped.
+    """
+    result = await order_service.update_preparation_step(db, order_id, tenant_id, request)
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 

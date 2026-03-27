@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import type { OrderListItem, OrderStatus } from "@/types/order";
-import { OrderStatusBadge, PaymentStatusBadge } from "./StatusBadge";
+import type { OrderListItem, OrderStatus, ServiceType, UpdatePreparationStepRequest } from "@/types/order";
+import { RENT_PREP_STEPS, BUY_PREP_STEPS } from "@/types/order";
+import { OrderStatusBadge, PaymentStatusBadge, ServiceTypeBadge } from "./StatusBadge";
 import { formatMoney, formatDate } from "@/utils/format";
 
 const NEXT_STATUS_LABELS: Partial<Record<OrderStatus, string>> = {
-  pending: "Xác nhận",
   in_progress: "Kiểm tra",
   checked: "Gửi đi",
   shipped: "Giao thành công",
+  ready_to_ship: "Giao hàng",
+  ready_for_pickup: "Bàn giao tại tiệm",
 };
 
 interface OrderTableProps {
@@ -19,6 +21,45 @@ interface OrderTableProps {
   onSortChange: (col: string) => void;
   onStatusUpdate: (orderId: string, newStatus: OrderStatus) => Promise<void>;
   onRowClick: (order: OrderListItem) => void;
+  onApprove?: (order: OrderListItem) => void;  // Story 10.4: approve action
+  onAdvancePrep?: (order: OrderListItem) => void;  // Story 10.5: advance preparation step
+}
+
+// Story 10.5: Preparation step progress indicator
+function PrepStepProgress({ order }: { order: OrderListItem }) {
+  if (order.status !== "preparing" || !order.preparation_step) return null;
+
+  const steps = order.service_type === "rent" ? RENT_PREP_STEPS : BUY_PREP_STEPS;
+  const currentIndex = steps.findIndex((s) => s.key === order.preparation_step);
+
+  // Patch #8: Handle unknown step gracefully
+  if (currentIndex < 0) {
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <span className="text-xs text-gray-500">{order.preparation_step}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 mt-1">
+      {steps.map((step, i) => (
+        <div key={step.key} className="flex items-center gap-0.5">
+          <div
+            className={`h-1.5 rounded-full transition-colors ${
+              i <= currentIndex
+                ? "bg-amber-500 w-6"
+                : "bg-gray-200 w-6"
+            }`}
+            title={step.label}
+          />
+        </div>
+      ))}
+      <span className="text-xs text-amber-700 ml-1">
+        {steps[currentIndex].label}
+      </span>
+    </div>
+  );
 }
 
 interface CancelDialogProps {
@@ -67,6 +108,8 @@ export default function OrderTable({
   onSortChange,
   onStatusUpdate,
   onRowClick,
+  onApprove,
+  onAdvancePrep,
 }: OrderTableProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
@@ -174,13 +217,17 @@ export default function OrderTable({
                     <div className="text-xs text-gray-500">{order.customer_phone}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1 flex-wrap">
+                    <div className="flex gap-1 flex-wrap items-center">
+                      {/* Story 10.4: service_type badge (primary) */}
+                      {order.service_type && (
+                        <ServiceTypeBadge type={order.service_type as ServiceType} />
+                      )}
                       {order.transaction_types.map((t) => (
                         <span
                           key={t}
                           className="px-1.5 py-0.5 text-xs rounded bg-gray-100 text-gray-600"
                         >
-                          {t === "buy" ? "Mua" : "Thuê"}
+                          {t === "buy" ? "Mua" : t === "rent" ? "Thuê" : "Đặt may"}
                         </span>
                       ))}
                     </div>
@@ -190,6 +237,7 @@ export default function OrderTable({
                   </td>
                   <td className="px-4 py-3">
                     <OrderStatusBadge status={order.status} />
+                    <PrepStepProgress order={order} />
                   </td>
                   <td className="px-4 py-3">
                     <PaymentStatusBadge status={order.payment_status} />
@@ -202,7 +250,36 @@ export default function OrderTable({
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center gap-1.5">
-                      {nextStatus && (
+                      {/* Story 10.4: Approve button replaces generic "Xác nhận" for pending */}
+                      {order.status === "pending" && onApprove && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onApprove(order);
+                          }}
+                          disabled={isLoading}
+                          title="Phê duyệt đơn hàng"
+                          className="px-2.5 py-1 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                        >
+                          {isLoading ? "..." : "Phê duyệt"}
+                        </button>
+                      )}
+                      {/* Story 10.5: Advance preparation step button */}
+                      {order.status === "preparing" && order.preparation_step && onAdvancePrep && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAdvancePrep(order);
+                          }}
+                          disabled={isLoading}
+                          title="Chuyển bước chuẩn bị tiếp theo"
+                          className="px-2.5 py-1 text-xs rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                        >
+                          {isLoading ? "..." : "Tiếp"}
+                        </button>
+                      )}
+                      {/* Generic next-status button for non-pending orders */}
+                      {order.status !== "pending" && order.status !== "preparing" && nextStatus && (
                         <button
                           onClick={(e) => handleNextStatus(e, order)}
                           disabled={isLoading}
