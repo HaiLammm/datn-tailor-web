@@ -86,6 +86,9 @@ class CustomerOrderDetail(BaseModel):
     delivery_info: CustomerOrderDeliveryInfo
     timeline: list[OrderTimelineEntry] = []
     tailor_info: list[TailorInfoForCustomer] | None = None
+    # Story 10.6: Payment breakdown
+    deposit_amount: Decimal | None = None
+    remaining_amount: Decimal | None = None
 
     model_config = {"from_attributes": True}
 

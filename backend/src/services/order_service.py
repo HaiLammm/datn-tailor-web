@@ -41,6 +41,7 @@ from src.models.order import (
     PaginationMeta,
     PaymentMethod,
     PaymentTransactionResponse,
+    PayRemainingResponse,
     RENT_PREP_STEPS,
     ServiceType,
     UpdatePreparationStepRequest,
@@ -488,7 +489,7 @@ _VALID_TRANSITIONS: dict[str, str | None] = {
     "in_progress": "checked",  # requires all tailor tasks completed
     "checked": "shipped",      # requires paid or COD
     "shipped": "delivered",
-    "delivered": None,
+    "delivered": "completed",  # Story 10.6: buy/bespoke → completed; rent → renting (Story 10.7)
     "cancelled": None,
     # Epic 10: new statuses (Stories 10.5–10.7 use update_order_status for these)
     "pending_measurement": "pending",
@@ -602,13 +603,36 @@ async def list_orders(
 
     def _next_status(o: OrderDB) -> str | None:
         # pending uses approve_order() — no generic next status button shown
-        if o.status in ("cancelled", "delivered", "confirmed", "pending",
+        if o.status in ("cancelled", "confirmed", "pending",
                         "completed", "preparing", "renting", "returned"):
             return None
         if o.status == "in_progress":
             return "checked" if o.id in checkable_ids else None
         if o.status == "checked":
             return "shipped" if o.id in shippable_ids else None
+        # Story 10.6: ready_to_ship blocked if remaining unpaid
+        if o.status == "ready_to_ship":
+            if (
+                o.remaining_amount
+                and o.remaining_amount > 0
+                and o.payment_status != "paid"
+                and o.payment_method not in ("cod", "internal")
+            ):
+                return None
+            return "shipped"
+        if o.status == "ready_for_pickup":
+            if (
+                o.remaining_amount
+                and o.remaining_amount > 0
+                and o.payment_status != "paid"
+                and o.payment_method not in ("cod", "internal")
+            ):
+                return None
+            return "delivered"
+        if o.status == "shipped":
+            return "delivered"
+        if o.status == "delivered":
+            return "completed" if o.service_type != "rent" else None
         return _VALID_TRANSITIONS.get(o.status)
 
     items = [
@@ -628,6 +652,7 @@ async def list_orders(
             next_valid_status=_next_status(o),
             service_type=ServiceType(o.service_type) if o.service_type else ServiceType.buy,
             preparation_step=o.preparation_step,
+            remaining_amount=o.remaining_amount,
         )
         for o in orders
     ]
@@ -731,6 +756,41 @@ async def update_order_status(
                     "error": {
                         "code": "ERR_SHIP_NOT_READY",
                         "message": "Chưa thể gửi đi: cần đã thanh toán (hoặc COD)",
+                    }
+                },
+            )
+
+    # Guard: ready_to_ship → shipped / ready_for_pickup → delivered requires remaining payment (Story 10.6)
+    _handover_guard = (
+        (current_status == "ready_to_ship" and new_status == "shipped")
+        or (current_status == "ready_for_pickup" and new_status == "delivered")
+    )
+    if _handover_guard:
+        if (
+            order.remaining_amount
+            and order.remaining_amount > 0
+            and order.payment_status != "paid"
+            and order.payment_method not in ("cod", "internal")
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_REMAINING_UNPAID",
+                        "message": "Chưa thể giao hàng: khách hàng chưa thanh toán phần còn lại.",
+                    }
+                },
+            )
+
+    # Guard: delivered → completed blocked for rent orders (Story 10.7 will handle rent flow)
+    if current_status == "delivered" and new_status == "completed":
+        if order.service_type == "rent":
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_INVALID_TRANSITION",
+                        "message": "Đơn thuê cần qua giai đoạn cho thuê trước khi hoàn tất.",
                     }
                 },
             )
@@ -1291,6 +1351,130 @@ async def update_preparation_step(
         status=order.status,
         service_type=service_type,
         is_completed=is_completed,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Story 10.6: Remaining Payment
+# ---------------------------------------------------------------------------
+
+
+async def pay_remaining(
+    db: AsyncSession,
+    order_id: UUID,
+    tenant_id: UUID,
+    customer_id: UUID,
+    payment_method: str = "vnpay",
+) -> PayRemainingResponse:
+    """Initiate remaining payment for an order ready for delivery (Story 10.6).
+
+    Business rules:
+    - Order must be status in (ready_to_ship, ready_for_pickup) and belong to tenant.
+    - remaining_amount must be > 0 (else 422 ERR_ALREADY_PAID).
+    - Creates OrderPaymentDB (type='remaining', status='pending').
+    - Returns mock payment URL for gateway redirect.
+    """
+    result = await db.execute(
+        select(OrderDB)
+        .where(OrderDB.id == order_id, OrderDB.tenant_id == tenant_id)
+        .with_for_update()
+    )
+    order = result.scalar_one_or_none()
+
+    if order is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "ERR_ORDER_NOT_FOUND", "message": "Đơn hàng không tồn tại"}},
+        )
+
+    # Validate customer owns this order
+    if order.customer_id != customer_id:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "ERR_ORDER_NOT_FOUND", "message": "Đơn hàng không tồn tại"}},
+        )
+
+    # Validate status
+    if order.status not in ("ready_to_ship", "ready_for_pickup"):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_INVALID_STATUS",
+                    "message": f"Chỉ có thể thanh toán còn lại khi đơn hàng ở trạng thái sẵn sàng giao/nhận. Trạng thái hiện tại: '{order.status}'",
+                }
+            },
+        )
+
+    # P11 fix: Reject COD/internal for remaining payment (they bypass payment guard)
+    if payment_method in ("cod", "internal"):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_INVALID_PAYMENT_METHOD",
+                    "message": "Phương thức thanh toán không hợp lệ cho thanh toán còn lại. Vui lòng chọn VNPay hoặc MoMo.",
+                }
+            },
+        )
+
+    # Validate remaining amount
+    if not order.remaining_amount or order.remaining_amount <= 0:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_ALREADY_PAID",
+                    "message": "Đơn hàng đã thanh toán đầy đủ, không cần thanh toán thêm.",
+                }
+            },
+        )
+
+    # P1 fix: Idempotency — check for existing pending remaining payment
+    existing_pending = await db.execute(
+        select(OrderPaymentDB).where(
+            OrderPaymentDB.order_id == order.id,
+            OrderPaymentDB.payment_type == "remaining",
+            OrderPaymentDB.status == "pending",
+        )
+    )
+    existing_record = existing_pending.scalar_one_or_none()
+
+    if existing_record is not None:
+        # Return existing payment URL instead of creating duplicate
+        payment_url = f"/checkout/confirmation?orderId={order.id}&paymentType=remaining&status=success"
+        return PayRemainingResponse(
+            order_id=order.id,
+            payment_url=payment_url,
+            amount=existing_record.amount,
+            payment_type="remaining",
+        )
+
+    # Capture before commit (P4 fix: avoid DetachedInstanceError)
+    _remaining_amount = order.remaining_amount
+
+    # Create OrderPaymentDB record (type='remaining')
+    payment_record = OrderPaymentDB(
+        tenant_id=tenant_id,
+        order_id=order.id,
+        payment_type="remaining",
+        amount=_remaining_amount,
+        method=payment_method,
+        status="pending",
+    )
+    db.add(payment_record)
+
+    # Generate mock payment URL (same pattern as order creation)
+    payment_url = f"/checkout/confirmation?orderId={order.id}&paymentType=remaining&status=success"
+
+    await db.flush()
+    await db.commit()
+
+    return PayRemainingResponse(
+        order_id=order.id,
+        payment_url=payment_url,
+        amount=_remaining_amount,
+        payment_type="remaining",
     )
 
 

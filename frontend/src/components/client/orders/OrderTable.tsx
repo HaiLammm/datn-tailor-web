@@ -12,6 +12,7 @@ const NEXT_STATUS_LABELS: Partial<Record<OrderStatus, string>> = {
   shipped: "Giao thành công",
   ready_to_ship: "Giao hàng",
   ready_for_pickup: "Bàn giao tại tiệm",
+  delivered: "Hoàn tất",
 };
 
 interface OrderTableProps {
@@ -238,6 +239,15 @@ export default function OrderTable({
                   <td className="px-4 py-3">
                     <OrderStatusBadge status={order.status} />
                     <PrepStepProgress order={order} />
+                    {/* Story 10.6: Payment indicator for orders needing remaining payment */}
+                    {(order.status === "ready_to_ship" || order.status === "ready_for_pickup") &&
+                      order.remaining_amount != null &&
+                      order.remaining_amount > 0 &&
+                      order.payment_status !== "paid" && (
+                      <span className="mt-1 inline-block text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+                        Chờ thanh toán
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <PaymentStatusBadge status={order.payment_status} />

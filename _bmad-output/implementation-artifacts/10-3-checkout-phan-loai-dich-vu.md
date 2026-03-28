@@ -1,6 +1,6 @@
 # Story 10.3: Checkout Phan loai Dich vu (Service-Type Checkout)
 
-Status: review
+Status: done
 
 ## Story
 

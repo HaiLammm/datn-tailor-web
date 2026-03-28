@@ -348,4 +348,6 @@ async def get_order_detail(
         delivery_info=delivery_info,
         timeline=timeline,
         tailor_info=tailor_info,
+        deposit_amount=order.deposit_amount,
+        remaining_amount=order.remaining_amount,
     )

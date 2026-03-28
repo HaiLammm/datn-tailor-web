@@ -1,6 +1,6 @@
 # Story 10.4: Owner Approve & Auto-routing (Phe duyet & Dieu phoi)
 
-Status: review
+Status: done
 
 ## Story
 

@@ -20,6 +20,8 @@ import type {
   OrderListResponse,
   OrderResponse,
   OrderStatus,
+  PayRemainingRequest,
+  PayRemainingResponse,
   UpdatePreparationStepRequest,
   UpdatePreparationStepResponse,
 } from "@/types/order";
@@ -743,5 +745,61 @@ export async function checkMeasurement(): Promise<MeasurementCheckResult | null>
     clearTimeout(timeoutId);
     console.error("checkMeasurement error:", error);
     return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Story 10.6: Remaining Payment
+// ---------------------------------------------------------------------------
+
+/**
+ * Initiate remaining payment for an order in ready_to_ship/ready_for_pickup status.
+ * Customer auth required.
+ */
+export async function payRemaining(
+  orderId: string,
+  request: PayRemainingRequest = {},
+): Promise<PayRemainingResponse> {
+  const session = await auth();
+  if (!session?.accessToken) {
+    throw new Error("Bạn cần đăng nhập để thực hiện thanh toán.");
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/orders/${orderId}/pay-remaining`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify(request),
+        signal: controller.signal,
+      },
+    );
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      const errorMessage =
+        errorBody?.error?.message ||
+        errorBody?.detail?.error?.message ||
+        `Lỗi thanh toán: HTTP ${response.status}`;
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    return result.data as PayRemainingResponse;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Lỗi kết nối khi thực hiện thanh toán.");
   }
 }

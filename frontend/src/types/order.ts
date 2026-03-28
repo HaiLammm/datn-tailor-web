@@ -132,6 +132,8 @@ export interface OrderListItem {
   service_type?: ServiceType;
   // Story 10.5: preparation sub-step tracking
   preparation_step?: string | null;
+  // Story 10.6: remaining amount for payment indicator
+  remaining_amount?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +177,18 @@ export interface UpdatePreparationStepResponse {
   status: string;
   service_type: string;
   is_completed: boolean;
+}
+
+// Story 10.6: Remaining Payment types
+export interface PayRemainingRequest {
+  payment_method?: "vnpay" | "momo" | "cod";
+}
+
+export interface PayRemainingResponse {
+  order_id: string;
+  payment_url: string | null;
+  amount: number;
+  payment_type: string; // "remaining"
 }
 
 export interface OrderListParams {
@@ -284,6 +298,9 @@ export interface CustomerOrderDetail extends CustomerOrderSummary {
   delivery_info: CustomerOrderDeliveryInfo;
   timeline: OrderTimelineEntry[];
   tailor_info: TailorInfoForCustomer[] | null;
+  // Story 10.6: Payment breakdown
+  deposit_amount?: number | null;
+  remaining_amount?: number | null;
 }
 
 export interface CustomerOrderListMeta {

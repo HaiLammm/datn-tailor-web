@@ -22,6 +22,7 @@ from src.models.order import (
     OrderStatus,
     OrderStatusUpdate,
     PaymentStatus,
+    PayRemainingRequest,
     RentalCheckoutFields,
     UpdatePreparationStepRequest,
 )
@@ -245,6 +246,29 @@ async def update_preparation_step_endpoint(
     Owner only — tenant-scoped.
     """
     result = await order_service.update_preparation_step(db, order_id, tenant_id, request)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{order_id}/pay-remaining",
+    response_model=dict,
+    summary="Initiate remaining payment (Customer auth, Story 10.6)",
+    description="Start remaining payment for an order in ready_to_ship/ready_for_pickup status.",
+)
+async def pay_remaining_endpoint(
+    order_id: uuid.UUID,
+    request: PayRemainingRequest,
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Initiate remaining payment for a ready order.
+
+    Customer auth required — customer must own the order.
+    """
+    tenant_id = get_default_tenant_id()
+    result = await order_service.pay_remaining(
+        db, order_id, tenant_id, user.id, request.payment_method.value
+    )
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 

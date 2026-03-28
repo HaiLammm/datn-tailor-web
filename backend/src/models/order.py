@@ -242,6 +242,8 @@ class OrderListItem(BaseModel):
     service_type: ServiceType = ServiceType.buy
     # Story 10.5: Preparation sub-step tracking
     preparation_step: str | None = None
+    # Story 10.6: remaining amount for payment indicator
+    remaining_amount: Decimal | None = None
 
     model_config = {"from_attributes": True}
 
@@ -351,3 +353,21 @@ class UpdatePreparationStepResponse(BaseModel):
     status: str
     service_type: str
     is_completed: bool  # True if order moved out of preparing
+
+
+# ── Story 10.6: Remaining Payment & Handover ────────────────────────────────
+
+
+class PayRemainingRequest(BaseModel):
+    """Request body for remaining payment initiation (Story 10.6)."""
+
+    payment_method: PaymentMethod = PaymentMethod.vnpay
+
+
+class PayRemainingResponse(BaseModel):
+    """Response for remaining payment initiation (Story 10.6)."""
+
+    order_id: UUID
+    payment_url: str | None
+    amount: Decimal
+    payment_type: str  # "remaining"

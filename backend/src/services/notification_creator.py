@@ -54,6 +54,10 @@ ORDER_STATUS_MESSAGES: dict[str, tuple[str, str]] = {
         "Đơn hàng đã hủy",
         "Đơn hàng {order_code} đã bị hủy.",
     ),
+    "completed": (
+        "Đơn hàng hoàn tất",
+        "Đơn hàng {order_code} đã hoàn tất. Hẹn gặp lại!",
+    ),
 }
 
 # Triggered when appointment is confirmed or cancelled
@@ -105,6 +109,13 @@ ORDER_READY_PICKUP_MESSAGE = (
     "Đơn hàng sẵn sàng nhận",
     "Đơn hàng {order_code} đã chuẩn bị xong. Vui lòng đến tiệm nhận hàng.",
 )
+
+# Triggered when remaining payment is completed (Story 10.6)
+ORDER_REMAINING_PAID_MESSAGE = (
+    "Thanh toán hoàn tất",
+    "Đơn hàng {order_code} đã thanh toán đầy đủ. Cảm ơn bạn!",
+)
+
 
 
 async def create_notification(

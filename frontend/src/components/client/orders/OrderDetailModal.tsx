@@ -6,7 +6,7 @@
  */
 
 import { useState } from "react";
-import { downloadOrderInvoice } from "@/app/actions/order-actions";
+import { downloadOrderInvoice, payRemaining } from "@/app/actions/order-actions";
 import type { CustomerOrderDetail, TailorInfoForCustomer } from "@/types/order";
 import { OrderStatusBadge, OrderTypeBadge } from "./OrderStatusBadge";
 import { formatCurrency, formatDate, formatDateOnly } from "@/utils/order-formatters";
@@ -55,6 +55,7 @@ export default function OrderDetailModal({
   onClose,
 }: OrderDetailModalProps) {
   const [downloading, setDownloading] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   if (!isOpen || !order) return null;
@@ -249,6 +250,60 @@ export default function OrderDetailModal({
               </div>
             </div>
           </div>
+
+          {/* Story 10.6: Payment Breakdown & Remaining Payment */}
+          {order.deposit_amount != null && order.remaining_amount != null && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold text-gray-800 text-sm">Chi tiết thanh toán</h3>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>Tiền cọc đã thanh toán:</span>
+                  <span className="text-green-600 font-medium">{formatCurrency(order.deposit_amount)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Còn lại cần thanh toán:</span>
+                  <span className={`font-medium ${order.remaining_amount > 0 ? "text-amber-600" : "text-green-600"}`}>
+                    {formatCurrency(order.remaining_amount)}
+                  </span>
+                </div>
+              </div>
+              {order.remaining_amount > 0 &&
+                order.payment_status !== "paid" &&
+                (order.status === "ready_to_ship" || order.status === "ready_for_pickup") && (
+                <button
+                  onClick={async () => {
+                    setPaying(true);
+                    try {
+                      const result = await payRemaining(order.id);
+                      if (result.payment_url) {
+                        window.location.href = result.payment_url;
+                      } else {
+                        showToast("Thanh toán đã được khởi tạo thành công.");
+                      }
+                    } catch (error) {
+                      showToast(error instanceof Error ? error.message : "Lỗi thanh toán");
+                    } finally {
+                      setPaying(false);
+                    }
+                  }}
+                  disabled={paying}
+                  className="w-full mt-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {paying ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    `Thanh toán còn lại (${formatCurrency(order.remaining_amount)})`
+                  )}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Tailor info section */}
           {order.tailor_info && order.tailor_info.length > 0 && (

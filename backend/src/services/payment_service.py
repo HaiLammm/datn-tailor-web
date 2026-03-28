@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.core.config import settings
-from src.models.db_models import OrderDB, PaymentTransactionDB, UserDB
+from src.models.db_models import OrderDB, OrderPaymentDB, PaymentTransactionDB, UserDB
 from src.models.order import PaymentStatus
 from src.services.email_service import send_order_confirmation_email
 
@@ -196,32 +196,62 @@ async def process_webhook(
             },
         )
 
-    # 5b. Amount verification — log ERROR if webhook amount doesn't match order
-    if amount != order.total_amount:
+    # 6. Detect if this is a remaining payment (Story 10.6) — must run before amount check
+    remaining_payment_result = await db.execute(
+        select(OrderPaymentDB).where(
+            OrderPaymentDB.order_id == order.id,
+            OrderPaymentDB.payment_type == "remaining",
+            OrderPaymentDB.status == "pending",
+        )
+    )
+    pending_remaining = remaining_payment_result.scalar_one_or_none()
+
+    # 5b. Amount verification — compare against remaining or total depending on payment type
+    expected_amount = pending_remaining.amount if pending_remaining is not None else order.total_amount
+    if amount != expected_amount:
         logger.error(
-            "Amount mismatch for order %s: webhook=%s, order=%s, provider=%s",
+            "Amount mismatch for order %s: webhook=%s, expected=%s, provider=%s, type=%s",
             order.id,
             amount,
-            order.total_amount,
+            expected_amount,
             provider,
+            "remaining" if pending_remaining else "checkout",
         )
 
-    # 6. Update order status based on payment result
-    if tx_status == "success":
-        order.status = "confirmed"
-        order.payment_status = PaymentStatus.paid.value
-        logger.info("Order %s confirmed via %s payment", order.id, provider)
+    if pending_remaining is not None:
+        # Remaining payment webhook
+        if tx_status == "success":
+            pending_remaining.status = "success"
+            order.remaining_amount = Decimal("0")
+            order.payment_status = PaymentStatus.paid.value
+            logger.info("Remaining payment confirmed for order %s via %s", order.id, provider)
+        else:
+            pending_remaining.status = "failed"
+            logger.warning("Remaining payment failed for order %s via %s", order.id, provider)
     else:
-        order.payment_status = PaymentStatus.failed.value
-        logger.warning(
-            "Payment failed for order %s via %s", order.id, provider
-        )
+        # Normal checkout payment (existing flow)
+        if tx_status == "success":
+            order.status = "confirmed"
+            order.payment_status = PaymentStatus.paid.value
+            logger.info("Order %s confirmed via %s payment", order.id, provider)
+        else:
+            order.payment_status = PaymentStatus.failed.value
+            logger.warning(
+                "Payment failed for order %s via %s", order.id, provider
+            )
 
     order.updated_at = datetime.now(timezone.utc)
 
+    # P5 fix: Capture fields before commit to avoid DetachedInstanceError
+    _order_id = order.id
+    _order_id_str = str(order.id)
+    _customer_id = order.customer_id
+    _tenant_id = order.tenant_id
+    _payment_status = order.payment_status
+
     # 7. Create payment transaction record
     payment_tx = PaymentTransactionDB(
-        order_id=order.id,
+        order_id=_order_id,
         provider=provider,
         transaction_id=gateway_tx_id,
         amount=amount,
@@ -229,6 +259,28 @@ async def process_webhook(
         raw_payload=payload,
     )
     db.add(payment_tx)
+
+    # P7 fix: Create notification before commit for atomicity
+    if tx_status == "success" and pending_remaining is not None and _customer_id:
+        try:
+            from src.services.notification_creator import (
+                ORDER_REMAINING_PAID_MESSAGE,
+                create_notification,
+            )
+
+            title, msg_template = ORDER_REMAINING_PAID_MESSAGE
+            message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+            await create_notification(
+                db=db,
+                user_id=_customer_id,
+                tenant_id=_tenant_id,
+                notification_type="order_payment",
+                title=title,
+                message=message,
+                data={"order_id": _order_id_str},
+            )
+        except Exception:
+            logger.warning("Failed to create remaining payment notification for order %s", _order_id_str)
 
     try:
         await db.flush()
@@ -244,30 +296,30 @@ async def process_webhook(
 
     # 8. Resolve customer email for confirmation (H2 fix)
     customer_email = None
-    if order.customer_id:
+    if _customer_id:
         try:
             user_result = await db.execute(
-                select(UserDB.email).where(UserDB.id == order.customer_id)
+                select(UserDB.email).where(UserDB.id == _customer_id)
             )
             customer_email = user_result.scalar_one_or_none()
         except Exception:
-            logger.warning("Could not look up email for customer_id=%s", order.customer_id)
+            logger.warning("Could not look up email for customer_id=%s", _customer_id)
 
     # 9. Trigger email for confirmed orders (non-blocking)
-    if tx_status == "success" and customer_email:
+    if tx_status == "success" and customer_email and pending_remaining is None:
         try:
             await send_order_confirmation_email(order, customer_email)
         except Exception:
             logger.exception(
                 "Failed to send order confirmation email for order %s",
-                order.id,
+                _order_id_str,
             )
 
     return {
         "data": {
             "message": "Webhook processed successfully",
-            "order_id": str(order.id),
-            "payment_status": order.payment_status,
+            "order_id": _order_id_str,
+            "payment_status": _payment_status,
         },
         "meta": {},
     }
