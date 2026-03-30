@@ -181,7 +181,7 @@ export interface UpdatePreparationStepResponse {
 
 // Story 10.6: Remaining Payment types
 export interface PayRemainingRequest {
-  payment_method?: "vnpay" | "momo" | "cod";
+  payment_method?: "vnpay" | "momo";
 }
 
 export interface PayRemainingResponse {

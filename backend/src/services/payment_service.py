@@ -245,6 +245,9 @@ async def process_webhook(
     # P5 fix: Capture fields before commit to avoid DetachedInstanceError
     _order_id = order.id
     _order_id_str = str(order.id)
+    _date_part = order.created_at.strftime("%Y%m%d")
+    _uid_part = str(order.id).replace("-", "").upper()[:6]
+    _order_code = f"ORD-{_date_part}-{_uid_part}"
     _customer_id = order.customer_id
     _tenant_id = order.tenant_id
     _payment_status = order.payment_status
@@ -269,18 +272,18 @@ async def process_webhook(
             )
 
             title, msg_template = ORDER_REMAINING_PAID_MESSAGE
-            message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+            message = msg_template.format(order_code=_order_code)
             await create_notification(
                 db=db,
                 user_id=_customer_id,
                 tenant_id=_tenant_id,
-                notification_type="order_payment",
+                notification_type="payment",
                 title=title,
                 message=message,
                 data={"order_id": _order_id_str},
             )
         except Exception:
-            logger.warning("Failed to create remaining payment notification for order %s", _order_id_str)
+            logger.warning("Failed to create remaining payment notification for order %s", _order_id_str, exc_info=True)
 
     try:
         await db.flush()

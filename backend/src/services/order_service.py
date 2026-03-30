@@ -51,6 +51,13 @@ from src.models.order import (
 logger = logging.getLogger(__name__)
 
 
+def _build_order_code(order_id: UUID, created_at: datetime) -> str:
+    """Generate human-readable order code: ORD-YYYYMMDD-XXXXXX."""
+    date_part = created_at.strftime("%Y%m%d")
+    uid_part = str(order_id).replace("-", "").upper()[:6]
+    return f"ORD-{date_part}-{uid_part}"
+
+
 async def _validate_and_price_items(
     db: AsyncSession,
     items: list,
@@ -520,6 +527,16 @@ def _payment_ok(payment_status: str, payment_method: str) -> bool:
     return payment_status == "paid" or payment_method == "cod"
 
 
+def _is_remaining_unpaid(o: OrderDB) -> bool:
+    """Check if order has unpaid remaining amount (excludes COD/internal)."""
+    return bool(
+        o.remaining_amount
+        and o.remaining_amount > 0
+        and o.payment_status != "paid"
+        and o.payment_method not in ("cod", "internal")
+    )
+
+
 async def list_orders(
     db: AsyncSession,
     tenant_id: UUID,
@@ -610,25 +627,11 @@ async def list_orders(
             return "checked" if o.id in checkable_ids else None
         if o.status == "checked":
             return "shipped" if o.id in shippable_ids else None
-        # Story 10.6: ready_to_ship blocked if remaining unpaid
+        # Story 10.6: ready_to_ship/ready_for_pickup blocked if remaining unpaid
         if o.status == "ready_to_ship":
-            if (
-                o.remaining_amount
-                and o.remaining_amount > 0
-                and o.payment_status != "paid"
-                and o.payment_method not in ("cod", "internal")
-            ):
-                return None
-            return "shipped"
+            return None if _is_remaining_unpaid(o) else "shipped"
         if o.status == "ready_for_pickup":
-            if (
-                o.remaining_amount
-                and o.remaining_amount > 0
-                and o.payment_status != "paid"
-                and o.payment_method not in ("cod", "internal")
-            ):
-                return None
-            return "delivered"
+            return None if _is_remaining_unpaid(o) else "delivered"
         if o.status == "shipped":
             return "delivered"
         if o.status == "delivered":
@@ -700,7 +703,7 @@ async def update_order_status(
 
     # Allow cancellation from any non-terminal status
     if new_status == "cancelled":
-        if current_status in ("delivered", "cancelled"):
+        if current_status in ("delivered", "cancelled", "completed"):
             raise HTTPException(
                 status_code=422,
                 detail={
@@ -766,12 +769,7 @@ async def update_order_status(
         or (current_status == "ready_for_pickup" and new_status == "delivered")
     )
     if _handover_guard:
-        if (
-            order.remaining_amount
-            and order.remaining_amount > 0
-            and order.payment_status != "paid"
-            and order.payment_method not in ("cod", "internal")
-        ):
+        if _is_remaining_unpaid(order):
             raise HTTPException(
                 status_code=422,
                 detail={
@@ -805,6 +803,7 @@ async def update_order_status(
     _customer_id = order.customer_id
     _tenant_id = order.tenant_id
     _order_id_str = str(order.id)
+    _order_code = _build_order_code(order.id, order.created_at)
     _is_internal = order.is_internal
     await db.flush()
     await db.commit()
@@ -814,7 +813,7 @@ async def update_order_status(
     if _customer_id is not None and new_status in ORDER_STATUS_MESSAGES and not _is_internal:
         try:
             title, msg_template = ORDER_STATUS_MESSAGES[new_status]
-            message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+            message = msg_template.format(order_code=_order_code)
             await create_notification(
                 db=db,
                 user_id=_customer_id,
@@ -1032,6 +1031,7 @@ async def approve_order(
     _customer_id = order.customer_id
     _tenant_id = order.tenant_id
     _order_id_str = str(order.id)
+    _order_code = _build_order_code(order.id, order.created_at)
     _is_internal = order.is_internal
 
     # Step 1: Transition pending → confirmed
@@ -1119,12 +1119,12 @@ async def approve_order(
         if _customer_id is not None and not _is_internal:
             try:
                 title, msg_template = ORDER_APPROVED_BESPOKE_MESSAGE
-                message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+                message = msg_template.format(order_code=_order_code)
                 await create_notification(
                     db=db,
                     user_id=_customer_id,
                     tenant_id=_tenant_id,
-                    notification_type="order_approved",
+                    notification_type="order_status",
                     title=title,
                     message=message,
                     data={"order_id": _order_id_str},
@@ -1147,12 +1147,12 @@ async def approve_order(
         if _customer_id is not None and not _is_internal:
             try:
                 title, msg_template = ORDER_APPROVED_WAREHOUSE_MESSAGE
-                message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+                message = msg_template.format(order_code=_order_code)
                 await create_notification(
                     db=db,
                     user_id=_customer_id,
                     tenant_id=_tenant_id,
-                    notification_type="order_approved",
+                    notification_type="order_status",
                     title=title,
                     message=message,
                     data={"order_id": _order_id_str},
@@ -1295,6 +1295,7 @@ async def update_preparation_step(
     _customer_id = order.customer_id
     _tenant_id = order.tenant_id
     _order_id_str = str(order.id)
+    _order_code = _build_order_code(order.id, order.created_at)
     _is_internal = order.is_internal
 
     is_last_step = new_index == len(steps) - 1
@@ -1329,12 +1330,12 @@ async def update_preparation_step(
         try:
             msg_tuple = ORDER_READY_SHIP_MESSAGE if delivery_mode == "ship" else ORDER_READY_PICKUP_MESSAGE
             title, msg_template = msg_tuple
-            message = msg_template.format(order_code=f"#{_order_id_str[:8].upper()}")
+            message = msg_template.format(order_code=_order_code)
             await create_notification(
                 db=db,
                 user_id=_customer_id,
                 tenant_id=_tenant_id,
-                notification_type="order_ready",
+                notification_type="order_status",
                 title=title,
                 message=message,
                 data={"order_id": _order_id_str},
