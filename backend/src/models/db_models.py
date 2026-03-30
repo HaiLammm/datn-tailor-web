@@ -63,6 +63,13 @@ class UserDB(Base):
     gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Structured shipping address for checkout auto-fill
+    shipping_province: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    shipping_district: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    shipping_ward: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    shipping_address_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    auto_fill_infor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
     # Tailor Assignment Tracking
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     experience_years: Mapped[int | None] = mapped_column(Integer, nullable=True)

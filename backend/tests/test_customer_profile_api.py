@@ -58,6 +58,11 @@ async def seed_user_data(test_db_session):
         phone="0901234567",
         gender="Nữ",
         tenant_id=DEFAULT_TENANT_ID,
+        shipping_province="TP. Hồ Chí Minh",
+        shipping_district="Quận 1",
+        shipping_ward="Phường Bến Nghé",
+        shipping_address_detail="123 Nguyễn Huệ",
+        auto_fill_infor=True,
     )
     db.add(customer)
 
@@ -205,19 +210,82 @@ async def test_patch_profile_invalid_phone(seed_user_data, override_db):
 
 
 @pytest.mark.asyncio
-async def test_change_password_success(seed_user_data, override_db):
+async def test_change_password_sends_otp(seed_user_data, override_db):
+    """Step 1: Verify old password → sends OTP (mocked email)."""
+    customer = seed_user_data["customer"]
+    token = make_token(customer.email)
+
+    # Mock send_otp_email to avoid actual email sending
+    from unittest.mock import AsyncMock, patch
+
+    with patch("src.services.email_service.send_otp_email", new_callable=AsyncMock) as mock_email:
+        mock_email.return_value = True
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            resp = await ac.post(
+                "/api/v1/customers/me/change-password",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"old_password": "OldPass1", "new_password": "NewPass99"},
+            )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["otp_required"] is True
+    assert "OTP" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_confirm_password_change_success(seed_user_data, override_db, test_db_session):
+    """Step 2: Verify OTP → password changed."""
+    customer = seed_user_data["customer"]
+    token = make_token(customer.email)
+
+    from unittest.mock import AsyncMock, patch
+
+    # Step 1: Trigger OTP
+    with patch("src.services.email_service.send_otp_email", new_callable=AsyncMock) as mock_email:
+        mock_email.return_value = True
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            await ac.post(
+                "/api/v1/customers/me/change-password",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"old_password": "OldPass1", "new_password": "NewPass99"},
+            )
+
+    # Get the OTP from DB using test session
+    from src.services.otp_service import get_latest_otp
+
+    otp_record = await get_latest_otp(test_db_session, customer.email)
+    assert otp_record is not None
+    otp_code = otp_record.code
+
+    # Step 2: Confirm with OTP
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.post(
+            "/api/v1/customers/me/confirm-password-change",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"otp_code": otp_code, "new_password": "NewPass99"},
+        )
+
+    assert resp.status_code == 200
+    assert "Mật khẩu đã cập nhật" in resp.json()["data"]["message"]
+
+
+@pytest.mark.asyncio
+async def test_confirm_password_change_invalid_otp(seed_user_data, override_db):
+    """Step 2: Invalid OTP → rejected."""
     customer = seed_user_data["customer"]
     token = make_token(customer.email)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post(
-            "/api/v1/customers/me/change-password",
+            "/api/v1/customers/me/confirm-password-change",
             headers={"Authorization": f"Bearer {token}"},
-            json={"old_password": "OldPass1", "new_password": "NewPass99"},
+            json={"otp_code": "000000", "new_password": "NewPass99"},
         )
 
-    assert resp.status_code == 200
-    assert "Mật khẩu đã cập nhật" in resp.json()["data"]["message"]
+    assert resp.status_code == 400
+    assert resp.json()["detail"]["code"] == "INVALID_OTP"
 
 
 @pytest.mark.asyncio
@@ -307,3 +375,110 @@ async def test_patch_profile_clear_phone(seed_user_data, override_db):
     assert resp.status_code == 200
     data = resp.json()["data"]
     assert data["phone"] is None
+
+
+# ────────────────────────────────────────────────────────
+# Shipping address & auto_fill_infor tests
+# ────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_profile_includes_shipping_address(seed_user_data, override_db):
+    """GET profile returns shipping address fields and auto_fill_infor."""
+    customer = seed_user_data["customer"]
+    token = make_token(customer.email)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.get(
+            "/api/v1/customers/me/profile",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["shipping_province"] == "TP. Hồ Chí Minh"
+    assert data["shipping_district"] == "Quận 1"
+    assert data["shipping_ward"] == "Phường Bến Nghé"
+    assert data["shipping_address_detail"] == "123 Nguyễn Huệ"
+    assert data["auto_fill_infor"] is True
+
+
+@pytest.mark.asyncio
+async def test_update_shipping_address(seed_user_data, override_db):
+    """PATCH with shipping address fields updates and returns correctly."""
+    customer = seed_user_data["customer"]
+    token = make_token(customer.email)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.patch(
+            "/api/v1/customers/me/profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "shipping_province": "Hà Nội",
+                "shipping_district": "Ba Đình",
+                "shipping_ward": "Phường Trúc Bạch",
+                "shipping_address_detail": "456 Thanh Niên",
+            },
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["shipping_province"] == "Hà Nội"
+    assert data["shipping_district"] == "Ba Đình"
+    assert data["shipping_ward"] == "Phường Trúc Bạch"
+    assert data["shipping_address_detail"] == "456 Thanh Niên"
+
+
+@pytest.mark.asyncio
+async def test_update_auto_fill_infor_toggle(seed_user_data, override_db):
+    """PATCH with auto_fill_infor toggles the value."""
+    customer = seed_user_data["customer"]
+    token = make_token(customer.email)
+
+    # Toggle OFF (was True in seed)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.patch(
+            "/api/v1/customers/me/profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"auto_fill_infor": False},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["auto_fill_infor"] is False
+
+    # Toggle ON again
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.patch(
+            "/api/v1/customers/me/profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"auto_fill_infor": True},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["auto_fill_infor"] is True
+
+
+@pytest.mark.asyncio
+async def test_partial_update_preserves_address(seed_user_data, override_db):
+    """PATCH with only full_name does NOT clear shipping address fields."""
+    customer = seed_user_data["customer"]
+    token = make_token(customer.email)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        resp = await ac.patch(
+            "/api/v1/customers/me/profile",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"full_name": "Linh Updated"},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["full_name"] == "Linh Updated"
+    # Address fields must be preserved
+    assert data["shipping_province"] == "TP. Hồ Chí Minh"
+    assert data["shipping_district"] == "Quận 1"
+    assert data["shipping_ward"] == "Phường Bến Nghé"
+    assert data["shipping_address_detail"] == "123 Nguyễn Huệ"
+    assert data["auto_fill_infor"] is True

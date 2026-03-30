@@ -15,6 +15,11 @@ class CustomerProfileResponse(BaseModel):
     gender: str | None
     date_of_birth: date | None
     has_password: bool
+    shipping_province: str | None
+    shipping_district: str | None
+    shipping_ward: str | None
+    shipping_address_detail: str | None
+    auto_fill_infor: bool
 
 
 class CustomerProfileUpdateRequest(BaseModel):
@@ -25,6 +30,11 @@ class CustomerProfileUpdateRequest(BaseModel):
     full_name: str | None = None
     phone: str | None = None
     gender: str | None = None
+    shipping_province: str | None = None
+    shipping_district: str | None = None
+    shipping_ward: str | None = None
+    shipping_address_detail: str | None = None
+    auto_fill_infor: bool | None = None
 
     @field_validator("full_name")
     @classmethod
@@ -49,7 +59,20 @@ class CustomerProfileUpdateRequest(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    """Request body for POST /api/v1/customers/me/change-password."""
+    """Request body for POST /api/v1/customers/me/change-password.
+
+    Step 1: Verify old password and send OTP to email.
+    """
 
     old_password: str
+    new_password: str
+
+
+class ConfirmPasswordChangeRequest(BaseModel):
+    """Request body for POST /api/v1/customers/me/confirm-password-change.
+
+    Step 2: Verify OTP code and apply the new password.
+    """
+
+    otp_code: str
     new_password: str

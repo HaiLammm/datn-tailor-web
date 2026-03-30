@@ -218,6 +218,11 @@ None — implementation completed cleanly. All 36 tests passed on first run.
 - Staff query in `OrderBoardClient.tsx` is lazy (`enabled: approveDialog.open`) to avoid fetching on every page load.
 - Toast uses state-based 3-second auto-dismiss, matching description in dev notes.
 
+### Post-Review Bug Fixes
+
+- **[BUG FIX] notification_type invalid**: `notification_type="order_approved"` not in DB CHECK constraint `chk_notification_type` (allowed: `order_status`, `appointment`, `return_reminder`, `payment`, `system`). Notifications silently failed because `approve_order()` creates them AFTER `db.commit()` — the order status change succeeded but customer never received notification. Fixed: changed to `notification_type="order_status"`.
+- **[BUG FIX] order_code format mismatch**: Notification messages used `#{uuid[:8].upper()}` (e.g., `#27C9C93B`) while customer-facing pages use `ORD-YYYYMMDD-{uuid[:6]}` (e.g., `ORD-20260330-27C9C9`). Fixed: added `_build_order_code()` helper in `order_service.py` matching `_build_order_number()` pattern from `order_customer_service.py`. All notification `order_code` formatting now uses consistent `ORD-` format.
+
 ### File List
 
 **Modified:**

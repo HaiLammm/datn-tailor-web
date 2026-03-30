@@ -7,9 +7,11 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
 import { createOrder } from "@/app/actions/order-actions";
 import { previewVoucherDiscount } from "@/app/actions/voucher-actions";
+import { getCustomerProfile } from "@/app/actions/profile-actions";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
 import { RentalCheckoutFields } from "./RentalCheckoutFields";
 import { BespokeCheckoutBadge } from "./BespokeCheckoutBadge";
@@ -113,6 +115,9 @@ const INITIAL_RENTAL_FIELDS: RentalFieldsData = {
 
 export function ShippingFormClient() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [autoFillMsg, setAutoFillMsg] = useState<string | null>(null);
   const items = useCartStore((state) => state.items);
   const cartTotal = useCartStore((state) => state.cartTotal);
   const clearCart = useCartStore((state) => state.clearCart);
@@ -168,6 +173,38 @@ export function ShippingFormClient() {
     const fieldErrors = validateForm(formData);
     if (fieldErrors[field]) {
       setErrors((prev) => ({ ...prev, [field]: fieldErrors[field] }));
+    }
+  };
+
+  const handleAutoFill = async () => {
+    setIsAutoFilling(true);
+    setAutoFillMsg(null);
+    try {
+      const result = await getCustomerProfile();
+      if (!result.success || !result.data) {
+        setAutoFillMsg(result.error ?? "Không thể tải thông tin hồ sơ.");
+        return;
+      }
+      const profile = result.data;
+      if (!profile.auto_fill_infor) {
+        setAutoFillMsg("Tính năng tự động điền chưa được bật. Vui lòng bật trong Hồ sơ cá nhân.");
+        return;
+      }
+      setFormData((prev) => ({
+        ...prev,
+        fullName: profile.full_name ?? prev.fullName,
+        phone: profile.phone ?? prev.phone,
+        province: profile.shipping_province ?? prev.province,
+        district: profile.shipping_district ?? prev.district,
+        ward: profile.shipping_ward ?? prev.ward,
+        addressDetail: profile.shipping_address_detail ?? prev.addressDetail,
+      }));
+      setErrors({});
+      setAutoFillMsg(null);
+    } catch {
+      setAutoFillMsg("Đã xảy ra lỗi khi tải thông tin.");
+    } finally {
+      setIsAutoFilling(false);
     }
   };
 
@@ -312,12 +349,39 @@ export function ShippingFormClient() {
             >
               {/* Shipping Information */}
               <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 mb-6">
-                <h2
-                  className="text-lg font-semibold text-[#1A2B4C] mb-4"
-                  style={{ fontFamily: "Cormorant Garamond, serif" }}
-                >
-                  Địa Chỉ Giao Hàng
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2
+                    className="text-lg font-semibold text-[#1A2B4C]"
+                    style={{ fontFamily: "Cormorant Garamond, serif" }}
+                  >
+                    Địa Chỉ Giao Hàng
+                  </h2>
+                  {session && (
+                    <button
+                      type="button"
+                      onClick={handleAutoFill}
+                      disabled={isAutoFilling}
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors min-h-[36px] ${
+                        isAutoFilling
+                          ? "border-gray-300 text-gray-400 cursor-not-allowed"
+                          : "border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-white cursor-pointer"
+                      }`}
+                      data-testid="auto-fill-button"
+                    >
+                      {isAutoFilling ? "Đang tải..." : "Tự động điền thông tin"}
+                    </button>
+                  )}
+                </div>
+
+                {autoFillMsg && (
+                  <div
+                    className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg"
+                    role="status"
+                    data-testid="auto-fill-message"
+                  >
+                    <p className="text-sm text-amber-700">{autoFillMsg}</p>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   {/* Full Name */}

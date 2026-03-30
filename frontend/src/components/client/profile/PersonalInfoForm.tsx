@@ -42,6 +42,11 @@ export function PersonalInfoForm({ profile }: PersonalInfoFormProps) {
       full_name: profile.full_name ?? "",
       phone: profile.phone ?? "",
       gender: (profile.gender as "Nam" | "Nữ" | "Khác" | "") ?? "",
+      shipping_province: profile.shipping_province ?? "",
+      shipping_district: profile.shipping_district ?? "",
+      shipping_ward: profile.shipping_ward ?? "",
+      shipping_address_detail: profile.shipping_address_detail ?? "",
+      auto_fill_infor: profile.auto_fill_infor ?? false,
     },
   });
 
@@ -130,6 +135,92 @@ export function PersonalInfoForm({ profile }: PersonalInfoFormProps) {
               {errors.gender && (
                 <p className="mt-1 text-sm text-red-600">{errors.gender.message}</p>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Shipping Address Section */}
+        <h3 className="text-lg font-serif font-bold text-gray-900 mt-8 mb-4">Địa chỉ giao hàng</h3>
+        <div className="space-y-5">
+          {/* Shipping Province */}
+          <div className="md:grid md:grid-cols-3 md:gap-4 md:items-start">
+            <label className="block text-sm font-medium text-gray-700 md:pt-2" htmlFor="shipping_province">
+              Tỉnh/Thành phố
+            </label>
+            <div className="mt-1 md:mt-0 md:col-span-2">
+              <input
+                id="shipping_province"
+                type="text"
+                {...register("shipping_province")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="TP. Hồ Chí Minh"
+              />
+            </div>
+          </div>
+
+          {/* Shipping District */}
+          <div className="md:grid md:grid-cols-3 md:gap-4 md:items-start">
+            <label className="block text-sm font-medium text-gray-700 md:pt-2" htmlFor="shipping_district">
+              Quận/Huyện
+            </label>
+            <div className="mt-1 md:mt-0 md:col-span-2">
+              <input
+                id="shipping_district"
+                type="text"
+                {...register("shipping_district")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Quận 1"
+              />
+            </div>
+          </div>
+
+          {/* Shipping Ward */}
+          <div className="md:grid md:grid-cols-3 md:gap-4 md:items-start">
+            <label className="block text-sm font-medium text-gray-700 md:pt-2" htmlFor="shipping_ward">
+              Phường/Xã
+            </label>
+            <div className="mt-1 md:mt-0 md:col-span-2">
+              <input
+                id="shipping_ward"
+                type="text"
+                {...register("shipping_ward")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Phường Bến Nghé"
+              />
+            </div>
+          </div>
+
+          {/* Shipping Address Detail */}
+          <div className="md:grid md:grid-cols-3 md:gap-4 md:items-start">
+            <label className="block text-sm font-medium text-gray-700 md:pt-2" htmlFor="shipping_address_detail">
+              Địa chỉ chi tiết
+            </label>
+            <div className="mt-1 md:mt-0 md:col-span-2">
+              <input
+                id="shipping_address_detail"
+                type="text"
+                {...register("shipping_address_detail")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="123 Nguyễn Huệ"
+              />
+            </div>
+          </div>
+
+          {/* Auto-fill toggle */}
+          <div className="md:grid md:grid-cols-3 md:gap-4 md:items-start">
+            <label className="block text-sm font-medium text-gray-700 md:pt-2" htmlFor="auto_fill_infor">
+              Tự động điền
+            </label>
+            <div className="mt-1 md:mt-0 md:col-span-2">
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  id="auto_fill_infor"
+                  type="checkbox"
+                  {...register("auto_fill_infor")}
+                  className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-700">Tự động điền thông tin khi checkout</span>
+              </label>
             </div>
           </div>
         </div>

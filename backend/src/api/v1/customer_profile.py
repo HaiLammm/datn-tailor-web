@@ -33,6 +33,7 @@ from src.models.appointment import AppointmentResponse
 from src.models.customer import MeasurementResponse
 from src.models.customer_profile import (
     ChangePasswordRequest,
+    ConfirmPasswordChangeRequest,
     CustomerProfileResponse,
     CustomerProfileUpdateRequest,
 )
@@ -89,6 +90,11 @@ async def get_my_profile(
             gender=current_user.gender,
             date_of_birth=current_user.date_of_birth,
             has_password=current_user.hashed_password is not None,
+            shipping_province=current_user.shipping_province,
+            shipping_district=current_user.shipping_district,
+            shipping_ward=current_user.shipping_ward,
+            shipping_address_detail=current_user.shipping_address_detail,
+            auto_fill_infor=current_user.auto_fill_infor,
         ).model_dump(mode="json"),
         "meta": {},
     }
@@ -102,7 +108,8 @@ async def update_my_profile(
 ) -> dict:
     """Update the authenticated customer's own profile.
 
-    AC5: Allows updating full_name, phone, gender. Email is read-only.
+    AC5: Allows updating full_name, phone, gender, shipping address, auto_fill_infor.
+    Email is read-only.
     """
     if body.full_name is not None:
         current_user.full_name = body.full_name.strip()
@@ -110,6 +117,16 @@ async def update_my_profile(
         current_user.phone = body.phone if body.phone != "" else None
     if body.gender is not None:
         current_user.gender = body.gender if body.gender != "" else None
+    if body.shipping_province is not None:
+        current_user.shipping_province = body.shipping_province if body.shipping_province != "" else None
+    if body.shipping_district is not None:
+        current_user.shipping_district = body.shipping_district if body.shipping_district != "" else None
+    if body.shipping_ward is not None:
+        current_user.shipping_ward = body.shipping_ward if body.shipping_ward != "" else None
+    if body.shipping_address_detail is not None:
+        current_user.shipping_address_detail = body.shipping_address_detail if body.shipping_address_detail != "" else None
+    if body.auto_fill_infor is not None:
+        current_user.auto_fill_infor = body.auto_fill_infor
 
     await db.commit()
     await db.refresh(current_user)
@@ -122,6 +139,11 @@ async def update_my_profile(
             gender=current_user.gender,
             date_of_birth=current_user.date_of_birth,
             has_password=current_user.hashed_password is not None,
+            shipping_province=current_user.shipping_province,
+            shipping_district=current_user.shipping_district,
+            shipping_ward=current_user.shipping_ward,
+            shipping_address_detail=current_user.shipping_address_detail,
+            auto_fill_infor=current_user.auto_fill_infor,
         ).model_dump(mode="json"),
         "meta": {},
     }
@@ -133,19 +155,19 @@ async def change_my_password(
     current_user: CurrentUser,
     db=Depends(get_db),
 ) -> dict:
-    """Change the authenticated customer's password.
+    """Step 1: Verify old password and send OTP to email.
 
-    AC5:
-    - 400 NO_PASSWORD  — if OAuth-only account (hashed_password is None)
+    - 400 NO_PASSWORD  — if OAuth-only account
     - 400 WRONG_PASSWORD — if old_password does not match
     - 400 WEAK_PASSWORD  — if new_password fails strength rules
-    - 200 on success
+    - 429 RATE_LIMITED — if OTP rate limit exceeded
+    - 200 on success → OTP sent to email
     """
     # Rate limit password change attempts
     _check_rate_limit(current_user.email)
     _password_attempts[current_user.email].append(time.monotonic())
 
-    # AC7: OAuth-only user has no password
+    # OAuth-only user has no password
     if current_user.hashed_password is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -172,6 +194,84 @@ async def change_my_password(
             detail={
                 "code": "WEAK_PASSWORD",
                 "message": "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số",
+            },
+        )
+
+    # Send OTP for verification
+    from src.services.otp_service import check_rate_limit, create_otp_record, generate_otp, invalidate_old_otps
+    from src.services.email_service import send_otp_email
+
+    is_allowed, remaining = await check_rate_limit(db, current_user.email, purpose="password_change")
+    if not is_allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "OTP_RATE_LIMITED",
+                "message": "Quá nhiều yêu cầu OTP. Vui lòng đợi 1 giờ.",
+            },
+        )
+
+    await invalidate_old_otps(db, current_user.email, purpose="password_change")
+    otp_code = generate_otp()
+    await create_otp_record(db, current_user.email, otp_code, purpose="password_change")
+
+    try:
+        await send_otp_email(
+            email=current_user.email,
+            full_name=current_user.full_name or current_user.email,
+            otp_code=otp_code,
+        )
+    except Exception:
+        logger.warning("Failed to send OTP email for password change: %s", current_user.email)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "EMAIL_SEND_FAILED",
+                "message": "Không thể gửi mã OTP. Vui lòng thử lại sau.",
+            },
+        )
+
+    return {
+        "data": {
+            "message": "Mã OTP đã được gửi đến email của bạn",
+            "otp_required": True,
+        },
+        "meta": {},
+    }
+
+
+@router.post("/confirm-password-change", response_model=dict)
+async def confirm_password_change(
+    body: ConfirmPasswordChangeRequest,
+    current_user: CurrentUser,
+    db=Depends(get_db),
+) -> dict:
+    """Step 2: Verify OTP and apply new password.
+
+    - 400 INVALID_OTP — if OTP is invalid/expired/used
+    - 400 WEAK_PASSWORD — if new_password fails strength rules
+    - 200 on success → password changed
+    """
+    # Validate new password strength
+    if not _PASSWORD_RE.match(body.new_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "WEAK_PASSWORD",
+                "message": "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số",
+            },
+        )
+
+    # Verify OTP
+    from src.services.otp_service import verify_otp
+
+    is_valid = await verify_otp(db, current_user.email, body.otp_code, purpose="password_change")
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "INVALID_OTP",
+                "message": "Mã OTP không hợp lệ hoặc đã hết hạn",
             },
         )
 

@@ -29,7 +29,26 @@ from src.models.order_customer import (
 # Default tenant (all orders use this tenant)
 DEFAULT_TENANT_ID = UUID("00000000-0000-0000-0000-000000000001")
 
-# Status display order for timeline
+# Status display order for timeline — per service type (Epic 10)
+_STATUS_ORDER_BUY = [
+    "pending", "confirmed", "preparing", "ready_to_ship", "shipped", "delivered", "completed",
+]
+_STATUS_ORDER_BUY_PICKUP = [
+    "pending", "confirmed", "preparing", "ready_for_pickup", "delivered", "completed",
+]
+_STATUS_ORDER_RENT = [
+    "pending", "confirmed", "preparing", "ready_to_ship", "shipped", "delivered",
+    "renting", "returned", "completed",
+]
+_STATUS_ORDER_RENT_PICKUP = [
+    "pending", "confirmed", "preparing", "ready_for_pickup", "delivered",
+    "renting", "returned", "completed",
+]
+_STATUS_ORDER_BESPOKE = [
+    "pending", "confirmed", "in_progress", "in_production", "checked",
+    "ready_to_ship", "shipped", "delivered", "completed",
+]
+# Legacy fallback (pre-Epic 10 orders without service_type)
 _STATUS_ORDER = ["pending", "confirmed", "in_progress", "checked", "shipped", "delivered"]
 
 _STATUS_LABELS: dict[str, str] = {
@@ -41,6 +60,13 @@ _STATUS_LABELS: dict[str, str] = {
     "delivered": "Giao hàng thành công",
     "cancelled": "Đơn hàng đã bị hủy",
     "returned": "Sản phẩm đã được trả lại",
+    "pending_measurement": "Chờ xác nhận số đo",
+    "preparing": "Đang chuẩn bị",
+    "ready_to_ship": "Sẵn sàng giao hàng",
+    "ready_for_pickup": "Sẵn sàng nhận tại tiệm",
+    "in_production": "Đang sản xuất",
+    "renting": "Khách đang thuê",
+    "completed": "Hoàn tất",
 }
 
 
@@ -61,10 +87,27 @@ def _determine_order_type(items: list[OrderItemDB]) -> str:
     return "mixed"
 
 
+def _get_status_order(service_type: str | None, current_status: str) -> list[str]:
+    """Return status progression list for the given service type."""
+    if service_type == "bespoke":
+        return _STATUS_ORDER_BESPOKE
+    if service_type == "rent":
+        if current_status in ("ready_for_pickup", "delivered") and current_status not in _STATUS_ORDER_RENT:
+            return _STATUS_ORDER_RENT_PICKUP
+        return _STATUS_ORDER_RENT
+    if service_type == "buy":
+        if current_status in ("ready_for_pickup",):
+            return _STATUS_ORDER_BUY_PICKUP
+        return _STATUS_ORDER_BUY
+    # Legacy fallback
+    return _STATUS_ORDER
+
+
 def _build_timeline(
     current_status: str,
     created_at: datetime,
     updated_at: datetime,
+    service_type: str | None = None,
 ) -> list[OrderTimelineEntry]:
     """Build synthetic timeline from order status and timestamps.
 
@@ -90,11 +133,13 @@ def _build_timeline(
         )
         return entries
 
+    status_order = _get_status_order(service_type, current_status)
+
     # Find index of current status in progression
     # If status is unknown, show only pending and the current status
-    if current_status in _STATUS_ORDER:
-        current_idx = _STATUS_ORDER.index(current_status)
-        statuses_passed = _STATUS_ORDER[: current_idx + 1]
+    if current_status in status_order:
+        current_idx = status_order.index(current_status)
+        statuses_passed = status_order[: current_idx + 1]
     else:
         # Unknown status: show pending + current status
         statuses_passed = ["pending", current_status]
@@ -309,7 +354,7 @@ async def get_order_detail(
         for item in order.items
     ]
 
-    timeline = _build_timeline(order.status, order.created_at, order.updated_at)
+    timeline = _build_timeline(order.status, order.created_at, order.updated_at, order.service_type)
     delivery_info = _build_delivery_info(order)
 
     # Query tailor tasks for this order (privacy-safe fields only)

@@ -85,10 +85,15 @@ export async function updateCustomerProfile(data: ProfileUpdateInput): Promise<{
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
     // Include all fields; allow empty strings for clearing phone/gender
-    const body: Record<string, string | undefined> = {};
+    const body: Record<string, string | boolean | undefined> = {};
     if (data.full_name !== undefined) body.full_name = data.full_name;
     if (data.phone !== undefined) body.phone = data.phone;
     if (data.gender !== undefined) body.gender = data.gender;
+    if (data.shipping_province !== undefined) body.shipping_province = data.shipping_province;
+    if (data.shipping_district !== undefined) body.shipping_district = data.shipping_district;
+    if (data.shipping_ward !== undefined) body.shipping_ward = data.shipping_ward;
+    if (data.shipping_address_detail !== undefined) body.shipping_address_detail = data.shipping_address_detail;
+    if (data.auto_fill_infor !== undefined) body.auto_fill_infor = data.auto_fill_infor;
 
     const resp = await fetch(`${BACKEND_URL}/api/v1/customers/me/profile`, {
       method: "PATCH",
@@ -130,6 +135,7 @@ export async function updateCustomerProfile(data: ProfileUpdateInput): Promise<{
 
 export async function changePassword(data: Pick<PasswordChangeInput, "old_password" | "new_password">): Promise<{
   success: boolean;
+  otpRequired?: boolean;
   error?: string;
 }> {
   try {
@@ -168,7 +174,67 @@ export async function changePassword(data: Pick<PasswordChangeInput, "old_passwo
       if (detail?.code === "WEAK_PASSWORD") {
         return { success: false, error: detail.message };
       }
+      if (detail?.code === "OTP_RATE_LIMITED") {
+        return { success: false, error: detail.message };
+      }
+      if (detail?.code === "EMAIL_SEND_FAILED") {
+        return { success: false, error: detail.message };
+      }
       return { success: false, error: "Không thể đổi mật khẩu" };
+    }
+
+    const json = await resp.json();
+    return { success: true, otpRequired: json.data?.otp_required === true };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+// ──────────────────────────────────────────────
+// POST /api/v1/customers/me/confirm-password-change
+// ──────────────────────────────────────────────
+
+export async function confirmPasswordChange(data: {
+  otp_code: string;
+  new_password: string;
+}): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const token = await getAuthToken();
+    if (!token) return { success: false, error: "Chưa đăng nhập" };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const resp = await fetch(`${BACKEND_URL}/api/v1/customers/me/confirm-password-change`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (resp.status === 401) return { success: false, error: "Phiên đăng nhập hết hạn" };
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      const detail = err.detail;
+      if (detail?.code === "INVALID_OTP") {
+        return { success: false, error: "Mã OTP không hợp lệ hoặc đã hết hạn" };
+      }
+      if (detail?.code === "WEAK_PASSWORD") {
+        return { success: false, error: detail.message };
+      }
+      return { success: false, error: "Không thể xác nhận đổi mật khẩu" };
     }
 
     return { success: true };

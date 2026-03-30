@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * PasswordChangeForm — Story 4.4b (AC3, AC4, AC7)
- * Collapsible section for changing password.
+ * PasswordChangeForm — Story 4.4b (AC3, AC4, AC7) + OTP verification
+ * Two-step flow:
+ *   Step 1: Enter old + new password → backend sends OTP to email
+ *   Step 2: Enter 6-digit OTP → backend verifies and changes password
  * Shows informational message for OAuth-only users (AC7).
- * Uses react-hook-form + Zod + inline toast pattern.
  */
 
 import { useRef, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { changePassword } from "@/app/actions/profile-actions";
+import { changePassword, confirmPasswordChange } from "@/app/actions/profile-actions";
 import { passwordChangeSchema, type PasswordChangeInput } from "@/types/customer";
 
 interface PasswordChangeFormProps {
@@ -57,6 +58,13 @@ export function PasswordChangeForm({ hasPassword }: PasswordChangeFormProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [newPwdValue, setNewPwdValue] = useState("");
 
+  // OTP step state
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [pendingNewPassword, setPendingNewPassword] = useState("");
+
   function showToast(message: string, type: "success" | "error") {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ message, type });
@@ -78,19 +86,55 @@ export function PasswordChangeForm({ hasPassword }: PasswordChangeFormProps) {
     resolver: zodResolver(passwordChangeSchema),
   });
 
+  // Step 1: Verify old password → send OTP
   async function onSubmit(data: PasswordChangeInput) {
     const result = await changePassword({
       old_password: data.old_password,
       new_password: data.new_password,
     });
-    if (result.success) {
-      showToast("Mật khẩu đã cập nhật", "success");
-      reset();
-      setNewPwdValue("");
-      setIsOpen(false);
-    } else {
+    if (result.success && result.otpRequired) {
+      setPendingNewPassword(data.new_password);
+      setOtpStep(true);
+      setOtpCode("");
+      setOtpError(null);
+      showToast("Mã OTP đã gửi đến email của bạn", "success");
+    } else if (!result.success) {
       showToast(result.error ?? "Đã xảy ra lỗi", "error");
     }
+  }
+
+  // Step 2: Verify OTP → change password
+  async function onConfirmOtp() {
+    if (otpCode.length !== 6) {
+      setOtpError("Vui lòng nhập đủ 6 chữ số");
+      return;
+    }
+    setIsConfirming(true);
+    setOtpError(null);
+
+    const result = await confirmPasswordChange({
+      otp_code: otpCode,
+      new_password: pendingNewPassword,
+    });
+
+    setIsConfirming(false);
+
+    if (result.success) {
+      showToast("Mật khẩu đã cập nhật thành công", "success");
+      resetAll();
+    } else {
+      setOtpError(result.error ?? "Mã OTP không hợp lệ");
+    }
+  }
+
+  function resetAll() {
+    reset();
+    setNewPwdValue("");
+    setOtpStep(false);
+    setOtpCode("");
+    setOtpError(null);
+    setPendingNewPassword("");
+    setIsOpen(false);
   }
 
   const strength = evaluateStrength(newPwdValue);
@@ -131,7 +175,63 @@ export function PasswordChangeForm({ hasPassword }: PasswordChangeFormProps) {
               Tài khoản của bạn sử dụng đăng nhập Google. Để đặt mật khẩu, sử dụng chức năng{" "}
               <strong>Quên mật khẩu</strong>.
             </div>
+          ) : otpStep ? (
+            /* ─── Step 2: OTP verification ─── */
+            <div className="space-y-5">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                Mã xác thực OTP đã được gửi đến email của bạn. Vui lòng nhập mã 6 chữ số để hoàn tất đổi mật khẩu.
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="otp_code">
+                  Mã OTP
+                </label>
+                <input
+                  id="otp_code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    setOtpCode(val);
+                    setOtpError(null);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="000000"
+                  autoFocus
+                />
+                {otpError && (
+                  <p className="mt-1 text-sm text-red-600">{otpError}</p>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={resetAll}
+                  className="text-sm text-gray-500 hover:text-gray-700 underline"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={onConfirmOtp}
+                  disabled={isConfirming || otpCode.length !== 6}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg px-6 py-2.5 text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  {isConfirming && (
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  )}
+                  {isConfirming ? "Đang xác nhận..." : "Xác nhận"}
+                </button>
+              </div>
+            </div>
           ) : (
+            /* ─── Step 1: Password form ─── */
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
               <div className="space-y-5">
                 {/* Old password */}
@@ -233,7 +333,7 @@ export function PasswordChangeForm({ hasPassword }: PasswordChangeFormProps) {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                     </svg>
                   )}
-                  {isSubmitting ? "Đang xử lý..." : "Cập nhật mật khẩu"}
+                  {isSubmitting ? "Đang xử lý..." : "Tiếp tục"}
                 </button>
               </div>
             </form>

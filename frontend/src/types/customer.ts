@@ -178,6 +178,11 @@ export interface CustomerProfileDetail {
   gender: string | null;
   date_of_birth: string | null;
   has_password: boolean;
+  shipping_province: string | null;
+  shipping_district: string | null;
+  shipping_ward: string | null;
+  shipping_address_detail: string | null;
+  auto_fill_infor: boolean;
 }
 
 /**
@@ -194,6 +199,11 @@ export const profileUpdateSchema = z.object({
     .optional()
     .or(z.literal("")),
   gender: z.enum(["Nam", "Nữ", "Khác"]).optional().or(z.literal("")),
+  shipping_province: z.string().max(100).optional().or(z.literal("")),
+  shipping_district: z.string().max(100).optional().or(z.literal("")),
+  shipping_ward: z.string().max(100).optional().or(z.literal("")),
+  shipping_address_detail: z.string().max(500).optional().or(z.literal("")),
+  auto_fill_infor: z.boolean().optional(),
 });
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
@@ -218,6 +228,19 @@ export const passwordChangeSchema = z
   });
 
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;
+
+/**
+ * Schema for OTP confirmation step (Step 2)
+ */
+export const otpConfirmSchema = z.object({
+  otp_code: z
+    .string()
+    .length(6, "Mã OTP phải có 6 chữ số")
+    .regex(/^[0-9]{6}$/, "Mã OTP chỉ chứa số"),
+  new_password: z.string().min(1),
+});
+
+export type OtpConfirmInput = z.infer<typeof otpConfirmSchema>;
 
 // ===== API Error Types =====
 

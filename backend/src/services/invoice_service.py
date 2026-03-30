@@ -21,6 +21,13 @@ _STATUS_LABELS: dict[str, str] = {
     "delivered": "Đã giao",
     "cancelled": "Đã hủy",
     "returned": "Đã trả",
+    "pending_measurement": "Chờ số đo",
+    "preparing": "Đang chuẩn bị",
+    "ready_to_ship": "Sẵn sàng giao",
+    "ready_for_pickup": "Chờ nhận tại tiệm",
+    "in_production": "Đang sản xuất",
+    "renting": "Đang thuê",
+    "completed": "Hoàn tất",
 }
 
 _PAYMENT_METHOD_LABELS: dict[str, str] = {
@@ -80,6 +87,56 @@ def generate_invoice_html(order: CustomerOrderDetail) -> str:
             <td style="padding: 10px 8px; font-size: 13px; text-align:right; font-weight:600;">{_format_currency(item.total_price)}</td>
         </tr>
         """
+
+    # Build timeline HTML
+    timeline_html = ""
+    if order.timeline:
+        timeline_rows = ""
+        for entry in order.timeline:
+            ts = entry.timestamp.strftime("%d/%m/%Y %H:%M")
+            label = _STATUS_LABELS.get(entry.status, entry.description)
+            timeline_rows += f"""
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+                <td style="padding: 8px; font-size: 13px; color: #6b7280; white-space: nowrap;">{ts}</td>
+                <td style="padding: 8px; font-size: 13px;">{html.escape(label)}</td>
+            </tr>"""
+        timeline_html = f"""
+      <div style="margin-bottom: 24px;">
+        <h4 style="font-size: 11px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.05em; margin-bottom: 10px; font-weight: 600;">Lịch sử trạng thái</h4>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tbody>{timeline_rows}
+          </tbody>
+        </table>
+      </div>"""
+
+    # Build tailor info HTML
+    tailor_html = ""
+    if order.tailor_info:
+        tailor_rows = ""
+        for t in order.tailor_info:
+            exp = f" ({t.experience_years} năm KN)" if t.experience_years else ""
+            step_label = _STATUS_LABELS.get(t.production_step, t.production_step)
+            tailor_rows += f"""
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+                <td style="padding: 8px; font-size: 13px; font-weight: 600;">{html.escape(t.full_name)}{exp}</td>
+                <td style="padding: 8px; font-size: 13px;">{html.escape(t.garment_name)}</td>
+                <td style="padding: 8px; font-size: 13px; color: #6b7280;">{html.escape(step_label)}</td>
+            </tr>"""
+        tailor_html = f"""
+      <div style="margin-bottom: 24px;">
+        <h4 style="font-size: 11px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.05em; margin-bottom: 10px; font-weight: 600;">Thợ may phụ trách</h4>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: #f3f4f6; border-bottom: 2px solid #e5e7eb;">
+              <th style="padding: 8px; font-size: 12px; text-align: left; color: #6b7280;">Thợ may</th>
+              <th style="padding: 8px; font-size: 12px; text-align: left; color: #6b7280;">Sản phẩm</th>
+              <th style="padding: 8px; font-size: 12px; text-align: left; color: #6b7280;">Công đoạn</th>
+            </tr>
+          </thead>
+          <tbody>{tailor_rows}
+          </tbody>
+        </table>
+      </div>"""
 
     shipping_fee = 0  # MVP: no separate shipping fee tracked
     total = order.total_amount
@@ -276,6 +333,9 @@ def generate_invoice_html(order: CustomerOrderDetail) -> str:
           {items_rows}
         </tbody>
       </table>
+
+      {timeline_html}
+      {tailor_html}
 
       <div class="totals">
         <div class="total-row">
