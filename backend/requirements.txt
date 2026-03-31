@@ -1,5 +1,6 @@
 # Direct dependencies for Tailor Project Backend
 fastapi>=0.133.0
+python-multipart>=0.0.20
 uvicorn[standard]>=0.41.0
 langgraph>=1.0.0
 pydantic[email]>=2.12.0

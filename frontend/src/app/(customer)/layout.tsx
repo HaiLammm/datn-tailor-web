@@ -12,6 +12,7 @@ import { auth } from "@/auth";
 import { CartBadge } from "@/components/client/cart/CartBadge";
 import { ProfileIcon } from "@/components/client/profile/ProfileIcon";
 import { LogoutButton } from "@/components/client/profile/LogoutButton";
+import { NotificationBell } from "@/components/client/profile/NotificationBell";
 
 interface CustomerLayoutProps {
   children: ReactNode;
@@ -40,6 +41,7 @@ export default async function CustomerLayout({ children }: CustomerLayoutProps) 
                 Trang chủ
               </a>
               <CartBadge />
+              {userName && <NotificationBell />}
               <ProfileIcon userName={userName} />
               {userName && <LogoutButton />}
             </nav>

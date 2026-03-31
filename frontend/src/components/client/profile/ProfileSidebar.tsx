@@ -9,10 +9,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-interface ProfileSidebarProps {
-  unreadNotificationCount?: number;
-}
-
 interface NavItem {
   label: string;
   href: string;
@@ -57,15 +53,6 @@ const navItems: NavItem[] = [
     ),
   },
   {
-    label: "Thông báo",
-    href: "/profile/notifications",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-      </svg>
-    ),
-  },
-  {
     label: "Voucher",
     href: "/profile/vouchers",
     icon: (
@@ -76,26 +63,8 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function ProfileSidebar({ unreadNotificationCount = 0 }: ProfileSidebarProps) {
+export function ProfileSidebar() {
   const pathname = usePathname();
-  const badgeCount = Math.min(unreadNotificationCount, 99);
-
-  function renderLabel(item: NavItem) {
-    if (item.href !== "/profile/notifications" || badgeCount === 0) {
-      return <span>{item.label}</span>;
-    }
-    return (
-      <>
-        <span>{item.label}</span>
-        <span
-          className="ml-auto min-w-[1.25rem] h-5 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold leading-none"
-          aria-label={`${badgeCount} thông báo chưa đọc`}
-        >
-          {badgeCount}
-        </span>
-      </>
-    );
-  }
 
   return (
     <>
@@ -116,7 +85,7 @@ export function ProfileSidebar({ unreadNotificationCount = 0 }: ProfileSidebarPr
                   aria-current={isActive ? "page" : undefined}
                 >
                   {item.icon}
-                  {renderLabel(item)}
+                  <span>{item.label}</span>
                 </Link>
               </li>
             );
@@ -141,7 +110,7 @@ export function ProfileSidebar({ unreadNotificationCount = 0 }: ProfileSidebarPr
                   aria-current={isActive ? "page" : undefined}
                 >
                   {item.icon}
-                  {renderLabel(item)}
+                  <span>{item.label}</span>
                 </Link>
               </li>
             );

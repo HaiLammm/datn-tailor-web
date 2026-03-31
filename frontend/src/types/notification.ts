@@ -7,7 +7,8 @@ export type NotificationType =
   | "appointment"
   | "return_reminder"
   | "payment"
-  | "system";
+  | "system"
+  | "voucher";
 
 export interface NotificationItem {
   id: string;

@@ -83,6 +83,14 @@ function InfoIcon({ className }: { className?: string }) {
   );
 }
 
+function VoucherIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+    </svg>
+  );
+}
+
 function TrashIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -130,6 +138,12 @@ const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     iconBg: "bg-slate-100",
     iconColor: "text-slate-600",
     label: "Hệ thống",
+  },
+  voucher: {
+    iconComponent: VoucherIcon,
+    iconBg: "bg-purple-100",
+    iconColor: "text-purple-600",
+    label: "Voucher",
   },
 };
 

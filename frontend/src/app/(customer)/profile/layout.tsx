@@ -10,7 +10,6 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { ProfileSidebar } from "@/components/client/profile/ProfileSidebar";
-import { getUnreadNotificationCount } from "@/app/actions/profile-actions";
 
 interface ProfileLayoutProps {
   children: ReactNode;
@@ -24,9 +23,6 @@ export default async function ProfileLayout({ children }: ProfileLayoutProps) {
   }
 
   const userName = session.user?.name ?? session.user?.id ?? "Khách hàng";
-
-  const unreadResult = await getUnreadNotificationCount();
-  const unreadCount = unreadResult.success ? (unreadResult.data?.unread_count ?? 0) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -59,7 +55,7 @@ export default async function ProfileLayout({ children }: ProfileLayoutProps) {
       {/* Mobile tab bar */}
       <div className="bg-white border-b border-gray-200 md:hidden">
         <div className="max-w-7xl mx-auto px-4">
-          <ProfileSidebar unreadNotificationCount={unreadCount} />
+          <ProfileSidebar />
         </div>
       </div>
 
@@ -69,7 +65,7 @@ export default async function ProfileLayout({ children }: ProfileLayoutProps) {
           {/* Desktop sidebar */}
           <div className="hidden md:block">
             <div className="bg-white rounded-xl border border-gray-200 p-4 sticky top-6">
-              <ProfileSidebar unreadNotificationCount={unreadCount} />
+              <ProfileSidebar />
             </div>
           </div>
 
