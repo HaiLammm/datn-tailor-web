@@ -26,3 +26,17 @@
 - **Severity:** Low
 - **Scope:** `tailor_tasks.production_step` column
 - **Description:** VARCHAR with no CHECK constraint. Direct DB edits could insert invalid values. Add `CHECK (production_step IN ('pending','cutting','sewing','finishing','quality_check','done'))`.
+
+## From: Showroom Detail Fixes (2026-03-31)
+
+### 1. formatPrice crashes on non-numeric rentalPrice
+- **Severity:** Medium
+- **Scope:** `BuyRentToggle.tsx` — `formatPrice()` returns "NaN" if input is empty or non-numeric string.
+
+### 2. canBuy flip with stale mode state
+- **Severity:** Medium
+- **Scope:** `BuyRentToggle.tsx` — If `salePrice` changes to null while mode=mua, mode stays stuck. Needs useEffect to reset.
+
+### 3. SizeChartAccordion hardcoded size chart
+- **Severity:** Low
+- **Scope:** `SizeChartAccordion.tsx` — Static chart only has S-XXL. Non-standard sizes won't match. Already noted as "phase sau fetch từ backend".

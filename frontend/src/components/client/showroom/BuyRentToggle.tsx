@@ -5,11 +5,17 @@
  *
  * - Toggle switch: Mua | Thuê
  * - Khi "Thuê": hiển thị date picker ngày mượn/trả
- * - Nút "Thêm vào giỏ hàng" (Heritage Gold) ≥44x44px
- * - Nút "Đặt lịch Bespoke" (Indigo Depth) — conditional (placeholder Epic 3)
+ * - Nút "Tiến hành thanh toán" (Heritage Gold) ≥44x44px
+ *   -> mode=thue: mở RentalDateModal
+ *   -> mode=mua: mở SizeSelectModal
+ * - Nút "Đặt lịch Bespoke" (Indigo Depth) — link to /booking
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import type { Garment } from "@/types/garment";
+import { RentalDateModal } from "./RentalDateModal";
+import { SizeSelectModal } from "./SizeSelectModal";
 
 type Mode = "thue" | "mua";
 
@@ -19,6 +25,8 @@ const formatPrice = (raw: string) =>
   );
 
 interface BuyRentToggleProps {
+  /** Sản phẩm */
+  garment: Garment;
   /** Tên sản phẩm */
   productName: string;
   /** Giá thuê (chuỗi số VND) */
@@ -32,6 +40,7 @@ interface BuyRentToggleProps {
 }
 
 export function BuyRentToggle({
+  garment,
   productName,
   rentalPrice,
   salePrice,
@@ -41,13 +50,50 @@ export function BuyRentToggle({
   const [mode, setMode] = useState<Mode>("thue");
   const [rentFrom, setRentFrom] = useState("");
   const [rentTo, setRentTo] = useState("");
+  const [isRentModalOpen, setIsRentModalOpen] = useState(false);
+  const [isSizeModalOpen, setIsSizeModalOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   const today = new Date().toISOString().split("T")[0];
 
   const canBuy = salePrice !== null;
 
+  const handleCtaClick = () => {
+    if (mode === "thue") {
+      setIsRentModalOpen(true);
+    } else {
+      setIsSizeModalOpen(true);
+    }
+  };
+
+  const handleSuccess = () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    const action = mode === "thue" ? "thuê" : "mua";
+    setToast(`Đã thêm ${productName} vào giỏ hàng (${action})`);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+  };
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Toast thông báo */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="px-4 py-2 rounded-lg text-sm font-medium text-white"
+          style={{ backgroundColor: "#1A2B4C", fontFamily: "Inter, sans-serif" }}
+        >
+          {toast}
+        </div>
+      )}
+
       {/* Toggle Mua / Thuê */}
       <div
         role="group"
@@ -134,12 +180,13 @@ export function BuyRentToggle({
 
       {/* CTA Buttons */}
       <div className="flex flex-col gap-3">
-        {/* Thêm vào giỏ hàng */}
+        {/* Tiến hành thanh toán */}
         <button
           disabled={!isAvailable || (mode === "mua" && !canBuy)}
+          onClick={handleCtaClick}
           aria-label={
             isAvailable
-              ? `Thêm ${productName} vào giỏ hàng`
+              ? `Tiến hành thanh toán ${productName}`
               : `${productName} hiện không có sẵn`
           }
           className="w-full min-h-[48px] px-6 py-3 rounded-lg text-white font-semibold text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -148,23 +195,38 @@ export function BuyRentToggle({
             fontFamily: "Inter, sans-serif",
           }}
         >
-          {isAvailable ? "Thêm vào giỏ hàng" : "Hết hàng"}
+          {isAvailable ? "Tiến hành thanh toán" : "Hết hàng"}
         </button>
 
-        {/* Đặt lịch Bespoke — conditional */}
+        {/* Đặt lịch Bespoke — link to /booking */}
         {supportsBespoke && (
-          <button
+          <Link
+            href="/booking"
             aria-label={`Đặt lịch tư vấn Bespoke cho ${productName}`}
-            className="w-full min-h-[48px] px-6 py-3 rounded-lg text-[#F9F7F2] font-semibold text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 hover:opacity-90"
+            className="w-full min-h-[48px] px-6 py-3 rounded-lg text-[#F9F7F2] font-semibold text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 hover:opacity-90 text-center inline-flex items-center justify-center"
             style={{
               backgroundColor: "#1A2B4C",
               fontFamily: "Inter, sans-serif",
             }}
           >
             Đặt lịch Bespoke
-          </button>
+          </Link>
         )}
       </div>
+
+      {/* Modals */}
+      <RentalDateModal
+        garment={garment}
+        isOpen={isRentModalOpen}
+        onClose={() => setIsRentModalOpen(false)}
+        onSuccess={handleSuccess}
+      />
+      <SizeSelectModal
+        garment={garment}
+        isOpen={isSizeModalOpen}
+        onClose={() => setIsSizeModalOpen(false)}
+        onSuccess={handleSuccess}
+      />
     </div>
   );
 }

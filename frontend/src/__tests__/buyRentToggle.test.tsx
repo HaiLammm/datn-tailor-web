@@ -17,9 +17,38 @@ import { describe, it, expect } from "@jest/globals";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { BuyRentToggle } from "@/components/client/showroom/BuyRentToggle";
+import type { Garment } from "@/types/garment";
+
+const mockGarment: Garment = {
+  id: "g-001",
+  tenant_id: "t-001",
+  name: "Áo dài truyền thống đỏ",
+  description: null,
+  category: "ao_dai",
+  color: "Đỏ",
+  occasion: null,
+  material: null,
+  size_options: ["S", "M", "L"],
+  rental_price: "500000",
+  sale_price: "2000000",
+  image_url: null,
+  image_urls: [],
+  status: "available",
+  expected_return_date: null,
+  days_until_available: null,
+  is_overdue: false,
+  renter_id: null,
+  renter_name: null,
+  renter_email: null,
+  reminder_sent_at: null,
+  reminder_sent: false,
+  created_at: "2025-01-01T00:00:00Z",
+  updated_at: "2025-01-01T00:00:00Z",
+};
 
 describe("BuyRentToggle (Story 2.2)", () => {
   const defaultProps = {
+    garment: mockGarment,
     productName: "Áo dài truyền thống đỏ",
     rentalPrice: "500000",
     salePrice: "2000000",
@@ -69,10 +98,10 @@ describe("BuyRentToggle (Story 2.2)", () => {
     expect(muaBtn).toBeDisabled();
   });
 
-  it("should render 'Thêm vào giỏ hàng' CTA when available", () => {
+  it("should render 'Tiến hành thanh toán' CTA when available", () => {
     render(<BuyRentToggle {...defaultProps} />);
     expect(
-      screen.getByLabelText(`Thêm ${defaultProps.productName} vào giỏ hàng`)
+      screen.getByLabelText(`Tiến hành thanh toán ${defaultProps.productName}`)
     ).toBeInTheDocument();
   });
 

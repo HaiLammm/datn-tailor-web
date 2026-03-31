@@ -39,22 +39,22 @@ export function SizeChartAccordion({ availableSizes }: SizeChartAccordionProps) 
       </summary>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm" aria-label="Bảng kích thước chi tiết">
+        <table className="w-full text-xs" aria-label="Bảng kích thước chi tiết">
           <thead>
             <tr className="bg-[#1A2B4C] text-[#F9F7F2]">
-              <th scope="col" className="px-3 py-2 text-left" style={{ fontFamily: "Inter, sans-serif" }}>
+              <th scope="col" className="px-2 py-1.5 text-left" style={{ fontFamily: "Inter, sans-serif" }}>
                 Cỡ
               </th>
-              <th scope="col" className="px-3 py-2 text-right" style={{ fontFamily: "Inter, sans-serif" }}>
+              <th scope="col" className="px-2 py-1.5 text-right" style={{ fontFamily: "Inter, sans-serif" }}>
                 Vòng Ngực (cm)
               </th>
-              <th scope="col" className="px-3 py-2 text-right" style={{ fontFamily: "Inter, sans-serif" }}>
+              <th scope="col" className="px-2 py-1.5 text-right" style={{ fontFamily: "Inter, sans-serif" }}>
                 Vòng Eo (cm)
               </th>
-              <th scope="col" className="px-3 py-2 text-right" style={{ fontFamily: "Inter, sans-serif" }}>
+              <th scope="col" className="px-2 py-1.5 text-right" style={{ fontFamily: "Inter, sans-serif" }}>
                 Vòng Mông (cm)
               </th>
-              <th scope="col" className="px-3 py-2 text-right" style={{ fontFamily: "Inter, sans-serif" }}>
+              <th scope="col" className="px-2 py-1.5 text-right" style={{ fontFamily: "Inter, sans-serif" }}>
                 Dài Áo (cm)
               </th>
             </tr>
@@ -70,9 +70,9 @@ export function SizeChartAccordion({ availableSizes }: SizeChartAccordionProps) 
                   } ${isAvailable ? "font-medium" : "opacity-50"}`}
                   aria-disabled={!isAvailable}
                 >
-                  <td className="px-3 py-2">
+                  <td className="px-2 py-1.5">
                     <span
-                      className={`inline-flex items-center justify-center w-8 h-8 rounded text-xs font-medium ${
+                      className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-medium ${
                         isAvailable
                           ? "bg-[#1A2B4C] text-[#F9F7F2]"
                           : "bg-gray-100 text-gray-400"
@@ -82,16 +82,16 @@ export function SizeChartAccordion({ availableSizes }: SizeChartAccordionProps) 
                       {row.size}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right text-[#1A1A2E]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+                  <td className="px-2 py-1.5 text-right text-[#1A1A2E]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
                     {row.chest}
                   </td>
-                  <td className="px-3 py-2 text-right text-[#1A1A2E]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+                  <td className="px-2 py-1.5 text-right text-[#1A1A2E]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
                     {row.waist}
                   </td>
-                  <td className="px-3 py-2 text-right text-[#1A1A2E]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+                  <td className="px-2 py-1.5 text-right text-[#1A1A2E]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
                     {row.hip}
                   </td>
-                  <td className="px-3 py-2 text-right text-[#1A1A2E]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
+                  <td className="px-2 py-1.5 text-right text-[#1A1A2E]" style={{ fontFamily: "JetBrains Mono, monospace" }}>
                     {row.length}
                   </td>
                 </tr>
@@ -99,7 +99,7 @@ export function SizeChartAccordion({ availableSizes }: SizeChartAccordionProps) 
             })}
           </tbody>
         </table>
-        <p className="px-3 py-2 text-xs text-gray-500" style={{ fontFamily: "Inter, sans-serif" }}>
+        <p className="px-2 py-1.5 text-xs text-gray-500" style={{ fontFamily: "Inter, sans-serif" }}>
           * Kích thước tính bằng cm. Cỡ được tô đậm là cỡ còn hàng.
         </p>
       </div>
