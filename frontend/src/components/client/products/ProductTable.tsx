@@ -62,6 +62,7 @@ export default function ProductTable({ garments, onDeleteClick }: ProductTablePr
               <th className="text-left px-4 py-3 font-semibold text-stone-600 w-16">Ảnh</th>
               <th className="text-left px-4 py-3 font-semibold text-stone-600">Tên sản phẩm</th>
               <th className="text-left px-4 py-3 font-semibold text-stone-600">Loại</th>
+              <th className="text-center px-4 py-3 font-semibold text-stone-600">Số lượng</th>
               <th className="text-right px-4 py-3 font-semibold text-stone-600">Giá thuê</th>
               <th className="text-right px-4 py-3 font-semibold text-stone-600">Giá bán</th>
               <th className="text-center px-4 py-3 font-semibold text-stone-600">Trạng thái</th>
@@ -110,6 +111,10 @@ export default function ProductTable({ garments, onDeleteClick }: ProductTablePr
                     <span className="inline-block bg-indigo-50 text-indigo-700 text-xs font-medium px-2 py-0.5 rounded-full">
                       {categoryLabel}
                     </span>
+                  </td>
+                  {/* Số lượng */}
+                  <td className="px-4 py-3 text-center font-mono text-stone-700">
+                    {garment.quantity}
                   </td>
                   {/* Giá thuê */}
                   <td className="px-4 py-3 text-right font-mono text-stone-700">
@@ -198,6 +203,7 @@ export default function ProductTable({ garments, onDeleteClick }: ProductTablePr
                   {categoryLabel}
                 </span>
                 <div className="flex gap-3 text-xs text-stone-500">
+                  <span>SL: <span className="font-mono text-stone-700">{garment.quantity}</span></span>
                   <span>Thuê: <span className="font-mono text-stone-700">{formatPrice(garment.rental_price)}</span></span>
                   {garment.sale_price && (
                     <span>Bán: <span className="font-mono text-stone-700">{formatPrice(garment.sale_price)}</span></span>

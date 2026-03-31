@@ -40,6 +40,12 @@ const productSchema = z.object({
       (val) => !val || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0),
       "Giá bán không hợp lệ"
     ),
+  quantity: z
+    .number()
+    .int("Số lượng phải là số nguyên")
+    .min(0, "Số lượng tối thiểu là 0")
+    .max(9999, "Số lượng tối đa là 9999")
+    .default(1),
 });
 
 export type ProductFormValues = z.infer<typeof productSchema>;
@@ -109,6 +115,7 @@ export default function ProductForm({ garment, onSuccess }: ProductFormProps) {
     size_options: garment?.size_options ?? [],
     rental_price: garment?.rental_price ?? "",
     sale_price: garment?.sale_price ?? "",
+    quantity: garment?.quantity ?? 1,
   };
 
   const {
@@ -255,6 +262,7 @@ export default function ProductForm({ garment, onSuccess }: ProductFormProps) {
       size_options: data.size_options,
       rental_price: data.rental_price,
       sale_price: data.sale_price || null,
+      quantity: data.quantity,
       image_url: finalPrimaryUrl,
       image_urls: finalAdditionalUrls,
     };
@@ -454,6 +462,25 @@ export default function ProductForm({ garment, onSuccess }: ProductFormProps) {
               <p className="mt-1 text-sm text-red-600">{errors.sale_price.message}</p>
             )}
           </div>
+        </div>
+
+        {/* Số lượng */}
+        <div>
+          <label className="block text-sm font-semibold text-stone-700 mb-1">
+            Số lượng <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register("quantity", { valueAsNumber: true })}
+            type="number"
+            min="0"
+            max="9999"
+            step="1"
+            placeholder="VD: 1"
+            className="w-full sm:w-1/2 px-4 py-3 rounded-xl border border-stone-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-stone-800 placeholder-stone-300"
+          />
+          {errors.quantity && (
+            <p className="mt-1 text-sm text-red-600">{errors.quantity.message}</p>
+          )}
         </div>
 
         {/* Ảnh chính */}

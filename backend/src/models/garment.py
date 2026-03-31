@@ -66,6 +66,7 @@ class GarmentBase(BaseModel):
     size_options: list[str] = Field(default_factory=list, description="Kich co co san (S/M/L/XL/XXL)")
     rental_price: Decimal = Field(..., ge=0, description="Gia thue (VND)")
     sale_price: Decimal | None = Field(None, ge=0, description="Gia ban (VND), None neu chi co thue")
+    quantity: int = Field(default=1, ge=0, le=9999, description="So luong ton kho")
     image_url: str | None = Field(None, max_length=500, description="URL hinh anh chinh (backward-compatible)")
     image_urls: list[str] = Field(default_factory=list, description="Danh sach URL hinh anh HD (multi-image)")
 
@@ -123,6 +124,7 @@ class GarmentUpdate(BaseModel):
     size_options: list[str] | None = None
     rental_price: Decimal | None = Field(None, ge=0)
     sale_price: Decimal | None = Field(None, ge=0)
+    quantity: int | None = Field(default=None, ge=0, le=9999)
     image_url: str | None = Field(None, max_length=500)
     image_urls: list[str] | None = None
     status: GarmentStatus | None = None
@@ -182,6 +184,7 @@ class GarmentResponse(BaseModel):
     size_options: list[str]
     rental_price: Decimal
     sale_price: Decimal | None
+    quantity: int
     image_url: str | None
     image_urls: list[str]
     status: str

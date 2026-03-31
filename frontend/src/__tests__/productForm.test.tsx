@@ -47,6 +47,7 @@ const mockGarment: Garment = {
   size_options: ["M", "L"],
   rental_price: "500000",
   sale_price: "2000000",
+  quantity: 1,
   image_url: "https://example.com/anh.jpg",
   image_urls: [],
   status: "available",

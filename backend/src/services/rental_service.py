@@ -332,6 +332,7 @@ async def process_return(
     # Update garment status based on condition
     if return_data.return_condition == ReturnCondition.good:
         garment.status = "available"
+        garment.quantity += 1
         # Clear renter fields for good condition
         garment.renter_id = None
         garment.renter_name = None

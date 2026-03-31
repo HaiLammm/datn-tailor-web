@@ -477,6 +477,7 @@ class GarmentDB(Base):
     size_options: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     rental_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     sale_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     image_urls: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="available", index=True)

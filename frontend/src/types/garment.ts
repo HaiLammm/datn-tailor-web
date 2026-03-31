@@ -49,6 +49,7 @@ export interface Garment {
   rental_price: string;
   /** Story 2.2: Giá bán (VND), null nếu chỉ có thuê */
   sale_price: string | null;
+  quantity: number;
   image_url: string | null;
   /** Story 2.2: Danh sách URL ảnh HD (multi-image gallery) */
   image_urls: string[];
