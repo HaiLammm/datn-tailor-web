@@ -538,6 +538,62 @@ export async function sendReturnReminders(): Promise<{
 }
 
 /**
+ * Upload garment images (Owner only)
+ */
+export async function uploadGarmentImages(
+  formData: FormData
+): Promise<{ success: boolean; urls?: string[]; error?: string }> {
+  try {
+    const token = await getAuthToken();
+    if (!token) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s for uploads
+
+    const response = await fetch(`${BACKEND_URL}/api/v1/uploads/images`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.status === 401) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    if (response.status === 403) {
+      return { success: false, error: "Forbidden" };
+    }
+
+    if (response.status === 422) {
+      const errorData = await response.json();
+      return { success: false, error: errorData.detail || "Validation error" };
+    }
+
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    const result = await response.json();
+    return { success: true, urls: result.data.urls };
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        return { success: false, error: "Upload timeout" };
+      }
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Unknown error" };
+  }
+}
+
+/**
  * Fetch unique garment colors for filtering (Story 2.3 - Review Follow-up MEDIUM)
  */
 export async function fetchGarmentColors() {

@@ -1,11 +1,17 @@
 """Pydantic schemas for Garment (Story 5.1: Digital Showroom, Story 5.2: Return Timeline)."""
 
+import re
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 
 from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
+
+# Module-level compiled patterns (F13)
+_IMAGE_URL_PATTERN = re.compile(
+    r"^(https?://\S+|/uploads/garments/[a-f0-9\-]+\.(jpg|png|webp))$"
+)
 
 
 class GarmentStatus(str, Enum):
@@ -63,17 +69,27 @@ class GarmentBase(BaseModel):
     image_url: str | None = Field(None, max_length=500, description="URL hinh anh chinh (backward-compatible)")
     image_urls: list[str] = Field(default_factory=list, description="Danh sach URL hinh anh HD (multi-image)")
 
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, v: str | None) -> str | None:
+        """Validate single image URL: http/https or /uploads/garments/{uuid}.{ext}."""
+        if v is None:
+            return v
+        if not v or len(v) > 500:
+            raise ValueError("URL hinh anh phai co do dai tu 1 den 500 ky tu")
+        if not _IMAGE_URL_PATTERN.match(v):
+            raise ValueError(f"URL hinh anh khong hop le: '{v}'")
+        return v
+
     @field_validator("image_urls")
     @classmethod
     def validate_image_urls(cls, v: list[str]) -> list[str]:
-        """Validate each image URL: non-empty, max_length, starts with http/https."""
-        import re
-        url_pattern = re.compile(r"^https?://\S+$")
+        """Validate each image URL: non-empty, max_length, http/https or /uploads/garments/{uuid}.{ext}."""
         for url in v:
             if not url or len(url) > 500:
                 raise ValueError(f"URL hinh anh phai co do dai tu 1 den 500 ky tu")
-            if not url_pattern.match(url):
-                raise ValueError(f"URL hinh anh khong hop le: '{url}'. Phai bat dau bang http:// hoac https://")
+            if not _IMAGE_URL_PATTERN.match(url):
+                raise ValueError(f"URL hinh anh khong hop le: '{url}'")
         return v
 
     @field_validator("size_options")
@@ -111,6 +127,31 @@ class GarmentUpdate(BaseModel):
     image_urls: list[str] | None = None
     status: GarmentStatus | None = None
     expected_return_date: date | None = None
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, v: str | None) -> str | None:
+        """Validate single image URL if provided."""
+        if v is None:
+            return v
+        if not v or len(v) > 500:
+            raise ValueError("URL hinh anh phai co do dai tu 1 den 500 ky tu")
+        if not _IMAGE_URL_PATTERN.match(v):
+            raise ValueError(f"URL hinh anh khong hop le: '{v}'")
+        return v
+
+    @field_validator("image_urls")
+    @classmethod
+    def validate_image_urls(cls, v: list[str] | None) -> list[str] | None:
+        """Validate image URLs if provided."""
+        if v is None:
+            return v
+        for url in v:
+            if not url or len(url) > 500:
+                raise ValueError("URL hinh anh phai co do dai tu 1 den 500 ky tu")
+            if not _IMAGE_URL_PATTERN.match(url):
+                raise ValueError(f"URL hinh anh khong hop le: '{url}'")
+        return v
 
     @field_validator("size_options")
     @classmethod

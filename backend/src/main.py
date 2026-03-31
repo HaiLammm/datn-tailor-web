@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.api.v1.auth import router as auth_router
 from src.api.v1.customers import router as customers_router
@@ -35,6 +36,7 @@ from src.api.v1.owner_appointments import router as owner_appointments_router
 from src.api.v1.vouchers import router as vouchers_router
 from src.api.v1.campaigns import router as campaigns_router
 from src.api.v1.templates import router as templates_router
+from src.api.v1.uploads import router as uploads_router
 from src.core.seed import seed_owner_account
 
 logger = logging.getLogger(__name__)
@@ -111,6 +113,13 @@ app.include_router(leads_router)
 app.include_router(vouchers_router)
 app.include_router(templates_router)
 app.include_router(campaigns_router)
+app.include_router(uploads_router)
+
+# Mount static files for uploaded images (must be AFTER include_router calls)
+from pathlib import Path as _Path
+_UPLOADS_DIR = _Path(__file__).resolve().parent.parent / "uploads"
+_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_UPLOADS_DIR)), name="uploads")
 
 
 @app.get("/health")
