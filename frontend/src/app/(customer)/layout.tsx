@@ -7,9 +7,11 @@
  */
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { auth } from "@/auth";
 import { CartBadge } from "@/components/client/cart/CartBadge";
 import { ProfileIcon } from "@/components/client/profile/ProfileIcon";
+import { LogoutButton } from "@/components/client/profile/LogoutButton";
 
 interface CustomerLayoutProps {
   children: ReactNode;
@@ -25,24 +27,11 @@ export default async function CustomerLayout({ children }: CustomerLayoutProps) 
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-8 h-8 text-indigo-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                />
-              </svg>
+            <Link href="/showroom" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <span className="text-xl font-serif font-bold text-indigo-900">
                 Tailor Design
               </span>
-            </div>
+            </Link>
             <nav className="flex items-center gap-4">
               <a
                 href="/"
@@ -52,6 +41,7 @@ export default async function CustomerLayout({ children }: CustomerLayoutProps) 
               </a>
               <CartBadge />
               <ProfileIcon userName={userName} />
+              {userName && <LogoutButton />}
             </nav>
           </div>
         </div>
