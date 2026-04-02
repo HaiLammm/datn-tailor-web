@@ -10,9 +10,12 @@ inputDocuments:
   - '_bmad-output/planning-artifacts/research/technical-semantic-to-geometric-translation-architecture-2026-02-17.md'
   - '_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-10.md'
   - '_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-26.md'
+  - '_bmad-output/planning-artifacts/sprint-change-proposal-2026-04-03.md'
 stepsCompleted: ['step-e-01-discovery', 'step-e-02-review', 'step-e-03-edit']
-lastEdited: '2026-03-26'
+lastEdited: '2026-04-03'
 editHistory:
+  - date: '2026-04-03'
+    changes: 'Added Technical Pattern Generation as 4th core function in Executive Summary. Pattern Engine: deterministic formula-based, 10 measurements → 3 pattern pieces (front/back bodice, sleeve), SVG + G-code export. Updated Tailor description and Solution statement.'
   - date: '2026-03-26'
     changes: 'Added Epic 10 (Unified Order Workflow). 9 new FRs (FR82-FR90): bespoke measurement gate, service-type checkout (Buy/Rent/Bespoke), owner order approval, auto-routing, preparation sub-steps, remaining payment, rental security return. Updated Product Scope, User Journeys (Linh + Cô Lan).'
   - date: '2026-03-10'
