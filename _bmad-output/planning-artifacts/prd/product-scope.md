@@ -48,6 +48,15 @@
   - Service-Type Preparation: Rent (Cleaning → Altering → Ready), Buy (QC → Packaging), Bespoke (existing production sub-steps).
   - Handover & Completion: remaining balance payment, delivery tracking, rental return with condition inspection, security deposit/CCCD return.
 
+- **Technical Pattern Generation (Epic 11):**
+  - Pattern Session: Owner selects customer profile, auto-fills 10 body measurements (body length, waist drop, neck/armhole/bust/waist/hip circumference, sleeve length, bicep circumference, wrist circumference).
+  - Pattern Engine: Deterministic formula-based generation of 3 technical pattern pieces (front bodice, back bodice, sleeve) — no AI inference, geometric deviation < 1mm from tailor-validated formulas.
+  - Curve Generation: Armhole (1/4 ellipse) and sleeve cap (1/2 ellipse) arcs validated by experienced tailors.
+  - SVG Export: 1:1 scale patterns for printing and manual cutting.
+  - G-code Export: Laser-cutter-ready output with closed paths, cut sequence, and speed/power parameters.
+  - Split-pane Preview: Real-time SVG preview alongside measurement input form.
+  - Order Integration: Attach generated patterns to orders for tailor task assignment.
+
 ### AI Core (Epic 2-4, deferred to post E-commerce launch)
 
 - **Physical-Emotional Compiler:** Adjective → Geometric Delta translation.
@@ -65,10 +74,13 @@
 - **Body Version Control:** Customer body measurement history and change tracking.
 - **Variant Expansion:** Support for more complex garment structures.
 - **Advanced Analytics:** Revenue forecasting, customer segmentation, seasonal trend analysis.
+- **Pattern Enhanced UX:** Toggle individual pattern pieces, zoom/pan interaction, click-to-inspect dimensions, auto-annotation (grain line, notch marks), mobile-responsive pattern viewing for tailors.
+- **Pattern Grading:** Auto-generate size range from base pattern using parametric grade rules.
 
 ## Vision (Phase 3)
 **Focus: "Digital Tailoring Ecosystem"**
 - **Atelier Academy:** AI self-learning and aesthetic refinement from real artisan feedback (Learning Loop).
-- **CAD/CNC Integration:** Direct export of cutting instructions for automated cutting machines.
+- **Laser Automation:** Auto-detect laser cutter, machine profiles with fabric-specific presets (speed/power/focal), operator-agnostic cutting from both Owner and Tailor views.
+- **Open Garment System:** Extensible garment type framework beyond Áo dài — community-contributed pattern templates for additional garment types.
 - **3D Simulation:** Virtual "Fitting" experience on personalized 3D avatar.
 - **Multi-Tenant Platform:** Expand to serve multiple tailor shops as a SaaS platform.

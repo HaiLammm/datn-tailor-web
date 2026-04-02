@@ -15,7 +15,9 @@ stepsCompleted: ['step-e-01-discovery', 'step-e-02-review', 'step-e-03-edit']
 lastEdited: '2026-04-03'
 editHistory:
   - date: '2026-04-03'
-    changes: 'Added Technical Pattern Generation as 4th core function in Executive Summary. Pattern Engine: deterministic formula-based, 10 measurements → 3 pattern pieces (front/back bodice, sleeve), SVG + G-code export. Updated Tailor description and Solution statement.'
+    changes: 'SCP Edit 2-3: Added Technical Pattern Generation (Epic 11) to Product Scope MVP with 7 sub-items. Added Pattern Enhanced UX + Grading to Phase 2. Replaced CAD/CNC with Laser Automation + added Open Garment System to Phase 3. Added Section 17 (FR91-FR99) to Functional Requirements covering pattern session, generation, curves, SVG/G-code export, preview, order integration, tailor view, measurement validation.'
+  - date: '2026-04-03'
+    changes: 'SCP Edit 1: Added Technical Pattern Generation as 4th core function in Executive Summary. Pattern Engine: deterministic formula-based, 10 measurements → 3 pattern pieces (front/back bodice, sleeve), SVG + G-code export. Updated Tailor description and Solution statement.'
   - date: '2026-03-26'
     changes: 'Added Epic 10 (Unified Order Workflow). 9 new FRs (FR82-FR90): bespoke measurement gate, service-type checkout (Buy/Rent/Bespoke), owner order approval, auto-routing, preparation sub-steps, remaining payment, rental security return. Updated Product Scope, User Journeys (Linh + Cô Lan).'
   - date: '2026-03-10'
@@ -70,6 +72,7 @@ editHistory:
     - [14. Customer Management](./functional-requirements.md#14-customer-management)
     - [15. CRM & Marketing](./functional-requirements.md#15-crm--marketing)
     - [16. Unified Order Workflow](./functional-requirements.md#16-unified-order-workflow)
+    - [17. Technical Pattern Generation & Production Export](./functional-requirements.md#17-technical-pattern-generation--production-export)
   - [Non-Functional Requirements (NFRs)](./non-functional-requirements-nfrs.md)
     - [1. Performance & Scalability](./non-functional-requirements-nfrs.md#1-performance--scalability)
     - [2. Accuracy & Reliability](./non-functional-requirements-nfrs.md#2-accuracy--reliability)

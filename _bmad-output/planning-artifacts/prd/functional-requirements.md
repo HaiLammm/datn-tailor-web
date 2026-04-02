@@ -118,3 +118,14 @@
 - **FR88 (Readiness Status):** System marks orders as `ready_to_ship` or `ready_for_pickup` when all preparation sub-steps are complete, and notifies the customer.
 - **FR89 (Remaining Balance Payment):** For deposit-based orders, customers pay the remaining balance (order total minus deposit) before product handover.
 - **FR90 (Security Return on Rental Close):** For rental orders, the system returns the security deposit (cash) or CCCD to the customer after the returned product passes Owner's condition inspection (Good/Damaged/Lost).
+
+## 17. Technical Pattern Generation & Production Export
+- **FR91 (Pattern Session Creation):** Owner creates a pattern session by selecting a customer profile; system auto-fills 10 body measurements (body length, waist drop, neck circumference, armhole circumference, bust circumference, waist circumference, hip circumference, sleeve length, bicep circumference, wrist circumference) from the customer's measurement record.
+- **FR92 (Pattern Generation):** System generates 3 technical pattern pieces (front bodice, back bodice, sleeve) from 10 body measurements using deterministic formulas. Geometric deviation from tailor-validated reference patterns < 1mm.
+- **FR93 (Curve Generation):** System generates armhole curves (1/4 ellipse arc) and sleeve cap curves (1/2 ellipse arc) matching tailor-validated contours.
+- **FR94 (SVG Export):** System exports each pattern piece as SVG at 1:1 scale — printed output matches physical measurements within ±0.5mm tolerance.
+- **FR95 (G-code Export):** System exports pattern pieces as G-code for laser cutting with closed paths, cut sequence, and configurable speed/power parameters.
+- **FR96 (Pattern Preview):** System displays real-time SVG preview in split-pane layout (measurement input left, pattern preview right) — preview updates within 500ms of measurement change.
+- **FR97 (Pattern-Order Attachment):** Owner attaches a completed pattern session to an order when assigning a tailor task. Tailor receives order with linked pattern pieces.
+- **FR98 (Tailor Pattern View):** Tailor views attached pattern pieces in order/task detail page with zoom and pan interaction.
+- **FR99 (Measurement Validation):** System validates all 10 measurements against min/max ranges before pattern generation. Invalid measurements display specific error messages with acceptable range.
