@@ -8,8 +8,9 @@ Uses 100% Vietnamese error messages per NFR11.
 
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from src.api.dependencies import require_roles
 from src.agents.emotional_compiler import run_emotional_compiler
 from src.models.inference import TranslateRequest, TranslateResponse
 from src.services.smart_rules_service import SmartRulesService
@@ -20,7 +21,10 @@ router = APIRouter(prefix="/api/v1/inference", tags=["inference"])
 
 
 @router.post("/translate", response_model=TranslateResponse)
-async def translate_design(request: TranslateRequest) -> TranslateResponse:
+async def translate_design(
+    request: TranslateRequest,
+    current_user = Depends(require_roles("Owner", "Tailor")),
+) -> TranslateResponse:
     """Translate style intensities into geometric Deltas.
 
     This is the main endpoint for the Emotional Compiler Engine.

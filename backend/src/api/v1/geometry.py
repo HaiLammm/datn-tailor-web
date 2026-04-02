@@ -5,7 +5,7 @@ from src.services.base_pattern_service import BasePatternService
 from src.geometry.engine import GeometryEngine
 from src.models.geometry import MasterGeometry, MorphDelta
 from src.models.customer import MeasurementCreateRequest
-from src.api.dependencies import get_current_user_from_token
+from src.api.dependencies import require_roles
 
 router = APIRouter(prefix="/api/v1/geometry", tags=["geometry"])
 
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/v1/geometry", tags=["geometry"])
 async def create_baseline_pattern(
     measurements: MeasurementCreateRequest,
     service: BasePatternService = Depends(BasePatternService),
-    current_user = Depends(get_current_user_from_token)
+    current_user = Depends(require_roles("Owner", "Tailor")),
 ) -> MasterGeometry:
     """
     Generate baseline pattern geometry from customer measurements.
@@ -33,7 +33,7 @@ async def get_morph_targets(
     style_id: str,
     measurements: MeasurementCreateRequest,
     service: BasePatternService = Depends(BasePatternService),
-    current_user = Depends(get_current_user_from_token),
+    current_user = Depends(require_roles("Owner", "Tailor")),
 ) -> MorphDelta:
     """
     Generate morph delta vectors for a given style.

@@ -2,8 +2,9 @@
  * Design Session Page - Server Component
  * Story 2.1: Lựa chọn Phong cách
  *
- * Entry page for design session where customers select style pillars.
+ * Entry page for design session where Owner/Tailor select style pillars.
  * Fetches style pillars from Backend (authoritative source).
+ * Protected by (workplace) layout — requires Owner or Tailor role.
  */
 
 import { Suspense } from "react";

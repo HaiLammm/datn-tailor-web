@@ -9,7 +9,7 @@ from src.models.db_models import UserDB
 
 
 async def mock_get_current_user():
-    return UserDB(email="test@example.com", role="Customer", is_active=True)
+    return UserDB(email="test@example.com", role="Owner", is_active=True)
 
 
 @pytest.fixture

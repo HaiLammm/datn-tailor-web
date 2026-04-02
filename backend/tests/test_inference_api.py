@@ -8,13 +8,21 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from src.main import app
+from src.api.dependencies import get_current_user_from_token
+from src.models.db_models import UserDB
+
+
+async def mock_get_current_user():
+    return UserDB(email="test@example.com", role="Owner", is_active=True)
 
 
 @pytest.fixture
 def client() -> AsyncClient:
-    """Create async test client."""
+    """Create async test client with mocked auth."""
+    app.dependency_overrides[get_current_user_from_token] = mock_get_current_user
     transport = ASGITransport(app=app)
-    return AsyncClient(transport=transport, base_url="http://test")
+    yield AsyncClient(transport=transport, base_url="http://test")
+    app.dependency_overrides.pop(get_current_user_from_token, None)
 
 
 class TestTranslateEndpoint:

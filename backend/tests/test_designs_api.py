@@ -17,7 +17,7 @@ MOCK_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000099")
 
 
 async def mock_get_current_user():
-    user = UserDB(email="test@example.com", role="Customer", is_active=True)
+    user = UserDB(email="test@example.com", role="Owner", is_active=True)
     user.id = MOCK_USER_ID
     user.tenant_id = MOCK_TENANT_ID
     return user

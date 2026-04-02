@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import get_current_user_from_token, get_tenant_id_from_user
+from src.api.dependencies import get_current_user_from_token, get_tenant_id_from_user, require_roles
 from src.api.v1.guardrails import get_registry
 from src.core.database import get_db
 from src.core.hashing import compute_base_hash, compute_base_pattern_hash, compute_master_geometry_hash
@@ -65,7 +65,7 @@ def _classify_severity(delta: float) -> Literal["normal", "warning", "danger"]:
 @router.post("/lock")
 async def lock_design(
     request: LockDesignRequest,
-    current_user: UserDB = Depends(get_current_user_from_token),
+    current_user: UserDB = Depends(require_roles("Owner", "Tailor")),
     tenant_id: uuid.UUID = Depends(get_tenant_id_from_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -230,7 +230,7 @@ async def _get_last_valid_sequence_id(
 @router.post("/sanity-check", response_model=SanityCheckResponse)
 async def sanity_check(
     request: SanityCheckRequest,
-    current_user: UserDB = Depends(get_current_user_from_token),
+    current_user: UserDB = Depends(require_roles("Owner", "Tailor")),
     tenant_id: uuid.UUID = Depends(get_tenant_id_from_user),
     db: AsyncSession = Depends(get_db),
 ) -> SanityCheckResponse:

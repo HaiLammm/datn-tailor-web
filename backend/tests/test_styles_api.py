@@ -8,14 +8,22 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from src.main import app
+from src.api.dependencies import get_current_user_from_token
+from src.models.db_models import UserDB
+
+
+async def mock_get_current_user():
+    return UserDB(email="test@example.com", role="Owner", is_active=True)
 
 
 @pytest_asyncio.fixture
 async def client():
-    """Create async HTTP client for testing."""
+    """Create async HTTP client for testing with mocked auth."""
+    app.dependency_overrides[get_current_user_from_token] = mock_get_current_user
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+    app.dependency_overrides.clear()
 
 
 class TestStylePillarsAPI:

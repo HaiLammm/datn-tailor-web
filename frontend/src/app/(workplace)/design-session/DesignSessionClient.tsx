@@ -40,7 +40,7 @@ function LoadingSpinner() {
 interface DesignSessionClientProps {
   initialPillars: StylePillarResponse[];
   initialGeometry: MasterGeometry | null;
-  /** Customer body measurements in Vietnamese keys for guardrail checks */
+  /** Body measurements in Vietnamese keys for guardrail checks */
   baseMeasurements?: Record<string, number>;
 }
 

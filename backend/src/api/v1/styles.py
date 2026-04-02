@@ -6,8 +6,10 @@ Backend is authoritative source for style data (SSOT).
 
 from functools import lru_cache
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from src.api.dependencies import require_roles
+from src.models.db_models import UserDB
 from src.models.style import (
     IntensitySubmitRequest,
     IntensitySubmitResponse,
@@ -31,7 +33,9 @@ def get_style_service() -> StyleService:
     summary="Lấy danh sách phong cách thiết kế",
     description="Trả về danh sách các Style Pillar có sẵn cùng cấu hình thanh trượt cường độ và Haptic Golden Points.",
 )
-async def get_style_pillars() -> StylePillarListResponse:
+async def get_style_pillars(
+    current_user: UserDB = Depends(require_roles("Owner", "Tailor")),
+) -> StylePillarListResponse:
     """Get all available style pillars with their slider configurations.
 
     Returns:
@@ -52,7 +56,10 @@ async def get_style_pillars() -> StylePillarListResponse:
     summary="Lấy chi tiết phong cách theo ID",
     description="Trả về thông tin chi tiết của một Style Pillar cụ thể.",
 )
-async def get_style_pillar_by_id(pillar_id: str) -> StylePillarResponse:
+async def get_style_pillar_by_id(
+    pillar_id: str,
+    current_user: UserDB = Depends(require_roles("Owner", "Tailor")),
+) -> StylePillarResponse:
     """Get a specific style pillar by its ID.
 
     Args:
@@ -85,7 +92,10 @@ async def get_style_pillar_by_id(pillar_id: str) -> StylePillarResponse:
         "trả về cảnh báo soft constraint nếu có (Story 2.2)."
     ),
 )
-async def submit_intensity(request: IntensitySubmitRequest) -> IntensitySubmitResponse:
+async def submit_intensity(
+    request: IntensitySubmitRequest,
+    current_user: UserDB = Depends(require_roles("Owner", "Tailor")),
+) -> IntensitySubmitResponse:
     """Submit intensity slider values for validation and soft constraint checking.
 
     Validates that all submitted values fall within their slider's [min, max] range.

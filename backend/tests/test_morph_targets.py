@@ -301,7 +301,7 @@ class TestMorphDeltaModel:
 # --- Task 1.3: API Endpoint ---
 
 async def mock_get_current_user():
-    return UserDB(email="test@example.com", role="Customer", is_active=True)
+    return UserDB(email="test@example.com", role="Owner", is_active=True)
 
 
 @pytest.fixture

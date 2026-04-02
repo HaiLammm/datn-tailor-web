@@ -13,15 +13,24 @@ from fastapi.testclient import TestClient
 
 import src.services.style_service as _style_module
 from src.main import app
+from src.api.dependencies import get_current_user_from_token
+from src.models.db_models import UserDB
 
-client = TestClient(app)
+
+async def mock_get_current_user():
+    return UserDB(email="test@example.com", role="Owner", is_active=True)
 
 
 @pytest.fixture(autouse=True)
-def reset_session_sequences():
+def setup_auth_and_sequences():
+    app.dependency_overrides[get_current_user_from_token] = mock_get_current_user
     _style_module._session_sequences.clear()
     yield
     _style_module._session_sequences.clear()
+    app.dependency_overrides.pop(get_current_user_from_token, None)
+
+
+client = TestClient(app)
 
 
 class TestSubmitIntensity:
