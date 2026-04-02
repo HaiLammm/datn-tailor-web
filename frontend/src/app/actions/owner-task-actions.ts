@@ -207,6 +207,8 @@ export async function fetchOrdersForAssignment(): Promise<OrderListResponse> {
 
   const url = new URL(`${BACKEND_URL}/api/v1/orders`);
   url.searchParams.append("status", "confirmed");
+  url.searchParams.append("status", "in_progress");
+  url.searchParams.append("status", "preparing");
   url.searchParams.set("page_size", "100");
 
   const controller = new AbortController();

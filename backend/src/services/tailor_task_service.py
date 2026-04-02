@@ -376,7 +376,7 @@ async def create_task(
 
     Validates:
     - Order exists and belongs to tenant
-    - Order status is 'confirmed'
+    - Order status is 'confirmed', 'in_progress', or 'preparing'
     - Assigned tailor exists, is active, role=Tailor, same tenant
     Auto-populates garment_name and customer_name from order.
     """
@@ -389,9 +389,9 @@ async def create_task(
         raise ValueError("Không tìm thấy đơn hàng")
     if order.tenant_id != tenant_id:
         raise PermissionError("Đơn hàng này không thuộc về cơ sở của bạn")
-    if order.status != "confirmed":
+    if order.status not in ("confirmed", "in_progress", "preparing"):
         raise ValueError(
-            f"Chỉ có thể giao việc cho đơn hàng đã xác nhận. "
+            f"Chỉ có thể giao việc cho đơn hàng đã xác nhận hoặc đang sản xuất. "
             f"Trạng thái hiện tại: '{order.status}'"
         )
 

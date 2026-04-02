@@ -155,12 +155,12 @@ async def test_create_task_auto_populates_garment_name(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_create_task_rejects_non_production_order(db: AsyncSession):
-    """Cannot assign task for order not in 'confirmed' status."""
+    """Cannot assign task for order not in 'confirmed' or 'in_progress' status."""
     request = TaskCreateRequest(
         order_id=ORDER_PENDING_ID,
         assigned_to=TAILOR_A_ID,
     )
-    with pytest.raises(ValueError, match="đã xác nhận"):
+    with pytest.raises(ValueError, match="đã xác nhận hoặc đang sản xuất"):
         await tailor_task_service.create_task(db, request, OWNER_ID, TENANT_ID)
 
 
