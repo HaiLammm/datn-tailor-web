@@ -82,7 +82,7 @@ export default function RegisterPage() {
                     Đăng ký tài khoản
                 </h1>
                 <p className="text-gray-600 text-sm">
-                    Tạo tài khoản mới để bắt đầu sử dụng Tailor Project
+                    Tạo tài khoản mới để bắt đầu sử dụng Nhà May Thanh Lộc
                 </p>
             </div>
 

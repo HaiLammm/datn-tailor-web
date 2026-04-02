@@ -33,21 +33,21 @@ import type { RulePillarSummary, RulePillarDetail } from "@/types/rule";
 const mockPillars: RulePillarSummary[] = [
     {
         pillar_id: "traditional",
-        pillar_name_vi: "Truyền thống",
+        pillar_name_vi: "Size S",
         delta_mapping_count: 7,
         slider_count: 4,
         last_modified: "2026-03-05T10:00:00Z",
     },
     {
         pillar_id: "minimalist",
-        pillar_name_vi: "Tối giản hiện đại",
+        pillar_name_vi: "Size M",
         delta_mapping_count: 5,
         slider_count: 4,
         last_modified: "2026-03-05T10:00:00Z",
     },
     {
         pillar_id: "avant_garde",
-        pillar_name_vi: "Tiên phong nghệ thuật",
+        pillar_name_vi: "Size L",
         delta_mapping_count: 9,
         slider_count: 5,
         last_modified: "2026-03-05T10:00:00Z",
@@ -56,7 +56,7 @@ const mockPillars: RulePillarSummary[] = [
 
 const mockDetail: RulePillarDetail = {
     pillar_id: "traditional",
-    pillar_name_vi: "Truyền thống",
+    pillar_name_vi: "Size S",
     mappings: [
         {
             slider_key: "shoulder_width",
@@ -119,11 +119,11 @@ describe("RuleEditorClient", () => {
 
         // Wait for data
         await waitFor(() => {
-            expect(screen.getByText("Truyền thống")).toBeInTheDocument();
+            expect(screen.getByText("Size S")).toBeInTheDocument();
         });
 
-        expect(screen.getByText("Tối giản hiện đại")).toBeInTheDocument();
-        expect(screen.getByText("Tiên phong nghệ thuật")).toBeInTheDocument();
+        expect(screen.getByText("Size M")).toBeInTheDocument();
+        expect(screen.getByText("Size L")).toBeInTheDocument();
     });
 
     it("AC1: shows pillar summary info (delta count, slider count)", async () => {
@@ -132,7 +132,7 @@ describe("RuleEditorClient", () => {
         renderWithQueryClient(<RuleEditorClient />);
 
         await waitFor(() => {
-            expect(screen.getByText("Truyền thống")).toBeInTheDocument();
+            expect(screen.getByText("Size S")).toBeInTheDocument();
         });
 
         // Check delta counts are shown
@@ -147,7 +147,7 @@ describe("RuleEditorClient", () => {
         renderWithQueryClient(<RuleEditorClient />);
 
         await waitFor(() => {
-            expect(screen.getByText("Truyền thống")).toBeInTheDocument();
+            expect(screen.getByText("Size S")).toBeInTheDocument();
         });
 
         expect(
@@ -173,7 +173,7 @@ describe("PillarRuleTable", () => {
         renderWithQueryClient(<PillarRuleTable pillarId="traditional" />);
 
         await waitFor(() => {
-            expect(screen.getByText("Truyền thống")).toBeInTheDocument();
+            expect(screen.getByText("Size S")).toBeInTheDocument();
         });
 
         // Table headers
@@ -195,7 +195,7 @@ describe("PillarRuleTable", () => {
         renderWithQueryClient(<PillarRuleTable pillarId="traditional" />);
 
         await waitFor(() => {
-            expect(screen.getByText("Truyền thống")).toBeInTheDocument();
+            expect(screen.getByText("Size S")).toBeInTheDocument();
         });
 
         // Click JSON toggle
@@ -214,7 +214,7 @@ describe("PillarRuleTable", () => {
         renderWithQueryClient(<PillarRuleTable pillarId="traditional" />);
 
         await waitFor(() => {
-            expect(screen.getByText("Truyền thống")).toBeInTheDocument();
+            expect(screen.getByText("Size S")).toBeInTheDocument();
         });
 
         // Click edit button
@@ -236,7 +236,7 @@ describe("PillarRuleTable", () => {
         renderWithQueryClient(<PillarRuleTable pillarId="traditional" />);
 
         await waitFor(() => {
-            expect(screen.getByText("Truyền thống")).toBeInTheDocument();
+            expect(screen.getByText("Size S")).toBeInTheDocument();
         });
 
         fireEvent.click(screen.getByText("Chỉnh sửa"));
@@ -254,6 +254,6 @@ describe("RuleJsonViewer", () => {
         // Should display JSON content
         const pre = screen.getByText(/traditional/);
         expect(pre).toBeInTheDocument();
-        expect(screen.getByText(/Truyền thống/)).toBeInTheDocument();
+        expect(screen.getByText(/Size S/)).toBeInTheDocument();
     });
 });

@@ -29,7 +29,7 @@ async def _get_shop_name(db: AsyncSession, tenant_id: uuid.UUID) -> str:
     """Get shop name for email branding."""
     result = await db.execute(select(TenantDB).where(TenantDB.id == tenant_id))
     tenant = result.scalar_one_or_none()
-    return tenant.name if tenant else "Tailor Project"
+    return tenant.name if tenant else "Nhà May Thanh Lộc"
 
 
 @router.get(

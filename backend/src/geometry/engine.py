@@ -1,4 +1,4 @@
-"""Geometry Engine for Tailor Project.
+"""Geometry Engine for Nhà May Thanh Lộc.
 
 Handles geometric calculations and primitives for pattern generation.
 Story 3.2: Added morph delta computation and target geometry generation.

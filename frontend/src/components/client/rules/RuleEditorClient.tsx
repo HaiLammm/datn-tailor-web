@@ -59,7 +59,7 @@ export default function RuleEditorClient() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="px-4 py-3 bg-indigo-900 text-white">
                         <h2 className="font-serif font-semibold text-sm">
-                            Trụ cột Phong cách
+                            Phong cách
                         </h2>
                     </div>
                     <ul className="divide-y divide-gray-100">

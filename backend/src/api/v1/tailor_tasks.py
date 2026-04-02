@@ -17,6 +17,7 @@ from src.models.tailor_task import (
     ProductionStepUpdateRequest,
     StatusUpdateRequest,
     TaskCreateRequest,
+    TaskFilterParams,
     TaskUpdateRequest,
 )
 from src.services import tailor_task_service
@@ -35,19 +36,53 @@ router = APIRouter(prefix="/api/v1/tailor-tasks", tags=["tailor-tasks"])
     "/my-tasks",
     response_model=dict,
     summary="Danh sách công việc của thợ may",
-    description="Trả về danh sách tasks được giao kèm summary counts.",
+    description="Trả về danh sách tasks được giao kèm summary counts. Hỗ trợ filter theo status, date range, month/year.",
 )
 async def get_my_tasks(
     user: OwnerOrTailor,
     tenant_id: TenantId,
     db: AsyncSession = Depends(get_db),
+    status: str | None = Query(None, description="Comma-separated status filter (e.g., 'assigned,in_progress')"),
+    date_from: str | None = Query(None, description="Filter by deadline >= date_from (ISO format)"),
+    date_to: str | None = Query(None, description="Filter by deadline <= date_to (ISO format)"),
+    month: int | None = Query(None, ge=1, le=12, description="Filter by deadline month (1-12)"),
+    year: int | None = Query(None, description="Filter by deadline year"),
 ) -> dict:
     """Get tasks assigned to current tailor with summary.
 
-    Sorted by status priority (assigned > in_progress > completed),
+    Sorted by status priority (assigned > in_progress > completed > cancelled),
     then deadline ASC.
+    
+    Supports filtering by status, date range, and month/year.
     """
-    result = await tailor_task_service.get_my_tasks(db, user.id, tenant_id)
+    from datetime import datetime
+    
+    # Build filters object
+    filters = TaskFilterParams()
+    if status:
+        filters.status = status
+    if date_from:
+        try:
+            filters.date_from = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid date_from format: {date_from}"
+            )
+    if date_to:
+        try:
+            filters.date_to = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid date_to format: {date_to}"
+            )
+    if month:
+        filters.month = month
+    if year:
+        filters.year = year
+    
+    result = await tailor_task_service.get_my_tasks(db, user.id, tenant_id, filters)
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 
@@ -139,21 +174,50 @@ async def update_production_step(
 @router.get(
     "/my-income",
     response_model=dict,
-    summary="Thu nhập tháng này vs tháng trước",
-    description="Trả về tổng tiền công tháng hiện tại và tháng trước, cùng % thay đổi.",
+    summary="Thu nhập theo kỳ (ngày/tuần/tháng/năm)",
+    description="Trả về thu nhập theo period với so sánh kỳ trước. Day period trả chi tiết từng task.",
 )
 async def get_my_income(
     user: OwnerOrTailor,
     tenant_id: TenantId,
     db: AsyncSession = Depends(get_db),
+    period: str = Query("month", description="Period: day | week | month | year"),
+    reference_date: str | None = Query(None, description="Reference date (ISO format, defaults to today)"),
 ) -> dict:
-    """Get monthly income summary for current tailor.
+    """Get income summary for current tailor by period.
 
-    Sums piece_rate from completed tasks grouped by month.
+    - day: returns detailed task list for the specified date
+    - week/month/year: returns aggregated comparison with previous period
+    
+    Sums piece_rate from completed tasks.
     Excludes NULL piece_rate tasks (unpriced).
     Multi-tenant isolated by tenant_id.
     """
-    result = await tailor_task_service.get_tailor_monthly_income(db, user.id, tenant_id)
+    from datetime import datetime, timezone
+    
+    # Validate period
+    valid_periods = ["day", "week", "month", "year"]
+    if period not in valid_periods:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid period. Must be one of: {', '.join(valid_periods)}"
+        )
+    
+    # Parse reference_date or use today
+    if reference_date:
+        try:
+            ref_dt = datetime.fromisoformat(reference_date.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid reference_date format: {reference_date}"
+            )
+    else:
+        ref_dt = datetime.now(timezone.utc)
+    
+    result = await tailor_task_service.get_tailor_income_by_period(
+        db, user.id, tenant_id, period, ref_dt
+    )
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 

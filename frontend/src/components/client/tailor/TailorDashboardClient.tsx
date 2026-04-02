@@ -1,13 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchMyTasks, updateTaskStatus } from "@/app/actions/tailor-task-actions";
-import type { TailorTask, TailorTaskListResponse, TaskStatus } from "@/types/tailor-task";
-import { NEXT_STATUS } from "@/types/tailor-task";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { fetchMyTasks } from "@/app/actions/tailor-task-actions";
+import type { TailorTask } from "@/types/tailor-task";
 import TaskSummaryCards from "./TaskSummaryCards";
-import TaskList, { TaskListSkeleton } from "./TaskList";
-import TaskDetailModal from "./TaskDetailModal";
 import IncomeWidget from "./IncomeWidget";
 
 function SummaryCardsSkeleton() {
@@ -26,80 +23,36 @@ function SummaryCardsSkeleton() {
   );
 }
 
-export default function TailorDashboardClient() {
-  const queryClient = useQueryClient();
-  const [selectedTask, setSelectedTask] = useState<TailorTask | null>(null);
-  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+function formatDeadline(deadline: string): string {
+  const date = new Date(deadline);
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
 
+const STATUS_LABELS: Record<string, string> = {
+  assigned: "Chờ nhận",
+  in_progress: "Đang làm",
+  completed: "Hoàn thành",
+  cancelled: "Đã hủy",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  assigned: "bg-amber-100 text-amber-800",
+  in_progress: "bg-indigo-100 text-indigo-800",
+  completed: "bg-emerald-100 text-emerald-800",
+  cancelled: "bg-gray-100 text-gray-800",
+};
+
+export default function TailorDashboardClient() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["tailor-tasks"],
     queryFn: () => fetchMyTasks(),
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
-
-  const statusMutation = useMutation({
-    mutationFn: ({
-      taskId,
-      newStatus,
-    }: {
-      taskId: string;
-      newStatus: string;
-    }) => updateTaskStatus(taskId, newStatus),
-    onMutate: async ({ taskId, newStatus }) => {
-      setUpdatingTaskId(taskId);
-      await queryClient.cancelQueries({ queryKey: ["tailor-tasks"] });
-      const prev = queryClient.getQueryData<TailorTaskListResponse>([
-        "tailor-tasks",
-      ]);
-
-      // Optimistic update with summary recalculation
-      if (prev) {
-        const updatedTasks = prev.tasks.map((t) =>
-          t.id === taskId ? { ...t, status: newStatus as TaskStatus } : t
-        );
-
-        // Recalculate summary based on updated tasks
-        const newSummary = {
-          total: updatedTasks.length,
-          assigned: updatedTasks.filter((t) => t.status === "assigned").length,
-          in_progress: updatedTasks.filter((t) => t.status === "in_progress")
-            .length,
-          completed: updatedTasks.filter((t) => t.status === "completed").length,
-          overdue: updatedTasks.filter((t) => t.is_overdue).length,
-        };
-
-        queryClient.setQueryData<TailorTaskListResponse>(["tailor-tasks"], {
-          ...prev,
-          tasks: updatedTasks,
-          summary: newSummary,
-        });
-      }
-
-      return { prev };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.prev) {
-        queryClient.setQueryData(["tailor-tasks"], context.prev);
-      }
-    },
-    onSettled: () => {
-      setUpdatingTaskId(null);
-      queryClient.invalidateQueries({ queryKey: ["tailor-tasks"] });
-      // Story 5.4: Re-fetch income when task status changes (completed tasks affect sum)
-      queryClient.invalidateQueries({ queryKey: ["tailor-income"] });
-    },
-  });
-
-  const handleStatusToggle = (taskId: string, newStatus: TaskStatus) => {
-    statusMutation.mutate({ taskId, newStatus });
-    // Also update modal view if open
-    if (selectedTask?.id === taskId) {
-      setSelectedTask((prev) =>
-        prev ? { ...prev, status: newStatus } : null
-      );
-    }
-  };
 
   if (error) {
     return (
@@ -117,33 +70,110 @@ export default function TailorDashboardClient() {
     return (
       <div className="space-y-4">
         <SummaryCardsSkeleton />
-        <TaskListSkeleton />
+        <div className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse h-24" />
+        <div className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse h-64" />
       </div>
     );
   }
 
+  // Filter urgent tasks: overdue OR deadline within 2 days AND not completed/cancelled
+  const urgentTasks = data.tasks
+    .filter(
+      (t) =>
+        (t.is_overdue ||
+          (t.days_until_deadline !== null &&
+            t.days_until_deadline <= 2 &&
+            t.status !== "completed" &&
+            t.status !== "cancelled"))
+    )
+    .slice(0, 3); // Top 3
+
   return (
     <div className="space-y-4" data-testid="tailor-dashboard">
+      {/* Summary Cards */}
       <TaskSummaryCards summary={data.summary} />
-      <TaskList
-        tasks={data.tasks}
-        onStatusToggle={handleStatusToggle}
-        onRowClick={setSelectedTask}
-        updatingTaskId={updatingTaskId}
-      />
+
+      {/* Quick Link to Tasks Page */}
+      <Link
+        href="/tailor/tasks"
+        className="block bg-white rounded-lg border border-gray-200 p-4 hover:border-[#1A2B4C] hover:shadow-md transition-all"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-medium text-[#1A1A2E]">
+              Xem tất cả công việc
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Quản lý và lọc công việc chi tiết
+            </p>
+          </div>
+          <svg
+            className="w-5 h-5 text-[#1A2B4C]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </div>
+      </Link>
+
+      {/* Urgent Alerts */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="text-sm font-medium text-[#1A1A2E] mb-3">
+          Công việc cần ưu tiên
+        </h3>
+        {urgentTasks.length === 0 ? (
+          <p className="text-xs text-gray-500 py-2">Không có công việc gấp</p>
+        ) : (
+          <div className="space-y-2">
+            {urgentTasks.map((task: TailorTask) => (
+              <Link
+                key={task.id}
+                href="/tailor/tasks?status=assigned"
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-[#1A1A2E] truncate">
+                    {task.customer_name}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {task.garment_name}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 ml-2">
+                  {task.deadline && (
+                    <span
+                      className={`text-xs ${
+                        task.is_overdue
+                          ? "text-red-600 font-medium"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {formatDeadline(task.deadline)}
+                    </span>
+                  )}
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full font-medium ${
+                      STATUS_COLORS[task.status] || STATUS_COLORS.assigned
+                    }`}
+                  >
+                    {STATUS_LABELS[task.status] || task.status}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Story 5.4: Income Widget — Thu Nhập Tháng Này */}
       <IncomeWidget />
-
-      {/* Task Detail Modal */}
-      {selectedTask && (
-        <TaskDetailModal
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
-          onStatusToggle={handleStatusToggle}
-          isUpdating={updatingTaskId === selectedTask.id}
-        />
-      )}
     </div>
   );
 }

@@ -129,7 +129,7 @@ def build_variables(
         "voucher_code": html.escape(voucher_code or ""),
         "voucher_value": html.escape(voucher_value or ""),
         "expiry_date": html.escape(expiry_date or ""),
-        "shop_name": html.escape(shop_name or "Tailor Project"),
+        "shop_name": html.escape(shop_name or "Nhà May Thanh Lộc"),
     }
 
 

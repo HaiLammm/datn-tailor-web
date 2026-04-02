@@ -232,9 +232,9 @@ export default function CampaignManagementClient({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-stone-100 bg-stone-50">
-                  <th className="text-left px-4 py-3 text-xs font-bold text-stone-500 uppercase tracking-wider">Ten chien dich</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-stone-500 uppercase tracking-wider">Kenh</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-stone-500 uppercase tracking-wider">Phan khuc</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-stone-500 uppercase tracking-wider">Kế hoạch</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-stone-500 uppercase tracking-wider">Kênh</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-stone-500 uppercase tracking-wider">Phân khúc</th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-stone-500 uppercase tracking-wider">Trang thai</th>
                   <th className="text-right px-4 py-3 text-xs font-bold text-stone-500 uppercase tracking-wider">Nguoi nhan</th>
                   <th className="text-right px-4 py-3 text-xs font-bold text-stone-500 uppercase tracking-wider">Da gui</th>

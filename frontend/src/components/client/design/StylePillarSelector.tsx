@@ -2,7 +2,7 @@
 
 /**
  * Style Pillar Selector Component
- * Story 2.1: Lựa chọn Trụ cột Phong cách
+ * Story 2.1: Lựa chọn Phong cách
  *
  * Displays available style pillars and allows selection.
  * Updates Zustand store when pillar is selected (FR1, FR2).

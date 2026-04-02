@@ -42,7 +42,7 @@ The following documents have been identified for this assessment:
 
 ### Functional Requirements
 
-- **FR1:** Người dùng có thể chọn các Trụ cột Phong cách (Style Pillars) định sẵn.
+- **FR1:** Người dùng có thể chọn các Phong cách (Style Pillars) định sẵn.
 - **FR2:** Người dùng có thể điều chỉnh cường độ phong cách qua Sliders.
 - **FR3:** Hệ thống dịch thuật lựa chọn phong cách thành các bộ chỉ số Ease Delta.
 - **FR4:** Hệ thống gợi ý vải dựa trên ma trận tương thích giữa Ease Delta và vật liệu (đã được nghệ nhân cấu hình).
@@ -100,7 +100,7 @@ Total NFRs: 11
 
 | FR Number | PRD Requirement | Epic Coverage | Status |
 | :--- | :--- | :--- | :--- |
-| **FR1** | Chọn Trụ cột Phong cách | Epic 2 Story 2.1 | ✓ Covered |
+| **FR1** | Chọn Phong cách | Epic 2 Story 2.1 | ✓ Covered |
 | **FR2** | Điều chỉnh cường độ phong cách qua Sliders | Epic 2 Story 2.2 | ✓ Covered |
 | **FR3** | Dịch thuật phong cách thành Ease Delta | Epic 2 Story 2.4 | ✓ Covered |
 | **FR4** | Gợi ý vải dựa trên ma trận tương thích | Epic 2 Story 2.3 | ✓ Covered |

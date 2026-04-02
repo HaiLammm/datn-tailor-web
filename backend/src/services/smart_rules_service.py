@@ -61,9 +61,9 @@ class SmartRulesService:
 
     # Vietnamese display names for pillars (NFR11)
     PILLAR_NAMES_VI: dict[str, str] = {
-        "traditional": "Truyền thống",
-        "minimalist": "Tối giản hiện đại",
-        "avant_garde": "Tiên phong nghệ thuật",
+        "traditional": "Size S",
+        "minimalist": "Size M",
+        "avant_garde": "Size L",
     }
 
     def __init__(self) -> None:
@@ -86,7 +86,7 @@ class SmartRulesService:
         }
 
     def _get_traditional_rules(self) -> list[SmartRule]:
-        """Smart Rules for Traditional (Truyền thống) style.
+        """Smart Rules for Traditional (Size S) style.
 
         Traditional Vietnamese tailoring emphasizes:
         - Generous ease for comfort and elegance
@@ -170,7 +170,7 @@ class SmartRulesService:
         ]
 
     def _get_minimalist_rules(self) -> list[SmartRule]:
-        """Smart Rules for Minimalist (Tối giản hiện đại) style.
+        """Smart Rules for Minimalist (Size M) style.
 
         Modern minimalist tailoring emphasizes:
         - Clean lines with moderate ease
@@ -244,7 +244,7 @@ class SmartRulesService:
         ]
 
     def _get_avant_garde_rules(self) -> list[SmartRule]:
-        """Smart Rules for Avant-garde (Tiên phong nghệ thuật) style.
+        """Smart Rules for Avant-garde (Size L) style.
 
         Avant-garde tailoring emphasizes:
         - Dramatic proportions and asymmetry

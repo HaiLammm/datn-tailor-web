@@ -442,7 +442,7 @@ async def _dispatch_zalo(recipient_email: str, body: str) -> bool:
     raise NotImplementedError("Zalo OA channel integration pending — configure Zalo OA API credentials")
 ```
 
-On frontend, show info banner when SMS/Zalo selected: "Kenh nay chua duoc cau hinh. Chi ho tro Email tai thoi diem nay."
+On frontend, show info banner when SMS/Zalo selected: "Kênh nay chua duoc cau hinh. Chi ho tro Email tai thoi diem nay."
 
 ### Pre-Built Default Templates (Seed Data)
 

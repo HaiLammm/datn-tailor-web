@@ -70,7 +70,7 @@ class RulePillarSummary(BaseModel):
     )
     pillar_name_vi: str = Field(
         ...,
-        description="Vietnamese display name (e.g., 'Truyền thống')",
+        description="Vietnamese display name (e.g., 'Size S')",
     )
     delta_mapping_count: int = Field(
         ...,

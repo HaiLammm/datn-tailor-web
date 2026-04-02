@@ -26,7 +26,7 @@ import type { StylePillarResponse, IntensityWarning } from "@/types/style";
 
 const mockPillarWithGoldenPoints: StylePillarResponse = {
   id: "traditional",
-  name: "Truyền thống",
+  name: "Size S",
   description: "Phong cách may đo truyền thống Việt Nam",
   image_url: null,
   is_default: true,
@@ -184,7 +184,7 @@ describe("IntensitySliders (Story 2.2)", () => {
 
     it("should render header with pillar name", () => {
       render(<IntensitySliders />);
-      expect(screen.getByText(/Truyền thống/i)).toBeTruthy();
+      expect(screen.getByText(/Size S/i)).toBeTruthy();
     });
   });
 

@@ -21,7 +21,7 @@ so that **tôi có thể tinh chỉnh thiết kế theo đúng cảm xúc cá nh
 
 - [x] **Backend: Mở rộng Model & LKB Data** (AC: 4)
   - [x] Thêm trường `golden_points: list[float]` vào `IntensitySlider` Pydantic model (`backend/src/models/style.py`)
-  - [x] Cập nhật `StyleService._load_lkb_pillars()` để thêm `golden_points` cho từng slider của 3 phong cách (Truyền thống, Tối giản hiện đại, Tiên phong nghệ thuật) (`backend/src/services/style_service.py`)
+  - [x] Cập nhật `StyleService._load_lkb_pillars()` để thêm `golden_points` cho từng slider của 3 phong cách (Size S, Size M, Size L) (`backend/src/services/style_service.py`)
   - [x] Thêm Pydantic models: `IntensitySubmitRequest`, `IntensityValueItem`, `IntensitySubmitResponse`, `IntensityWarning` vào `backend/src/models/style.py`
 
 - [x] **Backend: Endpoint Gửi Intensity** (AC: 1, 3, 5)

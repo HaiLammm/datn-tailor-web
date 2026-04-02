@@ -55,6 +55,7 @@ async def db(test_db_engine):
             customer_name="Nguyễn Văn A",
             customer_phone="0901234567",
             shipping_address={},
+            subtotal_amount=Decimal("500000"),
             total_amount=Decimal("500000"),
         )
         session.add(order)
@@ -413,3 +414,221 @@ async def test_income_response_structure(db: AsyncSession, seed_income_tasks):
     assert result.current_month.month in range(1, 13)
     assert result.current_month.year >= 2024
     assert result.previous_month.month in range(1, 13)
+
+
+# ── Tech-Spec: Dashboard Restructure — Filter Tests ───────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_my_tasks_filter_by_single_status(db: AsyncSession, seed_tasks):
+    """Filter tasks by single status: only 'assigned' tasks returned."""
+    from src.models.tailor_task import TaskFilterParams
+    
+    filters = TaskFilterParams(status="assigned")
+    result = await tailor_task_service.get_my_tasks(db, TAILOR_ID, TENANT_ID, filters)
+    
+    assert result.summary.assigned == len([t for t in result.tasks if t.status == "assigned"])
+    for task in result.tasks:
+        assert task.status == "assigned"
+
+
+@pytest.mark.asyncio
+async def test_get_my_tasks_filter_by_multiple_statuses(db: AsyncSession, seed_tasks):
+    """Filter tasks by multiple statuses: comma-separated."""
+    from src.models.tailor_task import TaskFilterParams
+    
+    filters = TaskFilterParams(status="assigned,in_progress")
+    result = await tailor_task_service.get_my_tasks(db, TAILOR_ID, TENANT_ID, filters)
+    
+    for task in result.tasks:
+        assert task.status in ["assigned", "in_progress"]
+
+
+@pytest.mark.asyncio
+async def test_get_my_tasks_filter_by_date_range(db: AsyncSession):
+    """Filter tasks by date range: tasks within range returned."""
+    from src.models.tailor_task import TaskFilterParams
+    
+    now = datetime.now(timezone.utc)
+    # Create tasks with different deadlines
+    task1 = TailorTaskDB(
+        id=uuid.uuid4(),
+        tenant_id=TENANT_ID,
+        order_id=ORDER_ID,
+        assigned_to=TAILOR_ID,
+        assigned_by=OWNER_ID,
+        garment_name="Task 1",
+        customer_name="Customer 1",
+        status="assigned",
+        deadline=now + timedelta(days=5),
+    )
+    task2 = TailorTaskDB(
+        id=uuid.uuid4(),
+        tenant_id=TENANT_ID,
+        order_id=ORDER_ID,
+        assigned_to=TAILOR_ID,
+        assigned_by=OWNER_ID,
+        garment_name="Task 2",
+        customer_name="Customer 2",
+        status="assigned",
+        deadline=now + timedelta(days=10),
+    )
+    task3 = TailorTaskDB(
+        id=uuid.uuid4(),
+        tenant_id=TENANT_ID,
+        order_id=ORDER_ID,
+        assigned_to=TAILOR_ID,
+        assigned_by=OWNER_ID,
+        garment_name="Task 3",
+        customer_name="Customer 3",
+        status="assigned",
+        deadline=now + timedelta(days=20),
+    )
+    db.add_all([task1, task2, task3])
+    await db.flush()
+    
+    # Filter: tasks with deadline between now+3 and now+12
+    filters = TaskFilterParams(
+        date_from=now + timedelta(days=3),
+        date_to=now + timedelta(days=12)
+    )
+    result = await tailor_task_service.get_my_tasks(db, TAILOR_ID, TENANT_ID, filters)
+    
+    # Should return task1 (day 5) and task2 (day 10), but not task3 (day 20)
+    assert len(result.tasks) == 2
+    garment_names = [t.garment_name for t in result.tasks]
+    assert "Task 1" in garment_names
+    assert "Task 2" in garment_names
+    assert "Task 3" not in garment_names
+
+
+@pytest.mark.asyncio
+async def test_get_my_tasks_filter_by_month_year(db: AsyncSession):
+    """Filter tasks by month and year."""
+    from src.models.tailor_task import TaskFilterParams
+    
+    # Create tasks in specific months
+    task_march = TailorTaskDB(
+        id=uuid.uuid4(),
+        tenant_id=TENANT_ID,
+        order_id=ORDER_ID,
+        assigned_to=TAILOR_ID,
+        assigned_by=OWNER_ID,
+        garment_name="March Task",
+        customer_name="Customer",
+        status="assigned",
+        deadline=datetime(2026, 3, 15, tzinfo=timezone.utc),
+    )
+    task_april = TailorTaskDB(
+        id=uuid.uuid4(),
+        tenant_id=TENANT_ID,
+        order_id=ORDER_ID,
+        assigned_to=TAILOR_ID,
+        assigned_by=OWNER_ID,
+        garment_name="April Task",
+        customer_name="Customer",
+        status="assigned",
+        deadline=datetime(2026, 4, 15, tzinfo=timezone.utc),
+    )
+    db.add_all([task_march, task_april])
+    await db.flush()
+    
+    # Filter by April 2026
+    filters = TaskFilterParams(month=4, year=2026)
+    result = await tailor_task_service.get_my_tasks(db, TAILOR_ID, TENANT_ID, filters)
+    
+    # Should only return April task
+    assert len(result.tasks) == 1
+    assert result.tasks[0].garment_name == "April Task"
+
+
+@pytest.mark.asyncio
+async def test_get_my_tasks_cancelled_status_included_when_filtered(db: AsyncSession):
+    """Cancelled tasks are returned when explicitly filtered."""
+    from src.models.tailor_task import TaskFilterParams
+    
+    # Create a cancelled task
+    cancelled_task = TailorTaskDB(
+        id=uuid.uuid4(),
+        tenant_id=TENANT_ID,
+        order_id=ORDER_ID,
+        assigned_to=TAILOR_ID,
+        assigned_by=OWNER_ID,
+        garment_name="Cancelled Task",
+        customer_name="Customer",
+        status="cancelled",
+    )
+    db.add(cancelled_task)
+    await db.flush()
+    
+    # Filter by cancelled status
+    filters = TaskFilterParams(status="cancelled")
+    result = await tailor_task_service.get_my_tasks(db, TAILOR_ID, TENANT_ID, filters)
+    
+    # Should return the cancelled task
+    cancelled_tasks = [t for t in result.tasks if t.status == "cancelled"]
+    assert len(cancelled_tasks) >= 1
+
+
+@pytest.mark.asyncio
+async def test_income_by_period_day(db: AsyncSession):
+    """Day period returns detailed task list."""
+    from src.models.tailor_task import TailorIncomeDetailResponse
+    
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Create completed task today
+    task = TailorTaskDB(
+        id=uuid.uuid4(),
+        tenant_id=TENANT_ID,
+        order_id=ORDER_ID,
+        assigned_to=TAILOR_ID,
+        assigned_by=OWNER_ID,
+        garment_name="Today Task",
+        customer_name="Customer",
+        status="completed",
+        piece_rate=Decimal("100000"),
+        completed_at=today_start + timedelta(hours=10),
+    )
+    db.add(task)
+    await db.flush()
+    
+    result = await tailor_task_service.get_tailor_income_by_period(
+        db, TAILOR_ID, TENANT_ID, "day", now
+    )
+    
+    assert isinstance(result, TailorIncomeDetailResponse)
+    assert len(result.items) >= 1
+    assert result.total_income >= 100000.0
+
+
+@pytest.mark.asyncio
+async def test_income_by_period_week(db: AsyncSession):
+    """Week period returns aggregated comparison."""
+    from src.models.tailor_task import TailorIncomeResponse
+    
+    now = datetime.now(timezone.utc)
+    result = await tailor_task_service.get_tailor_income_by_period(
+        db, TAILOR_ID, TENANT_ID, "week", now
+    )
+    
+    assert isinstance(result, TailorIncomeResponse)
+    assert hasattr(result, "current_month")  # Reusing month field for week number
+    assert hasattr(result, "previous_month")
+    assert hasattr(result, "percentage_change")
+
+
+@pytest.mark.asyncio
+async def test_income_by_period_year(db: AsyncSession):
+    """Year period returns yearly aggregation."""
+    from src.models.tailor_task import TailorIncomeResponse
+    
+    now = datetime.now(timezone.utc)
+    result = await tailor_task_service.get_tailor_income_by_period(
+        db, TAILOR_ID, TENANT_ID, "year", now
+    )
+    
+    assert isinstance(result, TailorIncomeResponse)
+    assert result.current_month.year == now.year
+    assert result.previous_month.year == now.year - 1

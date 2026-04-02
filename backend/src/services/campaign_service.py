@@ -571,20 +571,20 @@ async def _dispatch_email_recipient(
 async def _dispatch_sms_recipient(_recipient: dict, _body: str) -> bool:
     """SMS channel stub — not yet implemented."""
     logger.warning("SMS channel not configured. Message not sent to %s", _recipient.get("email"))
-    raise NotImplementedError("Kenh SMS chua duoc cau hinh. Vui long su dung Email.")
+    raise NotImplementedError("Kênh SMS chua duoc cau hinh. Vui long su dung Email.")
 
 
 async def _dispatch_zalo_recipient(_recipient: dict, _body: str) -> bool:
     """Zalo OA channel stub — not yet implemented."""
     logger.warning("Zalo OA channel not configured. Message not sent to %s", _recipient.get("email"))
-    raise NotImplementedError("Kenh Zalo OA chua duoc cau hinh. Vui long su dung Email.")
+    raise NotImplementedError("Kênh Zalo OA chua duoc cau hinh. Vui long su dung Email.")
 
 
 async def send_campaign(
     db: AsyncSession,
     tenant_id: uuid.UUID,
     campaign_id: uuid.UUID,
-    shop_name: str = "Tailor Project",
+    shop_name: str = "Nhà May Thanh Lộc",
 ) -> CampaignDB:
     """Trigger campaign dispatch to all segment recipients.
 
@@ -612,7 +612,7 @@ async def send_campaign(
     if campaign.channel in ("sms", "zalo"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Kenh '{campaign.channel}' chua duoc cau hinh. Hien tai chi ho tro Email va Account.",
+            detail=f"Kênh '{campaign.channel}' chua duoc cau hinh. Hien tai chi ho tro Email va Account.",
         )
 
     # Account channel requires voucher_id
@@ -646,7 +646,7 @@ async def send_campaign(
     if not recipients:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Phan khuc khach hang nay hien tai chua co ai. Khong the gui.",
+            detail="Phân khúc khach hang nay hien tai chua co ai. Khong the gui.",
         )
 
     # Mark campaign as sending

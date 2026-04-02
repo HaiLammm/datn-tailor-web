@@ -12,7 +12,7 @@ import type { StylePillarResponse } from "@/types/style";
 // Test style pillar data (golden_points required per Story 2.2)
 const mockTraditionalPillar: StylePillarResponse = {
   id: "traditional",
-  name: "Truyền thống",
+  name: "Size S",
   description: "Phong cách may đo truyền thống Việt Nam",
   image_url: "/images/styles/traditional.jpg",
   is_default: true,
@@ -44,7 +44,7 @@ const mockTraditionalPillar: StylePillarResponse = {
 
 const mockMinimalistPillar: StylePillarResponse = {
   id: "minimalist",
-  name: "Tối giản hiện đại",
+  name: "Size M",
   description: "Phong cách tối giản, đường cắt sắc nét",
   image_url: "/images/styles/minimalist.jpg",
   is_default: false,

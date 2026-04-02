@@ -1,10 +1,10 @@
-# Root Makefile for Tailor Project (Áo dài AI)
+# Root Makefile for Nhà May Thanh Lộc (Áo dài AI)
 
 .PHONY: help install dev-frontend dev-backend dev dev-all test lint clean
 
 # Hiển thị các lệnh hỗ trợ
 help:
-	@echo "Tailor Project Management Commands:"
+	@echo "Nhà May Thanh Lộc Management Commands:"
 	@echo "  make install      - Cài đặt dependencies cho cả Frontend và Backend"
 	@echo "  make dev          - Chạy đồng thời cả Frontend và Backend (Dev mode)"
 	@echo "  make dev-frontend - Chỉ chạy Frontend (Next.js)"

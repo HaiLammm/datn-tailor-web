@@ -78,7 +78,7 @@ so that I can directly digitize heritage craft secrets without needing programme
 - **Backend framework:** FastAPI with Pydantic v2 for request/response validation
 - **Frontend framework:** Next.js 16 App Router, TypeScript strict mode
 - **Styling:** Tailwind CSS — Use Artisan Mode dense layout patterns (higher information density than customer-facing pages)
-- **Vietnamese terminology:** 100% Vietnamese labels in UI (e.g., "Trụ cột Phong cách", "Quy tắc Delta", "Lưu thay đổi", "Điểm Vàng")
+- **Vietnamese terminology:** 100% Vietnamese labels in UI (e.g., "Phong cách", "Quy tắc Delta", "Lưu thay đổi", "Điểm Vàng")
 - **Design constants:** Reuse `HERITAGE_GOLD (#D4AF37)` for golden ratio markers, `INDIGO_DEPTH (#4f46e5)` for primary actions
 
 ### Library/Framework Requirements

@@ -39,7 +39,7 @@ async def test_health_endpoint_content_type_json() -> None:
 
 def test_app_title() -> None:
     """FastAPI app should have correct title."""
-    assert app.title == "Tailor Project API"
+    assert app.title == "Nhà May Thanh Lộc API"
 
 
 def test_app_version() -> None:

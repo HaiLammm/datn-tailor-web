@@ -19,7 +19,7 @@ declare module "next-auth" {
 }
 
 /**
- * Auth.js v5 configuration for Tailor Project.
+ * Auth.js v5 configuration for Nhà May Thanh Lộc.
  * Uses JWT stored in HttpOnly, Secure, SameSite cookies.
  */
 export const { handlers, signIn, signOut, auth } = NextAuth({

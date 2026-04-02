@@ -186,7 +186,7 @@ export async function createCampaign(
 
     if (response.status === 409) {
       const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.detail || "Ten chien dich da ton tai" };
+      return { success: false, error: err.detail || "Kế hoạch da ton tai" };
     }
     if (response.status === 400) {
       const err = await response.json().catch(() => ({}));
@@ -240,7 +240,7 @@ export async function updateCampaign(
     }
     if (response.status === 409) {
       const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.detail || "Ten chien dich da ton tai" };
+      return { success: false, error: err.detail || "Kế hoạch da ton tai" };
     }
     if (!response.ok) return { success: false, error: `HTTP ${response.status}` };
 

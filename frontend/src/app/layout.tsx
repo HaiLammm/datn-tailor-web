@@ -12,7 +12,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Tailor Project - Hệ thống May Đo Thông Minh",
+  title: "Nhà May Thanh Lộc - Hệ thống May Đo Thông Minh",
   description: "Nền tảng quản lý đơn hàng và sản xuất cho xưởng may đo cao cấp",
 };
 

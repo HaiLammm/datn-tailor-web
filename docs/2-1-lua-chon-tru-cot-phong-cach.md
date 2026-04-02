@@ -1,4 +1,4 @@
-# Story 2.1: Lựa chọn Trụ cột Phong cách (Style Pillars)
+# Story 2.1: Lựa chọn Phong cách (Style Pillars)
 
 Status: done
 
@@ -10,7 +10,7 @@ so that **hệ thống có thể nạp các quy tắc thẩm mỹ tương ứng*
 
 ## Acceptance Criteria
 
-1.  **Style Pillar Display:** Trang Design Session hiển thị danh sách các "Style Pillar" có sẵn (vd: Truyền thống, Tối giản hiện đại). (FR1)
+1.  **Style Pillar Display:** Trang Design Session hiển thị danh sách các "Style Pillar" có sẵn (vd: Size S, Size M). (FR1)
 2.  **Selection Logic:** Khi người dùng chọn một phong cách, hệ thống ghi nhận lựa chọn và cập nhật trạng thái phiên làm việc (Design Session).
 3.  **UI Feedback:** Giao diện hiển thị mô tả phong cách và cập nhật các thanh trượt cường độ (Sliders) liên quan đến phong cách đó. (FR2)
 4.  **Backend Integration:** Hệ thống nạp bộ quy tắc (Rules) từ Local Knowledge Base cho phong cách đã chọn.
@@ -73,7 +73,7 @@ None - Implementation completed without errors.
 
 1. **Backend Implementation:**
    - Created `IntensitySlider` and `StylePillarResponse` Pydantic models with Vietnamese terminology
-   - Implemented `StyleService` with hardcoded LKB data (3 style pillars: Truyền thống, Tối giản hiện đại, Tiên phong nghệ thuật)
+   - Implemented `StyleService` with hardcoded LKB data (3 style pillars: Size S, Size M, Size L)
    - Created `/api/v1/styles/pillars` GET endpoint returning all pillars with slider configurations
    - Created `/api/v1/styles/pillars/{id}` GET endpoint for single pillar retrieval
 

@@ -16,7 +16,7 @@ _THICKNESS_SCORES = {"light": 1.0, "medium": 2.0, "heavy": 3.0}
 # Each pillar defines ideal property values (0-3 scale) and which properties matter most.
 _PILLAR_PREFERENCES: dict[str, dict[str, dict[str, float]]] = {
     "traditional": {
-        # Truyền thống: ưu tiên độ rủ cao, bóng, giữ phom trung bình
+        # Size S: ưu tiên độ rủ cao, bóng, giữ phom trung bình
         "ideal": {"do_ru": 3.0, "do_day": 2.0, "do_co_dan": 0.0, "do_bong": 3.0, "kha_nang_giu_phom": 2.0},
         "weight": {"do_ru": 1.5, "do_day": 1.0, "do_co_dan": 0.5, "do_bong": 1.2, "kha_nang_giu_phom": 1.0},
     },

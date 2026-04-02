@@ -43,7 +43,7 @@ global.fetch = mockFetch;
 const mockPillars = [
     {
         pillar_id: "traditional",
-        pillar_name_vi: "Truyền thống",
+        pillar_name_vi: "Size S",
         delta_mapping_count: 7,
         slider_count: 4,
         last_modified: "2026-03-05T10:00:00Z",
@@ -52,7 +52,7 @@ const mockPillars = [
 
 const mockDetail = {
     pillar_id: "traditional",
-    pillar_name_vi: "Truyền thống",
+    pillar_name_vi: "Size S",
     mappings: [
         {
             slider_key: "shoulder_width",
@@ -72,7 +72,7 @@ const mockDetail = {
 const mockUpdateResponse = {
     success: true,
     pillar_id: "traditional",
-    pillar_name_vi: "Truyền thống",
+    pillar_name_vi: "Size S",
     mapping_count: 1,
     last_modified: "2026-03-05T11:00:00Z",
     message: "Đã cập nhật thành công",

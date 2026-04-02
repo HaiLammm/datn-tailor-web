@@ -11,6 +11,9 @@ import type {
   TailorTask,
   TailorTaskListResponse,
   TailorTaskSummary,
+  TaskFilters,
+  IncomePeriod,
+  TailorIncomeDetailResponse,
 } from "@/types/tailor-task";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
@@ -36,13 +39,25 @@ function createAbortController(): {
 
 /**
  * Fetch all tasks assigned to current tailor with summary.
+ * Supports optional filtering by status, date range, month/year.
  */
-export async function fetchMyTasks(): Promise<TailorTaskListResponse> {
+export async function fetchMyTasks(filters?: TaskFilters): Promise<TailorTaskListResponse> {
   const token = await getAuthToken();
   const { controller, timeoutId } = createAbortController();
 
+  // Build query string from filters
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.date_from) params.append("date_from", filters.date_from);
+  if (filters?.date_to) params.append("date_to", filters.date_to);
+  if (filters?.month) params.append("month", filters.month.toString());
+  if (filters?.year) params.append("year", filters.year.toString());
+  
+  const queryString = params.toString();
+  const url = `${BACKEND_URL}/api/v1/tailor-tasks/my-tasks${queryString ? `?${queryString}` : ""}`;
+
   try {
-    const response = await fetch(`${BACKEND_URL}/api/v1/tailor-tasks/my-tasks`, {
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -172,12 +187,28 @@ export async function updateTaskStatus(
  * Fetch monthly income summary for current tailor.
  * Returns current month + previous month totals and percentage change.
  */
-export async function fetchMyIncome(): Promise<TailorIncomeResponse> {
+/**
+ * Fetch income by period (day/week/month/year).
+ * Day returns detailed task list, others return aggregated comparison.
+ */
+export async function fetchMyIncome(
+  period: IncomePeriod = "month",
+  referenceDate?: string
+): Promise<TailorIncomeResponse | TailorIncomeDetailResponse> {
   const token = await getAuthToken();
   const { controller, timeoutId } = createAbortController();
 
+  // Build query string
+  const params = new URLSearchParams();
+  params.append("period", period);
+  if (referenceDate) {
+    params.append("reference_date", referenceDate);
+  }
+  
+  const url = `${BACKEND_URL}/api/v1/tailor-tasks/my-income?${params.toString()}`;
+
   try {
-    const response = await fetch(`${BACKEND_URL}/api/v1/tailor-tasks/my-income`, {
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -198,6 +229,12 @@ export async function fetchMyIncome(): Promise<TailorIncomeResponse> {
     }
 
     const json = await response.json();
+    
+    // Type guard: day period returns TailorIncomeDetailResponse
+    if (period === "day") {
+      return json.data as TailorIncomeDetailResponse;
+    }
+    
     return json.data as TailorIncomeResponse;
   } catch (error) {
     clearTimeout(timeoutId);

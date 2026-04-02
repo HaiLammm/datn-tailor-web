@@ -121,7 +121,7 @@ class TemplatePreviewRequest(BaseModel):
     sample_voucher_code: str = "TETLUXV26"
     sample_voucher_value: str = "20%"
     sample_expiry_date: str = "31/12/2026"
-    sample_shop_name: str = "Tailor Project"
+    sample_shop_name: str = "Nhà May Thanh Lộc"
 
 
 class TemplatePreviewResponse(BaseModel):

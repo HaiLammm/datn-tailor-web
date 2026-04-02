@@ -1,4 +1,4 @@
-"""Style Service - Story 2.1 & 2.2: Lựa chọn & Tinh chỉnh Trụ cột Phong cách.
+"""Style Service - Story 2.1 & 2.2: Lựa chọn & Tinh chỉnh Phong cách.
 
 Manages style pillars from Local Knowledge Base (LKB).
 Backend is authoritative source (SSOT) for style configurations including golden_points.
@@ -51,7 +51,7 @@ class StyleService:
         return [
             StylePillarResponse(
                 id="traditional",
-                name="Truyền thống",
+                name="Size S",
                 description="Phong cách may đo truyền thống Việt Nam, chú trọng đường cắt cổ điển và chi tiết thủ công tinh xảo.",
                 image_url="/images/styles/traditional.jpg",
                 is_default=True,
@@ -104,7 +104,7 @@ class StyleService:
             ),
             StylePillarResponse(
                 id="minimalist",
-                name="Tối giản hiện đại",
+                name="Size M",
                 description="Phong cách tối giản, đường cắt sắc nét và silhouette gọn gàng, phù hợp môi trường công sở.",
                 image_url="/images/styles/minimalist.jpg",
                 is_default=False,
@@ -157,7 +157,7 @@ class StyleService:
             ),
             StylePillarResponse(
                 id="avant-garde",
-                name="Tiên phong nghệ thuật",
+                name="Size L",
                 description="Phong cách táo bạo với đường cắt phá cách, dành cho khách hàng yêu thích sự độc đáo.",
                 image_url="/images/styles/avant-garde.jpg",
                 is_default=False,

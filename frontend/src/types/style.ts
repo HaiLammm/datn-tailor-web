@@ -1,6 +1,6 @@
 /**
  * Style Pillar Types - TypeScript types and Zod schemas
- * Story 2.1 & 2.2: Lựa chọn & Tinh chỉnh Trụ cột Phong cách
+ * Story 2.1 & 2.2: Lựa chọn & Tinh chỉnh Phong cách
  *
  * Uses snake_case for API field names to match Backend SSOT.
  */

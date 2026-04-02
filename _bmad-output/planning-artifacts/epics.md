@@ -19,7 +19,7 @@ This document provides the complete epic and story breakdown for tailor_project,
 
 ### Functional Requirements
 
-FR1: Người dùng có thể chọn các Trụ cột Phong cách (Style Pillars) định sẵn.
+FR1: Người dùng có thể chọn các Phong cách (Style Pillars) định sẵn.
 FR2: Người dùng có thể điều chỉnh cường độ phong cách qua Sliders.
 FR3: Hệ thống có thể dịch thuật lựa chọn phong cách thành các bộ chỉ số Ease Delta.
 FR4: Hệ thống có thể gợi ý vải phù hợp dựa trên phong cách và cấu trúc trang phục.

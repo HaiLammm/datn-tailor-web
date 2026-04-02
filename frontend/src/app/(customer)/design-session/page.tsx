@@ -1,6 +1,6 @@
 /**
  * Design Session Page - Server Component
- * Story 2.1: Lựa chọn Trụ cột Phong cách
+ * Story 2.1: Lựa chọn Phong cách
  *
  * Entry page for design session where customers select style pillars.
  * Fetches style pillars from Backend (authoritative source).

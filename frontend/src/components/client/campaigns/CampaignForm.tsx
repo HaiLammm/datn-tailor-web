@@ -23,7 +23,7 @@ import { createCampaign, updateCampaign } from "@/app/actions/campaign-actions";
 import type { OwnerVoucher } from "@/types/voucher";
 
 const campaignSchema = z.object({
-  name: z.string().trim().min(1, "Ten chien dich la bat buoc").max(200, "Toi da 200 ky tu"),
+  name: z.string().trim().min(1, "Kế hoạch la bat buoc").max(200, "Toi da 200 ky tu"),
   channel: z.enum(["email", "sms", "zalo", "account"] as const),
   template_id: z.string().min(1, "Vui long chon template"),
   segment: z.enum([
@@ -130,7 +130,7 @@ export default function CampaignForm({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <span>
-            Kenh <strong>{CHANNEL_LABELS[formData.channel]}</strong> hien dang duoc xay dung.
+            Kênh <strong>{CHANNEL_LABELS[formData.channel]}</strong> hien dang duoc xay dung.
             Ban co the tao chien dich nhung chua the gui. Vui long chon kenh <strong>Email</strong> de gui ngay.
           </span>
         </div>
@@ -150,7 +150,7 @@ export default function CampaignForm({
       {/* Campaign Name */}
       <div>
         <label className="block text-sm font-medium text-stone-700 mb-1">
-          Ten chien dich <span className="text-red-500">*</span>
+          Kế hoạch <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -168,7 +168,7 @@ export default function CampaignForm({
       {/* Channel */}
       <div>
         <label className="block text-sm font-medium text-stone-700 mb-2">
-          Kenh gui <span className="text-red-500">*</span>
+          Kênh gui <span className="text-red-500">*</span>
         </label>
         <div className="flex gap-3">
           {(["email", "sms", "zalo", "account"] as ChannelType[]).map((ch) => (
@@ -228,7 +228,7 @@ export default function CampaignForm({
       {/* Segment */}
       <div>
         <label className="block text-sm font-medium text-stone-700 mb-2">
-          Phan khuc khach hang <span className="text-red-500">*</span>
+          Phân khúc khach hang <span className="text-red-500">*</span>
         </label>
         {segments.length === 0 && (
           <div className="px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
@@ -262,7 +262,7 @@ export default function CampaignForm({
         </div>
         {currentSegment && currentSegment.recipient_count === 0 && (
           <p className="text-xs text-amber-600 mt-1">
-            Phan khuc nay chua co nguoi nhan. Chien dich se khong duoc gui.
+            Phân khúc nay chua co nguoi nhan. Chien dich se khong duoc gui.
           </p>
         )}
       </div>

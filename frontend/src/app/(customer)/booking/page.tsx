@@ -46,7 +46,7 @@ export default async function BookingPage() {
 }
 
 export const metadata = {
-  title: "Đặt Lịch Tư Vấn Bespoke | Tailor Project",
+  title: "Đặt Lịch Tư Vấn Bespoke | Nhà May Thanh Lộc",
   description:
     "Đặt lịch hẹn tư vấn Bespoke tại tiệm may áo dài. Chọn ngày và khung giờ phù hợp.",
 };

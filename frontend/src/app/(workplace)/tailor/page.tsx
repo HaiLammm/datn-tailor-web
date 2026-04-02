@@ -23,7 +23,7 @@ export default async function TailorDashboard() {
     <div className="p-4 lg:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#1A1A2E]">Công việc</h1>
+        <h1 className="text-2xl font-semibold text-[#1A1A2E]">Tổng quan</h1>
         <p className="text-sm text-gray-500 mt-1">
           Xin chào,{" "}
           <span className="font-medium text-[#1A2B4C]">

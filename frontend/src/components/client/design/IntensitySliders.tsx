@@ -2,7 +2,7 @@
 
 /**
  * Intensity Sliders Component
- * Story 2.1 & 2.2: Lựa chọn & Tinh chỉnh Trụ cột Phong cách
+ * Story 2.1 & 2.2: Lựa chọn & Tinh chỉnh Phong cách
  *
  * Displays intensity sliders with Haptic Golden Points (Heritage Gold markers),
  * debounced backend submission, and inline soft constraint warnings (FR2, Story 2.2).

@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,7 @@ class TailorTaskResponse(BaseModel):
     assigned_by: str
     garment_name: str
     customer_name: str
-    status: str = Field(description="assigned | in_progress | completed")
+    status: str = Field(description="assigned | in_progress | completed | cancelled")
     production_step: str = Field(default="pending", description="pending | cutting | sewing | finishing | quality_check | done")
     deadline: str | None = None
     notes: str | None = None
@@ -38,6 +38,7 @@ class TailorTaskSummary(BaseModel):
     assigned: int = 0
     in_progress: int = 0
     completed: int = 0
+    cancelled: int = 0
     overdue: int = 0
 
 
@@ -155,3 +156,58 @@ class TailorIncomeResponse(BaseModel):
         default=None,
         description="% thay đổi thu nhập so với tháng trước. None nếu tháng trước = 0.",
     )
+
+
+# ── Tech-Spec: Dashboard Restructure (Task 1) ─────────────────────────────────
+
+
+class TaskFilterParams(BaseModel):
+    """Filter parameters for task list queries."""
+
+    status: Optional[str] = Field(
+        default=None,
+        description="Comma-separated status values: assigned,in_progress,completed,cancelled"
+    )
+    date_from: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks with deadline >= this date"
+    )
+    date_to: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks with deadline <= this date"
+    )
+    month: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=12,
+        description="Filter tasks by deadline month (1-12)"
+    )
+    year: Optional[int] = Field(
+        default=None,
+        description="Filter tasks by deadline year"
+    )
+
+
+# ── Tech-Spec: Dashboard Restructure (Task 2) ─────────────────────────────────
+
+
+IncomePeriod = Literal["day", "week", "month", "year"]
+
+
+class IncomeDetailItem(BaseModel):
+    """Single task detail for daily income view."""
+
+    task_id: str
+    garment_name: str
+    customer_name: str
+    piece_rate: float
+    completed_at: str
+
+
+class TailorIncomeDetailResponse(BaseModel):
+    """Detailed income response for daily view."""
+
+    items: list[IncomeDetailItem] = []
+    total_income: float = Field(default=0.0, description="Tổng tiền công trong ngày")
+    task_count: int = Field(default=0, description="Số lượng công việc hoàn thành")
+    date: str = Field(description="Ngày tham chiếu (ISO format)")

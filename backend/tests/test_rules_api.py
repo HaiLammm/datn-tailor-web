@@ -141,7 +141,7 @@ async def test_get_pillar_detail_traditional(client: AsyncClient, seed_users: di
 
     data = response.json()
     assert data["pillar_id"] == "traditional"
-    assert data["pillar_name_vi"] == "Truyền thống"
+    assert data["pillar_name_vi"] == "Size S"
     assert isinstance(data["mappings"], list)
     assert len(data["mappings"]) > 0
 

@@ -1,4 +1,4 @@
-# Direct dependencies for Tailor Project Backend
+# Direct dependencies for Nhà May Thanh Lộc Backend
 fastapi>=0.133.0
 python-multipart>=0.0.20
 uvicorn[standard]>=0.41.0

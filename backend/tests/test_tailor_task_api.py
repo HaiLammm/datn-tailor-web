@@ -74,6 +74,7 @@ async def seed_data(test_db_session: AsyncSession):
         customer_name="Nguyễn Văn A",
         customer_phone="0901234567",
         shipping_address={},
+        subtotal_amount=Decimal("500000"),
         total_amount=Decimal("500000"),
     )
     test_db_session.add(order)
@@ -176,3 +177,103 @@ async def test_get_task_detail(client, override_get_db, seed_data, tailor_token)
 async def test_unauthenticated_request(client, override_get_db):
     response = await client.get("/api/v1/tailor-tasks/my-tasks")
     assert response.status_code in (401, 403)
+
+
+# ── Tech-Spec: Dashboard Restructure — API Filter Tests ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_my_tasks_with_status_filter(client, override_get_db, seed_data, tailor_token):
+    """Test filtering tasks by status via query param."""
+    response = await client.get(
+        "/api/v1/tailor-tasks/my-tasks?status=assigned",
+        headers={"Authorization": f"Bearer {tailor_token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    tasks = body["data"]["tasks"]
+    # All returned tasks should have status 'assigned'
+    for task in tasks:
+        assert task["status"] == "assigned"
+
+
+@pytest.mark.asyncio
+async def test_my_tasks_with_date_filter(client, override_get_db, seed_data, tailor_token):
+    """Test filtering tasks by date range via query params."""
+    from datetime import datetime, timedelta
+    
+    now = datetime.utcnow()
+    date_from = (now + timedelta(days=1)).date().isoformat()
+    date_to = (now + timedelta(days=10)).date().isoformat()
+    
+    response = await client.get(
+        f"/api/v1/tailor-tasks/my-tasks?date_from={date_from}&date_to={date_to}",
+        headers={"Authorization": f"Bearer {tailor_token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    # Should return tasks within the date range
+    assert "tasks" in body["data"]
+
+
+@pytest.mark.asyncio
+async def test_my_tasks_with_month_year_filter(client, override_get_db, seed_data, tailor_token):
+    """Test filtering tasks by month and year."""
+    response = await client.get(
+        "/api/v1/tailor-tasks/my-tasks?month=4&year=2026",
+        headers={"Authorization": f"Bearer {tailor_token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "tasks" in body["data"]
+
+
+@pytest.mark.asyncio
+async def test_my_income_with_period_day(client, override_get_db, seed_data, tailor_token):
+    """Test income endpoint with day period - should return detail response."""
+    response = await client.get(
+        "/api/v1/tailor-tasks/my-income?period=day",
+        headers={"Authorization": f"Bearer {tailor_token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    data = body["data"]
+    # Day period returns detail items
+    assert "items" in data or "total_income" in data
+
+
+@pytest.mark.asyncio
+async def test_my_income_with_period_week(client, override_get_db, seed_data, tailor_token):
+    """Test income endpoint with week period - should return summary response."""
+    response = await client.get(
+        "/api/v1/tailor-tasks/my-income?period=week",
+        headers={"Authorization": f"Bearer {tailor_token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    data = body["data"]
+    # Week period returns summary with current/previous
+    assert "current_month" in data or "total_income" in data
+
+
+@pytest.mark.asyncio
+async def test_my_income_with_period_year(client, override_get_db, seed_data, tailor_token):
+    """Test income endpoint with year period."""
+    response = await client.get(
+        "/api/v1/tailor-tasks/my-income?period=year",
+        headers={"Authorization": f"Bearer {tailor_token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    data = body["data"]
+    assert "current_month" in data or "total_income" in data
+
+
+@pytest.mark.asyncio
+async def test_my_income_invalid_period(client, override_get_db, seed_data, tailor_token):
+    """Test income endpoint with invalid period parameter."""
+    response = await client.get(
+        "/api/v1/tailor-tasks/my-income?period=invalid",
+        headers={"Authorization": f"Bearer {tailor_token}"},
+    )
+    assert response.status_code == 400

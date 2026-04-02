@@ -3,7 +3,7 @@
  * Matches backend Pydantic models in backend/src/models/tailor_task.py
  */
 
-export type TaskStatus = "assigned" | "in_progress" | "completed";
+export type TaskStatus = "assigned" | "in_progress" | "completed" | "cancelled";
 
 export interface TailorTask {
   id: string;
@@ -31,6 +31,7 @@ export interface TailorTaskSummary {
   assigned: number;
   in_progress: number;
   completed: number;
+  cancelled: number;
   overdue: number;
 }
 
@@ -48,6 +49,7 @@ export const NEXT_STATUS: Record<string, TaskStatus | null> = {
   assigned: "in_progress",
   in_progress: "completed",
   completed: null,
+  cancelled: null,
 };
 
 // ── Story 5.2: Owner Task Management Types ────────────────────────────────────
@@ -99,4 +101,31 @@ export interface TailorIncomeResponse {
   previous_month: TailorMonthlyIncome;
   /** % thay đổi thu nhập so tháng trước. null nếu tháng trước = 0. */
   percentage_change: number | null;
+}
+
+// ── Tech-Spec: Dashboard Restructure ──────────────────────────────────────────
+
+export interface TaskFilters {
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+  month?: number;
+  year?: number;
+}
+
+export type IncomePeriod = "day" | "week" | "month" | "year";
+
+export interface IncomeDetailItem {
+  task_id: string;
+  garment_name: string;
+  customer_name: string;
+  piece_rate: number;
+  completed_at: string;
+}
+
+export interface TailorIncomeDetailResponse {
+  items: IncomeDetailItem[];
+  total_income: number;
+  task_count: number;
+  date: string;
 }

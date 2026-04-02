@@ -188,7 +188,7 @@ Typography:
 
 ## Previous Story Intelligence
 
-### Story 2.1 (Lựa chọn Trụ cột Phong cách) — Learnings
+### Story 2.1 (Lựa chọn Phong cách) — Learnings
 
 - **Zustand Store Pattern:** `useDesignStore` established in Story 2.1 — đừng tạo store mới không cần thiết. Story này không cần Zustand.
 - **Server/Client Pattern:** Story 2.1 dùng pattern Server Component fetch → Client Component render. **Reuse pattern đó.**

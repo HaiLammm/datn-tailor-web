@@ -26,6 +26,10 @@ const STATUS_CONFIG: Record<
     label: "Hoàn thành",
     className: "bg-emerald-100 text-emerald-800",
   },
+  cancelled: {
+    label: "Đã hủy",
+    className: "bg-gray-100 text-gray-800",
+  },
 };
 
 function formatDeadline(deadline: string | null, daysUntil: number | null): string {
@@ -74,7 +78,7 @@ export default function TaskRow({
     <div
       className={`flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:border-[#1A2B4C]/30 transition-colors ${
         isUpdating ? "opacity-60" : ""
-      }`}
+      } ${task.status === "cancelled" ? "opacity-60" : ""}`}
       onClick={() => onRowClick(task)}
       data-testid={`task-row-${task.id}`}
     >

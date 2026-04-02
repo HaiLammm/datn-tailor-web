@@ -1,4 +1,4 @@
-"""Tailor Project Backend - FastAPI Application Entry Point."""
+"""Nhà May Thanh Lộc Backend - FastAPI Application Entry Point."""
 
 import logging
 import os
@@ -65,8 +65,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="Tailor Project API",
-    description="Backend API for the Tailor Project - AI-powered tailoring platform",
+    title="Nhà May Thanh Lộc API",
+    description="Backend API for the Nhà May Thanh Lộc - AI-powered tailoring platform",
     version="0.1.0",
     lifespan=lifespan,
 )

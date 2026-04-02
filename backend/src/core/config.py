@@ -9,7 +9,7 @@ load_dotenv()
 
 
 class Settings:
-    """Central configuration for the Tailor Project Backend."""
+    """Central configuration for the Nhà May Thanh Lộc Backend."""
 
     # Timezone (Vietnam UTC+7)
     VIETNAM_TZ_OFFSET: timezone = timezone(timedelta(hours=7))

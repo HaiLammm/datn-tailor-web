@@ -1,4 +1,4 @@
-"""Unit tests for StyleService - Story 2.1: Lựa chọn Trụ cột Phong cách.
+"""Unit tests for StyleService - Story 2.1: Lựa chọn Phong cách.
 
 Tests for style pillar retrieval and configuration.
 """

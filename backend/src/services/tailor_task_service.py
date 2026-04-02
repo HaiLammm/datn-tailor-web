@@ -22,11 +22,15 @@ from src.models.tailor_task import (
     TailorIncomeResponse,
     TailorMonthlyIncome,
     TaskCreateRequest,
+    TaskFilterParams,
     TaskUpdateRequest,
     TailorTaskDetailResponse,
     TailorTaskListResponse,
     TailorTaskResponse,
     TailorTaskSummary,
+    IncomeDetailItem,
+    TailorIncomeDetailResponse,
+    IncomePeriod,
 )
 
 # Valid status transitions: current → allowed next statuses
@@ -84,31 +88,58 @@ def _task_to_response(task: TailorTaskDB, now: datetime) -> TailorTaskResponse:
 
 
 async def get_my_tasks(
-    db: AsyncSession, tailor_id: uuid.UUID, tenant_id: uuid.UUID
+    db: AsyncSession,
+    tailor_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    filters: TaskFilterParams | None = None,
 ) -> TailorTaskListResponse:
     """Get all tasks assigned to a tailor with summary counts.
 
-    Tasks sorted by: status priority (assigned > in_progress > completed),
+    Tasks sorted by: status priority (assigned > in_progress > completed > cancelled),
     then deadline ASC (urgent first).
+    
+    Supports filtering by:
+    - status: comma-separated list (e.g., "assigned,in_progress")
+    - date_from/date_to: filter by deadline range
+    - month/year: filter by deadline month/year
     """
     now = datetime.now(timezone.utc)
 
-    # Status priority ordering: assigned=1, in_progress=2, completed=3
+    # Status priority ordering: assigned=1, in_progress=2, completed=3, cancelled=4
     status_order = case(
         (TailorTaskDB.status == "assigned", 1),
         (TailorTaskDB.status == "in_progress", 2),
         (TailorTaskDB.status == "completed", 3),
-        else_=4,
+        (TailorTaskDB.status == "cancelled", 4),
+        else_=5,
     )
 
-    query = (
-        select(TailorTaskDB)
-        .where(
-            TailorTaskDB.tenant_id == tenant_id,
-            TailorTaskDB.assigned_to == tailor_id,
-        )
-        .order_by(status_order, TailorTaskDB.deadline.asc().nulls_last())
+    # Build base query
+    query = select(TailorTaskDB).where(
+        TailorTaskDB.tenant_id == tenant_id,
+        TailorTaskDB.assigned_to == tailor_id,
     )
+
+    # Apply filters if provided
+    if filters:
+        # Status filter
+        if filters.status:
+            status_list = [s.strip() for s in filters.status.split(",")]
+            query = query.where(TailorTaskDB.status.in_(status_list))
+
+        # Date range filter
+        if filters.date_from:
+            query = query.where(TailorTaskDB.deadline >= filters.date_from)
+        if filters.date_to:
+            query = query.where(TailorTaskDB.deadline <= filters.date_to)
+
+        # Month/Year filter
+        if filters.month:
+            query = query.where(func.extract("month", TailorTaskDB.deadline) == filters.month)
+        if filters.year:
+            query = query.where(func.extract("year", TailorTaskDB.deadline) == filters.year)
+
+    query = query.order_by(status_order, TailorTaskDB.deadline.asc().nulls_last())
 
     result = await db.execute(query)
     tasks = result.scalars().all()
@@ -121,6 +152,7 @@ async def get_my_tasks(
         assigned=sum(1 for t in tasks if t.status == "assigned"),
         in_progress=sum(1 for t in tasks if t.status == "in_progress"),
         completed=sum(1 for t in tasks if t.status == "completed"),
+        cancelled=sum(1 for t in tasks if t.status == "cancelled"),
         overdue=sum(1 for t in task_responses if t.is_overdue),
     )
 
@@ -139,9 +171,11 @@ async def get_task_summary(
             func.count().filter(TailorTaskDB.status == "assigned").label("assigned"),
             func.count().filter(TailorTaskDB.status == "in_progress").label("in_progress"),
             func.count().filter(TailorTaskDB.status == "completed").label("completed"),
+            func.count().filter(TailorTaskDB.status == "cancelled").label("cancelled"),
             func.count().filter(
                 TailorTaskDB.deadline < now,
                 TailorTaskDB.status != "completed",
+                TailorTaskDB.status != "cancelled",
             ).label("overdue"),
         )
         .where(
@@ -157,6 +191,7 @@ async def get_task_summary(
         assigned=result.assigned,
         in_progress=result.in_progress,
         completed=result.completed,
+        cancelled=result.cancelled,
         overdue=result.overdue,
     )
 
@@ -717,3 +752,210 @@ async def get_tailor_monthly_income(
         ),
         percentage_change=percentage_change,
     )
+
+
+# ── Tech-Spec: Dashboard Restructure (Task 2) ─────────────────────────────────
+
+
+async def get_tailor_income_by_period(
+    db: AsyncSession,
+    tailor_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    period: IncomePeriod,
+    reference_date: datetime,
+) -> TailorIncomeResponse | TailorIncomeDetailResponse:
+    """Calculate income by period (day/week/month/year) with comparison to previous period.
+    
+    - day: returns TailorIncomeDetailResponse with individual task items
+    - week/month/year: returns TailorIncomeResponse with aggregated comparison
+    """
+    from datetime import timedelta
+    from calendar import monthrange
+    
+    if period == "day":
+        # For daily view, return detailed task list
+        start_of_day = reference_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day = start_of_day + timedelta(days=1)
+        
+        query = (
+            select(TailorTaskDB)
+            .where(
+                TailorTaskDB.assigned_to == tailor_id,
+                TailorTaskDB.tenant_id == tenant_id,
+                TailorTaskDB.status == "completed",
+                TailorTaskDB.piece_rate.isnot(None),
+                TailorTaskDB.completed_at >= start_of_day,
+                TailorTaskDB.completed_at < end_of_day,
+            )
+            .order_by(TailorTaskDB.completed_at.desc())
+        )
+        
+        result = await db.execute(query)
+        tasks = result.scalars().all()
+        
+        items = [
+            IncomeDetailItem(
+                task_id=str(task.id),
+                garment_name=task.garment_name,
+                customer_name=task.customer_name,
+                piece_rate=float(task.piece_rate),
+                completed_at=task.completed_at.isoformat(),
+            )
+            for task in tasks
+        ]
+        
+        total_income = sum(float(t.piece_rate) for t in tasks)
+        
+        return TailorIncomeDetailResponse(
+            items=items,
+            total_income=total_income,
+            task_count=len(tasks),
+            date=reference_date.date().isoformat(),
+        )
+    
+    elif period == "week":
+        # Week: Mon-Sun containing reference_date
+        # Find Monday of the week
+        days_since_monday = reference_date.weekday()  # 0=Mon, 6=Sun
+        week_start = (reference_date - timedelta(days=days_since_monday)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        week_end = week_start + timedelta(days=7)
+        
+        # Previous week
+        prev_week_start = week_start - timedelta(days=7)
+        prev_week_end = week_start
+        
+        # Current week income
+        curr_query = (
+            select(
+                func.coalesce(func.sum(TailorTaskDB.piece_rate), 0).label("total_income"),
+                func.count().label("task_count"),
+            )
+            .where(
+                TailorTaskDB.assigned_to == tailor_id,
+                TailorTaskDB.tenant_id == tenant_id,
+                TailorTaskDB.status == "completed",
+                TailorTaskDB.piece_rate.isnot(None),
+                TailorTaskDB.completed_at >= week_start,
+                TailorTaskDB.completed_at < week_end,
+            )
+        )
+        curr_result = (await db.execute(curr_query)).one()
+        curr_total = float(curr_result.total_income)
+        curr_count = int(curr_result.task_count)
+        
+        # Previous week income
+        prev_query = (
+            select(
+                func.coalesce(func.sum(TailorTaskDB.piece_rate), 0).label("total_income"),
+                func.count().label("task_count"),
+            )
+            .where(
+                TailorTaskDB.assigned_to == tailor_id,
+                TailorTaskDB.tenant_id == tenant_id,
+                TailorTaskDB.status == "completed",
+                TailorTaskDB.piece_rate.isnot(None),
+                TailorTaskDB.completed_at >= prev_week_start,
+                TailorTaskDB.completed_at < prev_week_end,
+            )
+        )
+        prev_result = (await db.execute(prev_query)).one()
+        prev_total = float(prev_result.total_income)
+        prev_count = int(prev_result.task_count)
+        
+        # Calculate percentage change
+        percentage_change: float | None = None
+        if prev_total > 0:
+            percentage_change = round(((curr_total - prev_total) / prev_total) * 100, 1)
+        
+        # Use week number and year for display
+        current_week = reference_date.isocalendar()[1]
+        current_year = reference_date.year
+        prev_week_date = prev_week_start
+        prev_week_num = prev_week_date.isocalendar()[1]
+        prev_year = prev_week_date.year
+        
+        return TailorIncomeResponse(
+            current_month=TailorMonthlyIncome(
+                month=current_week,  # Using week number instead of month
+                year=current_year,
+                total_income=curr_total,
+                task_count=curr_count,
+            ),
+            previous_month=TailorMonthlyIncome(
+                month=prev_week_num,
+                year=prev_year,
+                total_income=prev_total,
+                task_count=prev_count,
+            ),
+            percentage_change=percentage_change,
+        )
+    
+    elif period == "month":
+        # Use existing logic
+        return await get_tailor_monthly_income(db, tailor_id, tenant_id)
+    
+    else:  # period == "year"
+        current_year = reference_date.year
+        prev_year = current_year - 1
+        
+        # Current year income
+        curr_query = (
+            select(
+                func.coalesce(func.sum(TailorTaskDB.piece_rate), 0).label("total_income"),
+                func.count().label("task_count"),
+            )
+            .where(
+                TailorTaskDB.assigned_to == tailor_id,
+                TailorTaskDB.tenant_id == tenant_id,
+                TailorTaskDB.status == "completed",
+                TailorTaskDB.piece_rate.isnot(None),
+                TailorTaskDB.completed_at.isnot(None),
+                func.extract("year", TailorTaskDB.completed_at) == current_year,
+            )
+        )
+        curr_result = (await db.execute(curr_query)).one()
+        curr_total = float(curr_result.total_income)
+        curr_count = int(curr_result.task_count)
+        
+        # Previous year income
+        prev_query = (
+            select(
+                func.coalesce(func.sum(TailorTaskDB.piece_rate), 0).label("total_income"),
+                func.count().label("task_count"),
+            )
+            .where(
+                TailorTaskDB.assigned_to == tailor_id,
+                TailorTaskDB.tenant_id == tenant_id,
+                TailorTaskDB.status == "completed",
+                TailorTaskDB.piece_rate.isnot(None),
+                TailorTaskDB.completed_at.isnot(None),
+                func.extract("year", TailorTaskDB.completed_at) == prev_year,
+            )
+        )
+        prev_result = (await db.execute(prev_query)).one()
+        prev_total = float(prev_result.total_income)
+        prev_count = int(prev_result.task_count)
+        
+        # Calculate percentage change
+        percentage_change: float | None = None
+        if prev_total > 0:
+            percentage_change = round(((curr_total - prev_total) / prev_total) * 100, 1)
+        
+        # Return year as "month" field (reusing the structure)
+        return TailorIncomeResponse(
+            current_month=TailorMonthlyIncome(
+                month=current_year % 100,  # Last 2 digits for display
+                year=current_year,
+                total_income=curr_total,
+                task_count=curr_count,
+            ),
+            previous_month=TailorMonthlyIncome(
+                month=prev_year % 100,
+                year=prev_year,
+                total_income=prev_total,
+                task_count=prev_count,
+            ),
+            percentage_change=percentage_change,
+        )

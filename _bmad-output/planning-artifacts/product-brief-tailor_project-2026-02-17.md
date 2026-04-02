@@ -120,7 +120,7 @@ Hệ thống được coi là thành công khi thu hẹp được khoảng cách
 
 ### Core Features: "The Ao Dai Translator" (Occam-Refined)
 
-- **Style Pillar Interface:** Thay vì nhập liệu tự do, người dùng chọn các Trụ cột Phong cách (Style Pillars) định sẵn (Cổ điển, Tân thời, Tối giản) và điều chỉnh "Cường độ" qua thanh trượt (Intensity Sliders).
+- **Style Pillar Interface:** Thay vì nhập liệu tự do, người dùng chọn các Phong cách (Style Pillars) định sẵn (Cổ điển, Tân thời, Tối giản) và điều chỉnh "Cường độ" qua thanh trượt (Intensity Sliders).
 - **Preset-Driven Engine (Ease Profile):** 
     - Sử dụng các bộ sai số định sẵn (**Delta Presets**) được chuẩn hóa từ tri thức nghệ nhân để đảm bảo tính khả thi 100%.
     - Tính toán dựa trên nguyên lý **Ease Profile** (Phân bổ độ cử động) và áp dụng vào mẫu rập thông qua **Hệ tọa độ chuẩn**.

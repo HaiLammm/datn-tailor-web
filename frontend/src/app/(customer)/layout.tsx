@@ -1,6 +1,6 @@
 /**
  * Customer Route Group Layout
- * Story 2.1: Lựa chọn Trụ cột Phong cách
+ * Story 2.1: Lựa chọn Phong cách
  * Story 4.4a: Profile Icon added to navbar
  *
  * Layout for customer-facing design pages.

@@ -71,7 +71,7 @@ const mockFabrics: FabricResponse[] = [
 
 const mockPillar: StylePillarResponse = {
   id: "traditional",
-  name: "Truyền thống",
+  name: "Size S",
   description: "Phong cách may đo truyền thống",
   image_url: null,
   is_default: true,

@@ -34,7 +34,7 @@ class IntensitySlider(BaseModel):
 class StylePillarResponse(BaseModel):
     """Response schema for a Style Pillar (FR1).
 
-    Represents a design style (e.g., Truyền thống, Tối giản).
+    Represents a design style (e.g., Size S, Tối giản).
     Contains associated intensity sliders for fine-tuning.
     """
 
