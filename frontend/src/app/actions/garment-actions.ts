@@ -360,7 +360,8 @@ export async function updateGarmentStatus(
   status: string,
   expectedReturnDate?: string,
   renterName?: string,
-  renterEmail?: string
+  renterEmail?: string,
+  rentalQuantity?: number
 ): Promise<{ success: boolean; data?: Garment; error?: string }> {
   const session = await auth();
   const token = session?.accessToken;
@@ -382,6 +383,9 @@ export async function updateGarmentStatus(
     }
     if (renterEmail) {
       body.renter_email = renterEmail;
+    }
+    if (rentalQuantity !== undefined) {
+      body.rental_quantity = rentalQuantity;
     }
 
     const response = await fetch(`${BACKEND_URL}/api/v1/garments/${id}/status`, {

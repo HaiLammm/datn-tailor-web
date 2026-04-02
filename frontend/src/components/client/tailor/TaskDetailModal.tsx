@@ -166,7 +166,7 @@ export default function TaskDetailModal({
           {/* Notes */}
           {task.notes && (
             <div>
-              <p className="text-gray-500 text-xs mb-1">Ghi chú từ Owner</p>
+              <p className="text-gray-500 text-xs mb-1">Ghi chú</p>
               <div className="bg-gray-50 rounded-lg p-3 text-sm text-[#1A1A2E]">
                 {task.notes}
               </div>

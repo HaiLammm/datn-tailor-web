@@ -239,6 +239,7 @@ class GarmentStatusUpdate(BaseModel):
     renter_id: uuid.UUID | None = None
     renter_name: str | None = None
     renter_email: str | None = None
+    rental_quantity: int | None = Field(default=1, ge=1, description="Số lượng cho thuê")
 
     @field_validator("expected_return_date")
     @classmethod
@@ -269,12 +270,15 @@ class GarmentStatusUpdate(BaseModel):
                 raise ValueError("Phải nhập tên khách thuê khi trạng thái là 'rented'")
             if not self.renter_email or not self.renter_email.strip():
                 raise ValueError("Phải nhập email khách thuê khi trạng thái là 'rented'")
+            if self.rental_quantity is None or self.rental_quantity < 1:
+                raise ValueError("Số lượng cho thuê phải >= 1")
         if self.status != GarmentStatus.RENTED:
             # Auto-clear date and renter fields for non-rented statuses (AC #5, AC #7)
             self.expected_return_date = None
             self.renter_id = None
             self.renter_name = None
             self.renter_email = None
+            self.rental_quantity = None
         return self
 
 

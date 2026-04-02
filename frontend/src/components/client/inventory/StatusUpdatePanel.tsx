@@ -26,6 +26,7 @@ export default function StatusUpdatePanel({
     const [renterName, setRenterName] = useState<string>("");
     const [renterEmail, setRenterEmail] = useState<string>("");
     const [emailError, setEmailError] = useState<string>("");
+    const [rentalQuantity, setRentalQuantity] = useState<number>(1);
 
     // Map backend status to Vietnamese labels and Heritage colors
     const statusOptions = [
@@ -69,6 +70,7 @@ export default function StatusUpdatePanel({
             setRenterName("");
             setRenterEmail("");
             setEmailError("");
+            setRentalQuantity(1);
             return;
         }
 
@@ -89,7 +91,8 @@ export default function StatusUpdatePanel({
                 newStatus,
                 newStatus === GarmentStatus.RENTED ? selectedDate : undefined,
                 newStatus === GarmentStatus.RENTED ? renterName.trim() : undefined,
-                newStatus === GarmentStatus.RENTED ? renterEmail.trim() : undefined
+                newStatus === GarmentStatus.RENTED ? renterEmail.trim() : undefined,
+                newStatus === GarmentStatus.RENTED ? rentalQuantity : undefined
             );
 
             setPendingStatus(null);
@@ -98,6 +101,7 @@ export default function StatusUpdatePanel({
                 setRenterName("");
                 setRenterEmail("");
                 setEmailError("");
+                setRentalQuantity(1);
                 onSuccess?.(result.data);
             } else {
                 onError?.(result.error || "Cập nhật thất bại. Vui lòng thử lại");
@@ -179,10 +183,24 @@ export default function StatusUpdatePanel({
                         <p className="text-xs text-red-500 mt-1">{emailError}</p>
                     )}
 
+                    <label htmlFor="rental-quantity" className="block text-sm font-medium text-stone-700 mb-2 mt-3">
+                        Số lượng cho thuê:
+                    </label>
+                    <input
+                        id="rental-quantity"
+                        type="number"
+                        min={1}
+                        max={garment.quantity}
+                        value={rentalQuantity}
+                        onChange={(e) => setRentalQuantity(Math.max(1, Math.min(garment.quantity, parseInt(e.target.value) || 1)))}
+                        className="w-full h-12 px-3 rounded-md border border-stone-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+                    />
+                    <p className="text-xs text-stone-400 mt-1">Tồn kho hiện tại: {garment.quantity}</p>
+
                     <div className="flex gap-2 mt-4">
                         <button
                             onClick={() => handleStatusClick(GarmentStatus.RENTED)}
-                            disabled={isPending || !selectedDate || !renterName.trim() || !renterEmail.trim()}
+                            disabled={isPending || !selectedDate || !renterName.trim() || !renterEmail.trim() || rentalQuantity < 1 || rentalQuantity > garment.quantity}
                             className="flex-1 h-12 bg-amber-600 text-white px-6 rounded-md font-bold hover:bg-amber-700 active:scale-95 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isPending ? (
@@ -197,6 +215,7 @@ export default function StatusUpdatePanel({
                             setRenterName("");
                             setRenterEmail("");
                             setEmailError("");
+                            setRentalQuantity(1);
                         }}
                         className="mt-2 text-xs text-stone-500 hover:text-stone-800 transition-colors"
                     >

@@ -7,6 +7,7 @@ Backend is SSOT for garment data.
 import uuid
 from datetime import datetime, timezone
 
+from fastapi import HTTPException
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -241,7 +242,22 @@ async def update_garment_status(
     if not garment:
         return None
 
-    garment.status = status_update.status.value
+    if status_update.status.value == "rented" and status_update.rental_quantity is not None:
+        if garment.quantity < 1:
+            raise HTTPException(status_code=422, detail="Sản phẩm đã hết hàng")
+        if status_update.rental_quantity > garment.quantity:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Số lượng cho thuê vượt quá tồn kho (còn {garment.quantity})",
+            )
+        garment.quantity -= status_update.rental_quantity
+        if garment.quantity == 0:
+            garment.status = "rented"
+        else:
+            garment.status = "available"
+    else:
+        garment.status = status_update.status.value
+
     garment.expected_return_date = status_update.expected_return_date
     garment.renter_id = status_update.renter_id
     garment.renter_name = status_update.renter_name
