@@ -28,6 +28,20 @@ interface OrderFiltersProps {
 export default function OrderFilters({ params, onChange }: OrderFiltersProps) {
   const [searchInput, setSearchInput] = useState(params.search ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const statusRef = useRef<HTMLDivElement>(null);
+  const paymentRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false);
+      if (paymentRef.current && !paymentRef.current.contains(e.target as Node)) setPaymentOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   useEffect(() => {
     setSearchInput(params.search ?? "");
@@ -81,48 +95,78 @@ export default function OrderFilters({ params, onChange }: OrderFiltersProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {/* Order status multi-select */}
-        <div>
+        {/* Order status dropdown multi-select */}
+        <div ref={statusRef} className="relative">
           <label className="block text-xs font-medium text-gray-600 mb-2">
             Trạng thái đơn
           </label>
-          <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map((s) => (
-              <button
-                key={s}
-                onClick={() => toggleStatus(s)}
-                className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                  params.status?.includes(s)
-                    ? "border-indigo-600 bg-indigo-600 text-white"
-                    : "border-gray-300 text-gray-600 hover:border-indigo-400"
-                }`}
-              >
-                {ORDER_STATUS_LABELS[s]}
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => { setStatusOpen(!statusOpen); setPaymentOpen(false); }}
+            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white flex items-center justify-between"
+          >
+            <span className="truncate">
+              {params.status?.length
+                ? params.status.map((s) => ORDER_STATUS_LABELS[s]).join(", ")
+                : "Tất cả"}
+            </span>
+            <svg className={`w-4 h-4 ml-1 transition-transform ${statusOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {statusOpen && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg py-1 max-h-60 overflow-auto">
+              {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map((s) => (
+                <label
+                  key={s}
+                  className="flex items-center px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={params.status?.includes(s) ?? false}
+                    onChange={() => toggleStatus(s)}
+                    className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  {ORDER_STATUS_LABELS[s]}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Payment status multi-select */}
-        <div>
+        {/* Payment status dropdown multi-select */}
+        <div ref={paymentRef} className="relative">
           <label className="block text-xs font-medium text-gray-600 mb-2">
             Thanh toán
           </label>
-          <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(PAYMENT_STATUS_LABELS) as PaymentStatus[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => togglePayment(p)}
-                className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                  params.payment_status?.includes(p)
-                    ? "border-indigo-600 bg-indigo-600 text-white"
-                    : "border-gray-300 text-gray-600 hover:border-indigo-400"
-                }`}
-              >
-                {PAYMENT_STATUS_LABELS[p]}
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => { setPaymentOpen(!paymentOpen); setStatusOpen(false); }}
+            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white flex items-center justify-between"
+          >
+            <span className="truncate">
+              {params.payment_status?.length
+                ? params.payment_status.map((p) => PAYMENT_STATUS_LABELS[p]).join(", ")
+                : "Tất cả"}
+            </span>
+            <svg className={`w-4 h-4 ml-1 transition-transform ${paymentOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {paymentOpen && (
+            <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg py-1 max-h-60 overflow-auto">
+              {(Object.keys(PAYMENT_STATUS_LABELS) as PaymentStatus[]).map((p) => (
+                <label
+                  key={p}
+                  className="flex items-center px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={params.payment_status?.includes(p) ?? false}
+                    onChange={() => togglePayment(p)}
+                    className="mr-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  {PAYMENT_STATUS_LABELS[p]}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Transaction type */}

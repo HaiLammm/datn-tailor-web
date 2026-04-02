@@ -59,7 +59,7 @@ export default async function OwnerCRMPage() {
                 CRM — Danh Sách Leads
               </h1>
               <p className="text-stone-500 text-sm">
-                Theo dõi khách tiềm năng, phân loại Hot/Warm/Cold để chốt sale
+                Theo dõi danh sách khách tiềm năng
               </p>
             </div>
 

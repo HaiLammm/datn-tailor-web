@@ -299,7 +299,7 @@ export default function OrderTable({
                           {isLoading ? "..." : NEXT_STATUS_LABELS[order.status]}
                         </button>
                       )}
-                      {canCancel && (
+                      {canCancel ? (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -311,7 +311,11 @@ export default function OrderTable({
                         >
                           Hủy
                         </button>
-                      )}
+                      ) : order.status === "delivered" ? (
+                        <span className="px-2 py-1 text-xs rounded-md bg-green-100 text-green-700 font-medium">
+                          Thành công
+                        </span>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
