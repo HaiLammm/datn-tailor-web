@@ -4,8 +4,10 @@ workflowType: 'architecture'
 lastStep: 8
 status: 'complete'
 completedAt: '2026-03-10T15:42:18+07:00'
-lastUpdated: '2026-03-26'
+lastUpdated: '2026-04-03'
 updateHistory:
+  - date: '2026-04-03'
+    changes: 'Sprint Change Proposal Epic 11 (Technical Pattern Generation): Added Pattern Engine section (deterministic formula-based, separate from AI Bespoke Engine), 2 new DB tables (pattern_sessions with 10 measurement columns, pattern_pieces), pattern_session_id FK on orders, 6 new API endpoints, patterns/ backend module, design-session/ frontend page, 3 new components.'
   - date: '2026-03-26'
     changes: 'Sprint Change Proposal Epic 10 (Unified Order Workflow): Added Order Status Pipeline (3 service-type flows), Payment Model (multi-transaction), 4 new API endpoints, Frontend measurement gate + service-type checkout + approve flow.'
 inputDocuments:
@@ -22,6 +24,8 @@ inputDocuments:
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/project-context.md
   - _bmad-output/planning-artifacts/sprint-change-proposal-2026-03-26.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-04-03.md
+  - _bmad-output/brainstorming/brainstorming-session-2026-04-02-001.md
 workflowType: 'architecture'
 project_name: 'tailor_project'
 user_name: 'Lem'
@@ -189,6 +193,92 @@ Mở rộng từ mô hình thanh toán 1 lần sang hỗ trợ nhiều giao dị
 - Rent: 2-3 transactions (`deposit` + optional `security_deposit` + `remaining`)
 - Bespoke: 2 transactions (`deposit` + `remaining`)
 
+### Technical Pattern Engine (Epic 11)
+
+#### Architectural Distinction from AI Bespoke Engine
+
+The system maintains two completely separate pattern-related modules:
+
+| Aspect | AI Bespoke Engine (Epic 7-9) | Technical Pattern Engine (Epic 11) |
+|--------|------------------------------|-------------------------------------|
+| Purpose | Emotional adjectives → concept pattern (artistic) | 10 body measurements → 3 production-ready patterns |
+| Method | LLM + Semantic → Ease Delta → Geometry | Deterministic formulas (pure math) |
+| AI/LLM dependency | Yes (LangGraph, Emotional Compiler) | None — runs on standard CPU |
+| Output | Master Geometry JSON (concept) | SVG 1:1 scale + G-code (laser cutting) |
+| Users | Customer + Tailor (collaborative) | Owner only (internal Design Session) |
+| Code location | `backend/src/geometry/` + `agents/` | `backend/src/patterns/` (fully independent) |
+| Validation | Complex Hard/Soft constraints | Basic min/max (trust professional tailors) |
+
+**Architectural Principle:** "Core cứng, Shell mềm" — Engine tính toán là deterministic cố định, UX linh hoạt cho Owner. Module `patterns/` KHÔNG import từ `geometry/` hay `agents/`. Hoàn toàn standalone.
+
+#### Core Algorithm
+
+Deterministic formula-based generation producing 3 pattern pieces (front bodice, back bodice, sleeve) from 10 body measurements. Key formulas:
+
+- **Front bodice = Back bodice - 1cm** (waist & hip offset): DRY architecture — 1 shared function with `offset` param (0 for back, -1 for front)
+- **Armhole curve:** 1/4 ellipse arc (semi-major = armhole drop, semi-minor = bust width). SVG `A` arc command.
+- **Sleeve cap curve:** 1/2 ellipse arc (cap height = armhole_circ/2 - 1, width = bicep_circ/2 + 2.5)
+- **Hem width:** 37cm fixed constant (design decision, not measurement)
+- **Seam allowance:** Auto-added by engine, not configurable by user in MVP
+
+#### Data Model
+
+**Table `pattern_sessions`:**
+- `id` (UUID PK), `tenant_id` (FK → tenants), `customer_id` (FK → customers), `created_by` (FK → users)
+- 10 measurement snapshot columns (immutable at generation time):
+  - `do_dai_ao` (NUMERIC 5,1) — body length
+  - `ha_eo` (NUMERIC 5,1) — waist drop
+  - `vong_co` (NUMERIC 5,1) — neck circumference
+  - `vong_nach` (NUMERIC 5,1) — armhole circumference
+  - `vong_nguc` (NUMERIC 5,1) — bust circumference
+  - `vong_eo` (NUMERIC 5,1) — waist circumference
+  - `vong_mong` (NUMERIC 5,1) — hip circumference
+  - `do_dai_tay` (NUMERIC 5,1) — sleeve length
+  - `vong_bap_tay` (NUMERIC 5,1) — bicep circumference
+  - `vong_co_tay` (NUMERIC 5,1) — wrist circumference
+- `garment_type` (VARCHAR) — extensible garment type for future open system
+- `notes` (TEXT, nullable) — Owner notes for this session
+- `status` (VARCHAR) — `draft` | `completed` | `exported`
+- `created_at`, `updated_at` (TIMESTAMPTZ)
+
+**Table `pattern_pieces`:**
+- `id` (UUID PK), `session_id` (FK → pattern_sessions)
+- `piece_type` (VARCHAR) — `front_bodice` | `back_bodice` | `sleeve`
+- `svg_data` (TEXT) — SVG markup at 1:1 scale, stored directly in DB
+- `geometry_params` (JSONB) — computed geometric parameters (bust width, waist width, hip width, etc.)
+- `created_at` (TIMESTAMPTZ)
+
+**FK on `orders`:**
+- `pattern_session_id` (UUID FK → pattern_sessions, nullable) — only populated when Owner attaches a pattern to an order (FR97). Null for Buy/Rent orders without patterns.
+
+**Design Rationale:**
+- 10 individual columns (not JSONB) for measurement snapshot — enables direct SQL queries, type safety, and Pydantic validation per field
+- `svg_data` stored as TEXT in DB — pattern SVGs are small (<50KB), direct storage avoids external file management complexity
+- `garment_type` prepares for Open Garment System (Phase 3) without requiring schema changes
+
+#### Export Pipeline
+
+- **SVG Export:** Backend renders SVG server-side from `geometry_params` → returns TEXT markup. Frontend displays via `PatternPreview` component. 1:1 scale — printed output matches physical measurements within ±0.5mm (FR94).
+- **G-code Export:** Backend generates from same `geometry_params` + Owner-selected `speed` and `power` parameters → returns file download. Closed paths, cut sequence, origin point included (FR95).
+- **Batch Export:** Zip archive containing all 3 pieces in selected format. Content-Type `application/zip`.
+
+#### Pattern Generation API Endpoints
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| POST | `/api/v1/patterns/sessions` | Owner | Create pattern session — select customer, snapshot 10 measurements, set garment_type and notes |
+| POST | `/api/v1/patterns/sessions/{id}/generate` | Owner | Run formula engine → create 3 pattern_pieces (SVG + geometry_params). Validates measurements (FR99) before generation |
+| GET | `/api/v1/patterns/sessions/{id}` | Owner, Tailor | Get session detail + 3 pieces. Serves split-pane preview (FR96) and tailor pattern view (FR98) |
+| GET | `/api/v1/patterns/pieces/{id}/export` | Owner, Tailor | Export single piece — `?format=svg` or `?format=gcode&speed=X&power=Y` |
+| GET | `/api/v1/patterns/sessions/{id}/export` | Owner, Tailor | Batch export all 3 pieces — `?format=svg` or `?format=gcode&speed=X&power=Y` — returns zip |
+| POST | `/api/v1/orders/{id}/attach-pattern` | Owner | Attach pattern_session_id to order for tailor task assignment (FR97) |
+
+**Pattern Notes:**
+- Create and Generate are separate steps — Owner reviews/adjusts measurements before committing to generation
+- Measurement validation (FR99): Pydantic validates min/max ranges before formula execution. Invalid measurements return `422` with Vietnamese-language error messages (consistent with geometry violation pattern)
+- Session GET endpoint serves both Owner preview and Tailor task view — same data, different UI
+- G-code export accepts `speed` and `power` query params — Owner selects laser configuration per export
+
 ### Authentication & Security
 
 - **Authentication Method:** Dùng **Auth.js v5 (NextAuth)**. Lưu trữ JWT qua chuẩn **HttpOnly Secure Cookie**.
@@ -223,6 +313,12 @@ Mở rộng từ mô hình thanh toán 1 lần sang hỗ trợ nhiều giao dị
   - **Service-Type Checkout**: Checkout form render dynamic theo `service_type` của items trong cart: Buy (full payment), Rent (deposit + CCCD/security toggle + pickup/return dates), Bespoke (deposit + measurement badge). Tái sử dụng Zustand cart store + TanStack Query cho backend validation.
   - **Owner Approve Flow** (`(workplace)/owner/orders/`): Nút "Phê duyệt" trên Order Board cho đơn `pending`. Order type badges phân biệt visual (Buy xanh, Rent vàng, Bespoke tím). Toast hiển thị routing destination sau approve.
   - **Remaining Payment** (`(customer)/profile/orders/`): Payment screen cho remaining balance khi đơn `ready`. Tái sử dụng payment gateway integration đã có.
+- **Technical Pattern Generation UI (Epic 11):**
+  - **Design Session** (`(workplace)/design-session/`): Owner-only page. Split-pane layout: measurement input form (left) + real-time SVG preview (right). Auto-fill 10 measurements from customer profile. Export bar with 2 buttons [Xuất SVG] [Xuất G-code] + laser speed/power params.
+  - **Session Detail** (`(workplace)/design-session/[sessionId]/`): View generated 3 pattern pieces with toggle, zoom/pan. Export bar for single piece or batch download.
+  - **Tailor Pattern View** (`(workplace)/tailor/tasks/[taskId]/`): PatternPreview component embedded in task detail page — Tailor views attached pattern pieces with zoom/pan. No generation or export controls.
+  - **State Management:** Zustand for local form state (10 measurements being edited, selected piece toggle). TanStack Query for session CRUD, generate trigger, SVG cache. Consistent with existing frontend patterns.
+  - **New Components:** `MeasurementForm.tsx` (10-field form with customer auto-fill), `PatternPreview.tsx` (SVG viewer with zoom/pan — reused in both Design Session and Tailor task detail), `PatternExportBar.tsx` (SVG/G-code buttons + laser params).
 
 ### Infrastructure & Deployment
 
@@ -333,7 +429,11 @@ frontend/
 │   │   │   └── measurement-gate/ # Xác thực số đo trước bespoke checkout
 │   │   ├── (workplace)/          # Chế độ Command (Role: Owner, Tailor)
 │   │   │   ├── layout.tsx        # Chứa Role-based Guards
-│   │   │   ├── tailor/           # Trạm làm việc của thợ may (View bản vẽ)
+│   │   │   ├── design-session/   # Pattern Generation (Owner only)
+│   │   │   │   ├── page.tsx      # Split-pane: measurement input + SVG preview
+│   │   │   │   └── [sessionId]/
+│   │   │   │       └── page.tsx  # Session detail: 3 pieces + export bar
+│   │   │   ├── tailor/           # Trạm làm việc của thợ may (View bản vẽ + pattern)
 │   │   │   └── owner/            # Dashboard tổng & Quản lý The Vault
 │   │   ├── layout.tsx            # Global layout (Font chữ, Header chung)
 │   │   └── proxy.ts              # Proxy server trung chuyển JWT, Server Actions
@@ -341,6 +441,10 @@ frontend/
 │   │   ├── ui/                   # Radix UI primitives
 │   │   ├── 3d/                   # Render Engine cho Áo dài
 │   │   └── features/             # Component nhóm theo tính năng (VD: cart, booking)
+│   │       └── patterns/         # Pattern Generation components
+│   │           ├── MeasurementForm.tsx    # 10-field form, customer auto-fill
+│   │           ├── PatternPreview.tsx     # SVG viewer, zoom/pan (reused)
+│   │           └── PatternExportBar.tsx   # SVG/G-code export + laser params
 │   ├── store/                    # Slice quản lý State (Zustand)
 │   ├── lib/
 │   │   ├── api-client.ts         # Axios/Fetch utility có đính kèm config
@@ -356,6 +460,11 @@ backend/
 │   │   └── v1/                   # Endpoints chia theo Router (orders, geometry, booking)
 │   ├── agents/                   # Thư mục riêng chứa LangGraph (Emotional Compiler)
 │   ├── geometry/                 # GeometryRebuilder & Delta engine cốt lõi
+│   ├── patterns/                 # Technical Pattern Engine (Epic 11) — standalone
+│   │   ├── engine.py             # Orchestrator: 10 measurements → 3 pattern pieces
+│   │   ├── formulas.py           # Deterministic formula table (bodice front/back, sleeve)
+│   │   ├── svg_export.py         # SVG 1:1 generator (ellipse arcs, closed paths)
+│   │   └── gcode_export.py       # G-code generator (closed path, speed/power params)
 │   ├── constraints/              # Màng lọc Hard/Soft rules (The Vault logic)
 │   ├── services/                 # Xử lý nghiệp vụ Backend, webhook listener
 │   ├── models/                   # Pydantic Schemas & SQLAlchemy Entities 
@@ -396,11 +505,12 @@ backend/
 ### Requirements Coverage Validation ✅
 
 **Epic/Feature Coverage:**
-- Kiến trúc đủ sức bao phủ đầy đủ các nhóm tính năng (E-commerce, Booking, AI Canvas, Tailor Workspace, Owner Dashboard).
+- Kiến trúc đủ sức bao phủ đầy đủ các nhóm tính năng (E-commerce, Booking, AI Canvas, Tailor Workspace, Owner Dashboard, Technical Pattern Generation).
+- Epic 11 (FR91-FR99) fully covered: Pattern Engine module, 2 DB tables, 6 API endpoints, Design Session UI, Tailor pattern view.
 
 **Non-Functional Requirements Coverage:**
-- **Performance:** Giải quyết bằng Client-side Morphing và FastAPI Asynchronous Routing.
-- **Security:** Giải quyết bằng HttpOnly JWT Cookie và The Vault Backend Protection.
+- **Performance:** Giải quyết bằng Client-side Morphing và FastAPI Asynchronous Routing. Pattern Engine chạy deterministic formulas — response time negligible (<50ms cho 3 pieces).
+- **Security:** Giải quyết bằng HttpOnly JWT Cookie và The Vault Backend Protection. Pattern Generation restricted to Owner role; Tailor has read-only access to attached patterns.
 
 ### Implementation Readiness Validation ✅
 
@@ -451,6 +561,10 @@ backend/
 - Use implementation patterns consistently across all components
 - Respect project structure and boundaries
 - Refer to this document for all architectural questions
+
+**Epic 11 Implementation Priority:**
+- Story 11.1 (DB Migration) → 11.2 (Formula Engine) → 11.3 (Export API) → 11.4 (Measurement Form UI) → 11.5 (Pattern Preview UI) → 11.6 (Export + Attach UI)
+- Begin after Epic 10 completes. Backend `patterns/` module is fully independent — no blockers from existing code.
 
 **First Implementation Priority:**
 - Story đầu tiên phải là việc Khởi tạo Dự Án (Project Initialization) chạy lệnh `create-next-app` và cài đặt môi trường ảo (venv) FastAPI.
