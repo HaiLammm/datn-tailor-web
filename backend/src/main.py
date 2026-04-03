@@ -37,6 +37,7 @@ from src.api.v1.vouchers import router as vouchers_router
 from src.api.v1.campaigns import router as campaigns_router
 from src.api.v1.templates import router as templates_router
 from src.api.v1.uploads import router as uploads_router
+from src.api.v1.patterns import router as patterns_router
 from src.core.seed import seed_owner_account
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,7 @@ app.include_router(vouchers_router)
 app.include_router(templates_router)
 app.include_router(campaigns_router)
 app.include_router(uploads_router)
+app.include_router(patterns_router)
 
 # Mount static files for uploaded images (must be AFTER include_router calls)
 from pathlib import Path as _Path

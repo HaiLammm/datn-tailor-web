@@ -1,6 +1,6 @@
 # Story 11.2: Pattern Engine Core API
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -72,55 +72,55 @@ so that I can generate 3 technical pattern pieces (front bodice, back bodice, sl
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `backend/src/patterns/` module (AC: #3, #4, #5)
-  - [ ] 1.1 Create `backend/src/patterns/__init__.py`
-  - [ ] 1.2 Create `backend/src/patterns/formulas.py` — deterministic bodice/sleeve formulas
+- [x] Task 1: Create `backend/src/patterns/` module (AC: #3, #4, #5)
+  - [x] 1.1 Create `backend/src/patterns/__init__.py`
+  - [x] 1.2 Create `backend/src/patterns/formulas.py` — deterministic bodice/sleeve formulas
     - `generate_bodice(measurements, offset=0) → dict` with bust_width, waist_width, hip_width, armhole_drop, neck_depth, hem_width, seam_allowance
     - `generate_sleeve(measurements) → dict` with cap_height, bicep_width, wrist_width, sleeve_length
     - All measurements as Decimal input, float output for SVG coordinate math
-  - [ ] 1.3 Create `backend/src/patterns/svg_export.py` — SVG rendering from geometry params
+  - [x] 1.3 Create `backend/src/patterns/svg_export.py` — SVG rendering from geometry params
     - `render_bodice_svg(params, piece_type) → str` — generates SVG markup with `A` arc commands
     - `render_sleeve_svg(params) → str` — generates sleeve SVG with half-ellipse cap
     - SVG viewBox in cm, 1:1 scale, <50KB per piece
-  - [ ] 1.4 Create `backend/src/patterns/engine.py` — orchestrator
+  - [x] 1.4 Create `backend/src/patterns/engine.py` — orchestrator
     - `generate_pattern_pieces(measurements) → list[PieceResult]` — calls formulas + svg_export for all 3 pieces
     - Returns list of (piece_type, svg_data, geometry_params) tuples
 
-- [ ] Task 2: Create `backend/src/services/pattern_service.py` (AC: #1, #2, #6, #7)
-  - [ ] 2.1 `create_session(db, data: PatternSessionCreate, user, tenant_id) → PatternSessionResponse`
+- [x] Task 2: Create `backend/src/services/pattern_service.py` (AC: #1, #2, #6, #7)
+  - [x] 2.1 `create_session(db, data: PatternSessionCreate, user, tenant_id) → PatternSessionResponse`
     - Create PatternSessionDB with status="draft"
     - Validate customer_id belongs to tenant
     - Return 201 with session data
-  - [ ] 2.2 `generate_patterns(db, session_id, user, tenant_id) → PatternSessionResponse`
+  - [x] 2.2 `generate_patterns(db, session_id, user, tenant_id) → PatternSessionResponse`
     - Load session, verify status="draft" and tenant ownership
     - Call engine.generate_pattern_pieces() with session measurements
     - Create 3 PatternPieceDB records (front_bodice, back_bodice, sleeve)
     - Update session status to "completed"
     - Return session with eager-loaded pieces
-  - [ ] 2.3 `get_session(db, session_id, tenant_id) → PatternSessionResponse`
+  - [x] 2.3 `get_session(db, session_id, tenant_id) → PatternSessionResponse`
     - selectinload(PatternSessionDB.pieces) for eager loading
     - 404 if not found or wrong tenant
 
-- [ ] Task 3: Create `backend/src/api/v1/patterns.py` router (AC: #1, #2, #6)
-  - [ ] 3.1 `POST /api/v1/patterns/sessions` — OwnerOnly auth, calls create_session
-  - [ ] 3.2 `POST /api/v1/patterns/sessions/{id}/generate` — OwnerOnly auth, calls generate_patterns
-  - [ ] 3.3 `GET /api/v1/patterns/sessions/{id}` — OwnerOrTailor auth, calls get_session
-  - [ ] 3.4 Register router in `backend/src/main.py`
+- [x] Task 3: Create `backend/src/api/v1/patterns.py` router (AC: #1, #2, #6)
+  - [x] 3.1 `POST /api/v1/patterns/sessions` — OwnerOnly auth, calls create_session
+  - [x] 3.2 `POST /api/v1/patterns/sessions/{id}/generate` — OwnerOnly auth, calls generate_patterns
+  - [x] 3.3 `GET /api/v1/patterns/sessions/{id}` — OwnerOrTailor auth, calls get_session
+  - [x] 3.4 Register router in `backend/src/main.py`
 
-- [ ] Task 4: Unit tests `backend/tests/test_11_2_pattern_engine.py` (AC: #3, #4, #5, #8)
-  - [ ] 4.1 Test formulas.generate_bodice() with known measurement sets
-  - [ ] 4.2 Test formulas.generate_sleeve() with known measurement sets
-  - [ ] 4.3 Test SVG output contains correct `A` arc commands
-  - [ ] 4.4 Test engine.generate_pattern_pieces() returns exactly 3 pieces
-  - [ ] 4.5 Test geometric precision: verify calculated coordinates against reference values (ΔG ≤ 1mm)
+- [x] Task 4: Unit tests `backend/tests/test_11_2_pattern_engine.py` (AC: #3, #4, #5, #8)
+  - [x] 4.1 Test formulas.generate_bodice() with known measurement sets
+  - [x] 4.2 Test formulas.generate_sleeve() with known measurement sets
+  - [x] 4.3 Test SVG output contains correct `A` arc commands
+  - [x] 4.4 Test engine.generate_pattern_pieces() returns exactly 3 pieces
+  - [x] 4.5 Test geometric precision: verify calculated coordinates against reference values (ΔG ≤ 1mm)
 
-- [ ] Task 5: Integration tests (AC: #1, #2, #6, #7)
-  - [ ] 5.1 Test POST /sessions creates draft session with correct data
-  - [ ] 5.2 Test POST /sessions/{id}/generate produces 3 pieces and status="completed"
-  - [ ] 5.3 Test GET /sessions/{id} returns session with pieces
-  - [ ] 5.4 Test 422 response for invalid measurements with Vietnamese error messages
-  - [ ] 5.5 Test tenant isolation — cannot access other tenant's sessions
-  - [ ] 5.6 Test auth — Tailor can GET but cannot POST create/generate
+- [x] Task 5: Integration tests (AC: #1, #2, #6, #7)
+  - [x] 5.1 Test POST /sessions creates draft session with correct data
+  - [x] 5.2 Test POST /sessions/{id}/generate produces 3 pieces and status="completed"
+  - [x] 5.3 Test GET /sessions/{id} returns session with pieces
+  - [x] 5.4 Test 422 response for invalid measurements with Vietnamese error messages
+  - [x] 5.5 Test tenant isolation — cannot access other tenant's sessions
+  - [x] 5.6 Test auth — Tailor can GET but cannot POST create/generate
 
 ## Dev Notes
 
@@ -279,9 +279,35 @@ Recent commits show:
 ## Dev Agent Record
 
 ### Agent Model Used
+Gemini (Antigravity) — 2026-04-03
 
 ### Debug Log References
+- Fixed MissingGreenlet in `create_session`: replaced `db.refresh()` with explicit selectinload query after commit
+- Fixed MissingGreenlet in `generate_patterns`: replaced reload-after-commit with in-memory response construction from `piece_db_list` (tracked before flush)
+- `test_lead_conversion_service.py` pre-existing import error unrelated to Story 11.2
 
 ### Completion Notes List
+- ✅ Task 1: `backend/src/patterns/` module created (4 files: __init__.py, formulas.py, svg_export.py, engine.py)
+- ✅ Task 2: `backend/src/services/pattern_service.py` — create_session, generate_patterns, get_session
+- ✅ Task 3: `backend/src/api/v1/patterns.py` — 3 endpoints + registered in main.py
+- ✅ Task 4: 39 unit tests in `test_11_2_pattern_engine.py` — all PASSED (0.06s)
+- ✅ Task 5: 27 integration tests in `test_11_2_pattern_api.py` — all PASSED (2.22s)
+- ✅ Regression: 970 tests pass (14 pre-existing failures + 87 pre-existing errors unrelated to this story)
+- ✅ AC #3: DRY bodice architecture (generate_bodice with offset=-1/0)
+- ✅ AC #4: Armhole 1/4 ellipse arc using `A` command
+- ✅ AC #5: Sleeve 1/2 ellipse arc cap using `A` command
+- ✅ AC #8: ΔG ≤ 1mm geometric precision — all parametric tests pass
 
 ### File List
+- backend/src/patterns/__init__.py (new)
+- backend/src/patterns/formulas.py (new)
+- backend/src/patterns/svg_export.py (new)
+- backend/src/patterns/engine.py (new)
+- backend/src/services/pattern_service.py (new)
+- backend/src/api/v1/patterns.py (new)
+- backend/src/main.py (modified — import + include_router)
+- backend/tests/test_11_2_pattern_engine.py (new)
+- backend/tests/test_11_2_pattern_api.py (new)
+
+### Change Log
+- 2026-04-03: Story 11.2 implemented — Pattern Engine Core API (formulas, SVG export, service, router, 66 tests)

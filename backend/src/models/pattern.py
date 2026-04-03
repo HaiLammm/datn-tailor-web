@@ -68,6 +68,7 @@ class GeometryParams(BaseModel):
     cap_height: float | None = None
     bicep_width: float | None = None
     wrist_width: float | None = None
+    sleeve_length: float | None = None
 
 
 class PatternPieceResponse(BaseModel):
