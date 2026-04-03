@@ -308,11 +308,20 @@ class OrderDB(Base):
     remaining_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     # Story 10.5: Preparation sub-step tracking (NULL when not in preparing status)
     preparation_step: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Story 10.7: Rental lifecycle tracking (only for service_type='rent')
+    rental_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rental_condition: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Story 11.1: Pattern Engine integration
+    pattern_session_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("pattern_sessions.id", ondelete="SET NULL"), nullable=True
     )
 
     # Relationships
@@ -325,6 +334,7 @@ class OrderDB(Base):
     order_payments: Mapped[list["OrderPaymentDB"]] = relationship(
         "OrderPaymentDB", back_populates="order", cascade="all, delete-orphan"
     )
+    pattern_session: Mapped["PatternSessionDB | None"] = relationship("PatternSessionDB")
 
 
 class OrderItemDB(Base):
@@ -401,6 +411,7 @@ class PaymentTransactionDB(Base):
     """ORM model for the `payment_transactions` table (Story 4.1).
 
     Stores payment gateway webhook callback records for audit and idempotency.
+    Story 10.7: Extended with method field to distinguish payments from refunds.
     """
 
     __tablename__ = "payment_transactions"
@@ -417,6 +428,8 @@ class PaymentTransactionDB(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # Story 10.7: Payment method — 'payment' (customer→system) or 'refund' (system→customer)
+    method: Mapped[str] = mapped_column(String(20), nullable=False, default="payment")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -872,3 +885,75 @@ class CampaignRecipientDB(Base):
 
     # Relationships
     campaign: Mapped["CampaignDB"] = relationship("CampaignDB", back_populates="recipients")
+
+
+class PatternSessionDB(Base):
+    """ORM model for pattern_sessions table (Story 11.1).
+
+    Snapshot of 10 body measurements for deterministic pattern generation.
+    """
+
+    __tablename__ = "pattern_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    customer_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("customer_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+
+    # 10 measurement snapshot columns — Vietnamese tailoring terminology
+    do_dai_ao: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    ha_eo: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    vong_co: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    vong_nach: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    vong_nguc: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    vong_eo: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    vong_mong: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    do_dai_tay: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    vong_bap_tay: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+    vong_co_tay: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
+
+    garment_type: Mapped[str] = mapped_column(String(50), nullable=False, default="ao_dai")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    pieces: Mapped[list["PatternPieceDB"]] = relationship(
+        "PatternPieceDB", back_populates="session", cascade="all, delete-orphan"
+    )
+
+
+class PatternPieceDB(Base):
+    """ORM model for pattern_pieces table (Story 11.1).
+
+    Generated pattern piece with SVG data and computed geometry parameters.
+    """
+
+    __tablename__ = "pattern_pieces"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("pattern_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    piece_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    svg_data: Mapped[str] = mapped_column(Text, nullable=False)
+    geometry_params: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    session: Mapped["PatternSessionDB"] = relationship(
+        "PatternSessionDB", back_populates="pieces"
+    )

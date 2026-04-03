@@ -58,6 +58,15 @@ ORDER_STATUS_MESSAGES: dict[str, tuple[str, str]] = {
         "Đơn hàng hoàn tất",
         "Đơn hàng {order_code} đã hoàn tất. Hẹn gặp lại!",
     ),
+    # Story 10.7: Rental lifecycle notifications
+    "renting": (
+        "Bắt đầu thời gian thuê",
+        "Đơn hàng {order_code} đã được giao. Thời gian thuê đã bắt đầu.",
+    ),
+    "returned": (
+        "Đơn thuê đã trả",
+        "Cảm ơn bạn đã trả đơn hàng {order_code}. Chúng tôi sẽ kiểm tra tình trạng sản phẩm.",
+    ),
 }
 
 # Triggered when appointment is confirmed or cancelled

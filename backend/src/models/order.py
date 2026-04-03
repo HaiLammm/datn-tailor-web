@@ -57,6 +57,14 @@ class SecurityType(str, Enum):
     cash_deposit = "cash_deposit"  # Tiền cọc thế chân (cash)
 
 
+class RentalCondition(str, Enum):
+    """Condition of returned rental item (Story 10.7)."""
+
+    good = "Good"        # Tốt — hoàn trả 100% cọc
+    damaged = "Damaged"  # Hỏng — hoàn trả 100% (MVP, no damage fee)
+    lost = "Lost"        # Thất lạc — không hoàn trả cọc
+
+
 class PaymentStatus(str, Enum):
     """Payment status for orders and transactions."""
 
@@ -371,3 +379,26 @@ class PayRemainingResponse(BaseModel):
     payment_url: str | None
     amount: Decimal
     payment_type: str  # "remaining"
+
+
+# ── Story 10.7: Rental Return & Security Refund ────────────────────────────────
+
+
+class RefundSecurityRequest(BaseModel):
+    """Request body for security deposit refund processing (Story 10.7).
+
+    condition: Rental item condition (Good | Damaged | Lost).
+    """
+
+    condition: RentalCondition = Field(..., description="Rental item condition")
+
+
+class RefundSecurityResponse(BaseModel):
+    """Response for security deposit refund processing (Story 10.7)."""
+
+    order_id: UUID
+    refund_amount: Decimal  # Calculated based on condition
+    security_type: str  # cccd or cash_deposit
+    original_amount: str | None  # Original security deposit value (str from DB VARCHAR)
+    condition: RentalCondition  # Good | Damaged | Lost
+    already_processed: bool = False  # True if this is an idempotent return

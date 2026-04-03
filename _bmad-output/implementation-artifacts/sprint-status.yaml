@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-04-03  # Sprint Change Proposal: Added Epic 11 (Pattern Generation)
+last_updated: 2026-04-03  # Story 11.1 review: DB Migration Pattern Data Model
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -120,14 +120,14 @@ development_status:
   10-2-measurement-gate-cho-dat-may: done
   10-3-checkout-phan-loai-dich-vu: done
   10-4-owner-approve-va-auto-routing: done
-  10-5-sub-steps-chuan-bi-thue-va-mua: review
-  10-6-remaining-payment-va-handover: review
-  10-7-rental-return-va-security-refund: backlog
+  10-5-sub-steps-chuan-bi-thue-va-mua: done
+  10-6-remaining-payment-va-handover: done
+  10-7-rental-return-va-security-refund: review
   epic-10-retrospective: optional
 
-  epic-11: backlog  # Sprint Change Proposal 2026-04-03: Technical Pattern Generation & Production Export
-  11-1-db-migration-pattern-data-model: backlog
-  11-2-pattern-engine-core-api: backlog
+  epic-11: in-progress  # Sprint Change Proposal 2026-04-03: Technical Pattern Generation & Production Export
+  11-1-db-migration-pattern-data-model: review
+  11-2-pattern-engine-core-api: ready-for-dev
   11-3-svg-gcode-export-api: backlog
   11-4-profile-driven-measurement-form-ui: backlog
   11-5-split-pane-pattern-preview: backlog

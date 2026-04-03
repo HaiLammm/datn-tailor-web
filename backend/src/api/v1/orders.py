@@ -23,6 +23,7 @@ from src.models.order import (
     OrderStatusUpdate,
     PaymentStatus,
     PayRemainingRequest,
+    RefundSecurityRequest,
     RentalCheckoutFields,
     UpdatePreparationStepRequest,
 )
@@ -269,6 +270,28 @@ async def pay_remaining_endpoint(
     result = await order_service.pay_remaining(
         db, order_id, tenant_id, user.id, request.payment_method.value
     )
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{order_id}/refund-security",
+    response_model=dict,
+    summary="Process security deposit refund (Owner auth, Story 10.7)",
+    description="Process security deposit refund for returned rental orders. Set rental condition and calculate refund amount.",
+)
+async def refund_security_endpoint(
+    order_id: uuid.UUID,
+    request: RefundSecurityRequest,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Process security deposit refund for rental order at returned status.
+
+    Owner auth required — validates order belongs to tenant.
+    Sets rental_condition and creates payment transaction for audit.
+    """
+    result = await order_service.refund_security(db, order_id, tenant_id, request)
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 

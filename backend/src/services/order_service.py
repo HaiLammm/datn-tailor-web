@@ -625,8 +625,7 @@ async def list_orders(
 
     def _next_status(o: OrderDB) -> str | None:
         # pending uses approve_order() — no generic next status button shown
-        if o.status in ("cancelled", "confirmed", "pending",
-                        "completed", "preparing", "renting", "returned"):
+        if o.status in ("cancelled", "confirmed", "pending", "completed", "preparing"):
             return None
         if o.status == "in_progress":
             return "checked" if o.id in checkable_ids else None
@@ -640,7 +639,13 @@ async def list_orders(
         if o.status == "shipped":
             return "delivered"
         if o.status == "delivered":
-            return "completed" if o.service_type != "rent" else None
+            # Story 10.7: Rental orders transition to renting, others to completed
+            return "renting" if o.service_type == "rent" else "completed"
+        # Story 10.7: Rental lifecycle transitions
+        if o.status == "renting":
+            return "returned"
+        if o.status == "returned":
+            return "completed"
         return _VALID_TRANSITIONS.get(o.status)
 
     items = [
@@ -794,6 +799,50 @@ async def update_order_status(
                     "error": {
                         "code": "ERR_INVALID_TRANSITION",
                         "message": "Đơn thuê cần qua giai đoạn cho thuê trước khi hoàn tất.",
+                    }
+                },
+            )
+
+    # Guard: delivered → renting only for rental orders (Story 10.7)
+    if current_status == "delivered" and new_status == "renting":
+        if order.service_type != "rent":
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_ONLY_RENT_CAN_RENT",
+                        "message": "Chỉ đơn thuê mới có thể chuyển sang trạng thái cho thuê.",
+                    }
+                },
+            )
+        # Set rental_started_at timestamp
+        order.rental_started_at = datetime.now(timezone.utc)
+
+    # Guard: renting → returned only for rental orders (Story 10.7)
+    if current_status == "renting" and new_status == "returned":
+        if order.service_type != "rent":
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_ONLY_RENT_CAN_RETURN",
+                        "message": "Chỉ đơn thuê mới có thể chuyển sang trạng thái trả lại.",
+                    }
+                },
+            )
+        # Set returned_at timestamp
+        # Note: rental_condition is set later via refund-security endpoint
+        order.returned_at = datetime.now(timezone.utc)
+
+    # P5 fix: Guard returned → completed requires rental_condition to be set (refund processed)
+    if current_status == "returned" and new_status == "completed":
+        if order.service_type == "rent" and not order.rental_condition:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_REFUND_NOT_PROCESSED",
+                        "message": "Cần hoàn trả cọc trước khi hoàn tất đơn thuê. Vui lòng xử lý hoàn trả cọc trước.",
                     }
                 },
             )
@@ -1481,6 +1530,183 @@ async def pay_remaining(
         payment_url=payment_url,
         amount=_remaining_amount,
         payment_type="remaining",
+    )
+
+
+async def refund_security(
+    db: AsyncSession,
+    order_id: UUID,
+    tenant_id: UUID,
+    request: "RefundSecurityRequest",
+) -> "RefundSecurityResponse":
+    """Process security deposit refund for returned rental orders (Story 10.7).
+
+    Business rules:
+    - Order must be status='returned' and service_type='rent'.
+    - security_value must be set (else 422 ERR_NO_SECURITY_COLLECTED).
+    - Refund amount calculated based on condition:
+      - Good: 100% of security_value
+      - Damaged: 100% of security_value (MVP: no damage fee config)
+      - Lost: 0% (security forfeited)
+    - Creates PaymentTransactionDB (provider='system', method='refund')
+    - Sends ORDER_RENTAL_REFUND_MESSAGE notification to customer
+
+    Args:
+        db: Database session
+        order_id: Order ID
+        tenant_id: Tenant ID for multi-tenant isolation
+        request: RefundSecurityRequest with condition
+
+    Returns:
+        RefundSecurityResponse with refund details
+    """
+    from src.models.order import RefundSecurityRequest, RefundSecurityResponse, RentalCondition
+
+    # Fetch and row-lock order
+    result = await db.execute(
+        select(OrderDB)
+        .where(OrderDB.id == order_id, OrderDB.tenant_id == tenant_id)
+        .with_for_update()
+    )
+    order = result.scalar_one_or_none()
+
+    if order is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "ERR_ORDER_NOT_FOUND", "message": "Đơn hàng không tồn tại"}},
+        )
+
+    # Validate: order must be returned status
+    if order.status != "returned":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_NOT_RETURNED",
+                    "message": f"Chỉ có thể hoàn trả cọc khi đơn hàng ở trạng thái 'trả lại'. Trạng thái hiện tại: '{order.status}'",
+                }
+            },
+        )
+
+    # Validate: order must be rental service type
+    if order.service_type != "rent":
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_NOT_RENTAL_ORDER",
+                    "message": "Chỉ đơn hàng thuê mới có thể hoàn trả cọc.",
+                }
+            },
+        )
+
+    # Validate: security deposit was collected
+    if not order.security_value or not order.security_type:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": {
+                    "code": "ERR_NO_SECURITY_COLLECTED",
+                    "message": "Đơn hàng này chưa thu cọc bảo đảm.",
+                }
+            },
+        )
+
+    # P2 fix: Idempotency — check for existing refund record
+    existing_refund = await db.execute(
+        select(OrderPaymentDB).where(
+            OrderPaymentDB.order_id == order.id,
+            OrderPaymentDB.payment_type == "security_deposit",
+            OrderPaymentDB.status == "refunded",
+        )
+    )
+    existing_record = existing_refund.scalar_one_or_none()
+    if existing_record is not None:
+        return RefundSecurityResponse(
+            order_id=order.id,
+            refund_amount=existing_record.amount,
+            security_type=order.security_type or "",
+            original_amount=order.security_value,
+            condition=request.condition,
+        )
+
+    # P3 fix: Only parse as Decimal for cash_deposit; CCCD refund = 0 (return the ID card)
+    condition = request.condition
+    if order.security_type == "cccd":
+        # CCCD: no monetary refund — Owner physically returns the ID card
+        security_amount = Decimal("0")
+        refund_amount = Decimal("0")
+    else:
+        # cash_deposit: parse security_value as Decimal
+        try:
+            security_amount = Decimal(order.security_value)
+        except (ValueError, ArithmeticError):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_INVALID_SECURITY_VALUE",
+                        "message": f"Giá trị cọc không hợp lệ: '{order.security_value}'",
+                    }
+                },
+            )
+
+        # Calculate refund based on condition
+        if condition == RentalCondition.good:
+            refund_amount = security_amount  # 100% refund
+        elif condition == RentalCondition.damaged:
+            # MVP: No damage fee configuration yet, always refund full amount
+            refund_amount = security_amount
+        elif condition == RentalCondition.lost:
+            refund_amount = Decimal("0")  # Forfeit security
+        else:
+            refund_amount = Decimal("0")
+
+    # Set rental_condition on order
+    order.rental_condition = condition.value
+
+    # P4 fix: Create OrderPaymentDB record (business-level tracking, matches spec AC3)
+    refund_record = OrderPaymentDB(
+        tenant_id=tenant_id,
+        order_id=order.id,
+        payment_type="security_deposit",
+        amount=refund_amount,
+        method="refund",
+        status="refunded",
+    )
+    db.add(refund_record)
+
+    # Capture before commit (avoid DetachedInstanceError)
+    _customer_id = order.customer_id
+    _order_code = _build_order_code(order.id, order.created_at)
+
+    await db.flush()
+
+    # Create notification (before commit for atomicity)
+    if _customer_id is not None:
+        try:
+            title = "Cọc thuê đã được hoàn trả"
+            message = f"Cọc của đơn hàng {_order_code} đã được hoàn trả: {refund_amount:,.0f} VND"
+            await create_notification(
+                db=db,
+                user_id=_customer_id,
+                tenant_id=tenant_id,
+                notification_type="order_status",
+                title=title,
+                message=message,
+                data={"order_id": str(order.id)},
+            )
+        except Exception:
+            logger.warning("Failed to create refund notification for order %s", order_id)
+
+    await db.commit()
+
+    return RefundSecurityResponse(
+        order_id=order.id,
+        refund_amount=refund_amount,
+        security_type=order.security_type or "",
+        original_amount=order.security_value,
+        condition=condition,
     )
 
 
