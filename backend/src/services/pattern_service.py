@@ -1,4 +1,4 @@
-"""Pattern service — session CRUD and pattern generation (Story 11.2).
+"""Pattern service — session CRUD and pattern generation (Story 11.2, 11.3).
 
 Service layer conventions:
   - All functions are async with AsyncSession parameter
@@ -8,7 +8,9 @@ Service layer conventions:
   - All queries MUST filter by tenant_id for multi-tenant isolation
 """
 
+import io
 import logging
+import zipfile
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -24,6 +26,7 @@ from src.models.pattern import (
     PatternSessionStatus,
 )
 from src.patterns.engine import generate_pattern_pieces
+from src.patterns.gcode_export import svg_to_gcode
 
 logger = logging.getLogger(__name__)
 
@@ -256,3 +259,165 @@ async def get_session(
         )
 
     return PatternSessionResponse.model_validate(session)
+
+
+# =============================================================================
+# Export Functions (Story 11.3)
+# =============================================================================
+
+
+async def get_piece_for_export(
+    db: AsyncSession,
+    piece_id: UUID,
+    tenant_id: UUID,
+) -> PatternPieceDB:
+    """Load a pattern piece for export with tenant isolation.
+
+    AC #1, #2: Single piece export - validates:
+      - Piece exists
+      - Session belongs to tenant
+      - Session status != 'draft' (pieces must be generated)
+
+    Returns:
+        PatternPieceDB with session eager-loaded.
+
+    Raises:
+        HTTPException 404: piece not found, wrong tenant, or draft session.
+    """
+    result = await db.execute(
+        select(PatternPieceDB)
+        .options(selectinload(PatternPieceDB.session))
+        .where(PatternPieceDB.id == piece_id)
+    )
+    piece = result.scalar_one_or_none()
+
+    if piece is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "ERR_PIECE_NOT_FOUND",
+                "message": "Mảnh rập không tìm thấy",
+            },
+        )
+
+    # Verify tenant ownership via session
+    if piece.session.tenant_id != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "ERR_PIECE_NOT_FOUND",
+                "message": "Mảnh rập không tìm thấy",
+            },
+        )
+
+    # Verify session is not draft
+    if piece.session.status == "draft":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "ERR_SESSION_DRAFT",
+                "message": "Phiên thiết kế chưa hoàn thành, không có mẫu để xuất",
+            },
+        )
+
+    return piece
+
+
+async def get_session_pieces_for_export(
+    db: AsyncSession,
+    session_id: UUID,
+    tenant_id: UUID,
+) -> list[PatternPieceDB]:
+    """Load all pieces from a session for batch export.
+
+    AC #3, #4: Batch export - validates:
+      - Session exists and belongs to tenant
+      - Session status is 'completed' or 'exported'
+
+    Returns:
+        List of PatternPieceDB records.
+
+    Raises:
+        HTTPException 404: session not found, wrong tenant, or draft status.
+    """
+    result = await db.execute(
+        select(PatternSessionDB)
+        .options(selectinload(PatternSessionDB.pieces))
+        .where(
+            PatternSessionDB.id == session_id,
+            PatternSessionDB.tenant_id == tenant_id,
+        )
+    )
+    session = result.scalar_one_or_none()
+
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "ERR_SESSION_NOT_FOUND",
+                "message": "Phiên thiết kế không tìm thấy",
+            },
+        )
+
+    if session.status == "draft":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "ERR_SESSION_DRAFT",
+                "message": "Phiên thiết kế chưa hoàn thành, không có mẫu để xuất",
+            },
+        )
+
+    return list(session.pieces)
+
+
+def create_svg_zip(pieces: list[PatternPieceDB]) -> bytes:
+    """Create in-memory ZIP archive containing SVG files.
+
+    AC #3: Batch SVG export creates ZIP with {piece_type}.svg files.
+
+    Args:
+        pieces: List of pattern pieces with svg_data.
+
+    Returns:
+        Bytes of the ZIP archive.
+    """
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for piece in pieces:
+            filename = f"{piece.piece_type}.svg"
+            zf.writestr(filename, piece.svg_data)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def create_gcode_zip(
+    pieces: list[PatternPieceDB],
+    speed: int,
+    power: int
+) -> bytes:
+    """Create in-memory ZIP archive containing G-code files.
+
+    AC #4: Batch G-code export creates ZIP with {piece_type}.gcode files.
+
+    Args:
+        pieces: List of pattern pieces with svg_data.
+        speed: Cutting speed in mm/min.
+        power: Laser power percentage (0-100).
+
+    Returns:
+        Bytes of the ZIP archive.
+    """
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for piece in pieces:
+            gcode = svg_to_gcode(
+                svg_data=piece.svg_data,
+                speed=speed,
+                power=power,
+                piece_type=piece.piece_type,
+            )
+            filename = f"{piece.piece_type}.gcode"
+            zf.writestr(filename, gcode)
+    buffer.seek(0)
+    return buffer.getvalue()

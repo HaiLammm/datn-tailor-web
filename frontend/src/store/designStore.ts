@@ -84,6 +84,11 @@ export const useDesignStore = create<DesignStore>()(
       last_valid_sequence_id: null,
       last_valid_intensity_values: null,
 
+      // Story 11.4: Pattern session state
+      pattern_session_id: null,
+      selected_customer_id: null,
+      pattern_measurements: {},
+
       // Select a style pillar and initialize sliders with defaults
       selectPillar: (pillar: StylePillarResponse) => {
         const intensityValues = initializeIntensityValues(pillar);
@@ -343,6 +348,21 @@ export const useDesignStore = create<DesignStore>()(
         );
       },
 
+      /** Story 11.4: Set pattern session ID after creation. */
+      setPatternSessionId: (sessionId: string | null) => {
+        set({ pattern_session_id: sessionId }, false, "setPatternSessionId");
+      },
+
+      /** Story 11.4: Set selected customer ID for measurement form. */
+      setSelectedCustomerId: (customerId: string | null) => {
+        set({ selected_customer_id: customerId }, false, "setSelectedCustomerId");
+      },
+
+      /** Story 11.4: Set pattern measurements from form input. */
+      setPatternMeasurements: (measurements: Record<string, number>) => {
+        set({ pattern_measurements: measurements }, false, "setPatternMeasurements");
+      },
+
       // Clear entire session
       clearSession: () => {
         set(
@@ -377,6 +397,10 @@ export const useDesignStore = create<DesignStore>()(
             guardrail_violations: [],
             last_valid_sequence_id: null,
             last_valid_intensity_values: null,
+            // Story 11.4
+            pattern_session_id: null,
+            selected_customer_id: null,
+            pattern_measurements: {},
           },
           false,
           "clearSession"

@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-04-03  # Story 11.2 review: Pattern Engine Core API
+last_updated: 2026-04-03  # Story 11.4 ready-for-dev: Profile-Driven Measurement Form UI
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -128,8 +128,8 @@ development_status:
   epic-11: in-progress  # Sprint Change Proposal 2026-04-03: Technical Pattern Generation & Production Export
   11-1-db-migration-pattern-data-model: review
   11-2-pattern-engine-core-api: review
-  11-3-svg-gcode-export-api: backlog
-  11-4-profile-driven-measurement-form-ui: backlog
+  11-3-svg-gcode-export-api: done
+  11-4-profile-driven-measurement-form-ui: in-progress
   11-5-split-pane-pattern-preview: backlog
   11-6-dual-export-order-attachment: backlog
   epic-11-retrospective: optional

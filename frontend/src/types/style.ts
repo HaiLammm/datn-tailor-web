@@ -160,6 +160,11 @@ export interface DesignSessionState {
   last_valid_sequence_id: string | null;
   last_valid_intensity_values: IntensityValues | null;
 
+  // Story 11.4: Pattern session state
+  pattern_session_id: string | null;
+  selected_customer_id: string | null;
+  pattern_measurements: Record<string, number>;
+
   // Error state
   error: string | null;
 }
@@ -218,6 +223,11 @@ export interface DesignSessionActions {
   setGuardrailResult: (result: { status: "passed" | "warning" | "rejected"; violations: ConstraintViolation[]; warnings: ConstraintViolation[]; last_valid_sequence_id: string | null }) => void;
   snapBackToSafe: () => void;
   clearGuardrailState: () => void;
+
+  // Story 11.4: Pattern session actions
+  setPatternSessionId: (sessionId: string | null) => void;
+  setSelectedCustomerId: (customerId: string | null) => void;
+  setPatternMeasurements: (measurements: Record<string, number>) => void;
 }
 
 /**
