@@ -12,12 +12,16 @@ from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+import logging
+
 from src.models.db_models import OrderDB, OrderItemDB, TailorTaskDB, UserDB
 from src.models.tailor_task import (
+    CancellationRequestInput,
     OrderInfoForTask,
     OwnerTaskItem,
     OwnerTaskListResponse,
     ProductionStepUpdateRequest,
+    ResolveCancellationInput,
     StatusUpdateRequest,
     TailorIncomeResponse,
     TailorMonthlyIncome,
@@ -32,6 +36,17 @@ from src.models.tailor_task import (
     TailorIncomeDetailResponse,
     IncomePeriod,
 )
+from src.services.notification_creator import (
+    TAILOR_CANCEL_REQUEST_TO_OWNER,
+    TAILOR_CANCEL_APPROVED,
+    TAILOR_CANCEL_REJECTED,
+    TAILOR_REASSIGNED,
+    ORDER_UNDER_REVIEW,
+    TASK_ASSIGNMENT_MESSAGE,
+    create_notification,
+)
+
+logger = logging.getLogger(__name__)
 
 # Valid status transitions: current → allowed next statuses
 VALID_TRANSITIONS = {
@@ -80,6 +95,9 @@ def _task_to_response(task: TailorTaskDB, now: datetime) -> TailorTaskResponse:
         piece_rate=float(task.piece_rate) if task.piece_rate else None,
         design_id=str(task.design_id) if task.design_id else None,
         completed_at=task.completed_at.isoformat() if task.completed_at else None,
+        failure_reason=task.failure_reason,
+        failure_category=task.failure_category,
+        cancellation_resolved_at=task.cancellation_resolved_at.isoformat() if task.cancellation_resolved_at else None,
         is_overdue=is_overdue,
         days_until_deadline=days_until_deadline,
         created_at=task.created_at.isoformat(),
@@ -153,6 +171,7 @@ async def get_my_tasks(
         in_progress=sum(1 for t in tasks if t.status == "in_progress"),
         completed=sum(1 for t in tasks if t.status == "completed"),
         cancelled=sum(1 for t in tasks if t.status == "cancelled"),
+        cancellation_requested=sum(1 for t in tasks if t.status == "cancellation_requested"),
         overdue=sum(1 for t in task_responses if t.is_overdue),
     )
 
@@ -172,6 +191,7 @@ async def get_task_summary(
             func.count().filter(TailorTaskDB.status == "in_progress").label("in_progress"),
             func.count().filter(TailorTaskDB.status == "completed").label("completed"),
             func.count().filter(TailorTaskDB.status == "cancelled").label("cancelled"),
+            func.count().filter(TailorTaskDB.status == "cancellation_requested").label("cancellation_requested"),
             func.count().filter(
                 TailorTaskDB.deadline < now,
                 TailorTaskDB.status != "completed",
@@ -192,6 +212,7 @@ async def get_task_summary(
         in_progress=result.in_progress,
         completed=result.completed,
         cancelled=result.cancelled,
+        cancellation_requested=result.cancellation_requested,
         overdue=result.overdue,
     )
 
@@ -395,11 +416,12 @@ async def create_task(
             f"Trạng thái hiện tại: '{order.status}'"
         )
 
-    # Check: one order can only have one active task (not cancelled/deleted)
+    # Check: one order can only have one active task (excludes cancelled/cancellation_requested)
     existing_task_result = await db.execute(
         select(func.count(TailorTaskDB.id)).where(
             TailorTaskDB.order_id == request.order_id,
             TailorTaskDB.tenant_id == tenant_id,
+            TailorTaskDB.status.not_in(["cancelled", "cancellation_requested"]),
         )
     )
     if existing_task_result.scalar_one() > 0:
@@ -484,6 +506,272 @@ async def create_task(
 
     now = datetime.now(timezone.utc)
     return _task_to_owner_item(task, now)
+
+
+async def _create_task_no_commit(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    order: OrderDB,
+    assigned_to: uuid.UUID,
+    assigned_by: uuid.UUID,
+    garment_name: str,
+    customer_name: str,
+    deadline: datetime | None = None,
+    notes: str | None = None,
+    piece_rate: Decimal | None = None,
+    order_item_id: uuid.UUID | None = None,
+) -> TailorTaskDB:
+    """Internal helper: create a TailorTask and flush (no commit).
+
+    Used by resolve_cancellation_request for atomic reassign.
+    """
+    new_task = TailorTaskDB(
+        tenant_id=tenant_id,
+        order_id=order.id,
+        order_item_id=order_item_id,
+        assigned_to=assigned_to,
+        assigned_by=assigned_by,
+        garment_name=garment_name,
+        customer_name=customer_name,
+        status="assigned",
+        deadline=deadline,
+        notes=notes,
+        piece_rate=piece_rate,
+    )
+    db.add(new_task)
+    await db.flush()
+    return new_task
+
+
+# ── Tailor cancellation request + Owner resolve ──────────────────────────────
+
+
+def _build_order_code(order: OrderDB) -> str:
+    date_part = order.created_at.strftime("%Y%m%d")
+    uid_part = str(order.id).replace("-", "").upper()[:6]
+    return f"ORD-{date_part}-{uid_part}"
+
+
+async def request_task_cancellation(
+    db: AsyncSession,
+    task_id: uuid.UUID,
+    user_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    input_data: CancellationRequestInput,
+) -> TailorTaskResponse:
+    """Tailor requests cancellation with structured reason. Does NOT cancel order."""
+    task = await db.get(TailorTaskDB, task_id)
+    if not task or task.tenant_id != tenant_id:
+        raise ValueError("Không tìm thấy công việc")
+    if task.assigned_to != user_id:
+        raise PermissionError("Bạn không được giao công việc này")
+    if task.status not in ("assigned", "in_progress"):
+        raise ValueError("Chỉ có thể yêu cầu huỷ khi công việc đang thực hiện hoặc chờ nhận")
+
+    task.status = "cancellation_requested"
+    task.failure_reason = input_data.failure_reason
+    task.failure_category = input_data.failure_category
+    task.updated_at = datetime.now(timezone.utc)
+
+    await db.flush()
+
+    # Load relationships for notifications
+    order = await db.get(OrderDB, task.order_id)
+    tailor = await db.get(UserDB, task.assigned_to)
+    tailor_name = tailor.full_name if tailor else "Thợ may"
+
+    await db.commit()
+
+    # Notify owner
+    if order:
+        owner_result = await db.execute(
+            select(UserDB.id).where(
+                UserDB.tenant_id == tenant_id,
+                UserDB.role == "Owner",
+                UserDB.is_active == True,  # noqa: E712
+            ).limit(1)
+        )
+        owner_id = owner_result.scalar_one_or_none()
+        if owner_id:
+            try:
+                title, msg_tpl = TAILOR_CANCEL_REQUEST_TO_OWNER
+                await create_notification(
+                    db=db, user_id=owner_id, tenant_id=tenant_id,
+                    notification_type="task_cancellation_request",
+                    title=title,
+                    message=msg_tpl.format(
+                        tailor_name=tailor_name,
+                        garment_name=task.garment_name,
+                        reason=input_data.failure_reason[:100],
+                    ),
+                    data={"task_id": str(task.id), "order_id": str(task.order_id)},
+                )
+            except Exception:
+                logger.warning("Failed to notify owner about cancellation request for task %s", task.id)
+
+        # Notify customer
+        if order.customer_id:
+            try:
+                title, msg_tpl = ORDER_UNDER_REVIEW
+                await create_notification(
+                    db=db, user_id=order.customer_id, tenant_id=tenant_id,
+                    notification_type="order_status",
+                    title=title,
+                    message=msg_tpl.format(order_code=_build_order_code(order)),
+                    data={"order_id": str(order.id)},
+                )
+            except Exception:
+                logger.warning("Failed to notify customer about order under review for task %s", task.id)
+
+    now = datetime.now(timezone.utc)
+    return _task_to_response(task, now)
+
+
+async def resolve_cancellation_request(
+    db: AsyncSession,
+    task_id: uuid.UUID,
+    owner_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    input_data: ResolveCancellationInput,
+) -> dict:
+    """Owner resolves tailor's cancellation request: approve, reject, or reassign."""
+    result = await db.execute(
+        select(TailorTaskDB)
+        .options(joinedload(TailorTaskDB.assignee))
+        .where(TailorTaskDB.id == task_id, TailorTaskDB.tenant_id == tenant_id)
+    )
+    task = result.scalar_one_or_none()
+    if not task:
+        raise ValueError("Không tìm thấy công việc")
+    if task.status != "cancellation_requested":
+        raise ValueError("Công việc không có yêu cầu huỷ đang chờ xử lý")
+
+    order = await db.get(OrderDB, task.order_id)
+    if not order:
+        raise ValueError("Không tìm thấy đơn hàng")
+
+    tailor_id = task.assigned_to
+    decision = input_data.decision
+
+    if decision == "approve":
+        task.status = "cancelled"
+        task.cancellation_resolved_at = datetime.now(timezone.utc)
+        task.updated_at = datetime.now(timezone.utc)
+
+        # Cancel order with reason
+        cancel_reason = input_data.cancellation_reason or task.failure_reason or "Thợ may yêu cầu huỷ"
+        order.status = "cancelled"
+        order.cancellation_reason = cancel_reason
+        order.updated_at = datetime.now(timezone.utc)
+        await db.flush()
+        await db.commit()
+
+        # Notify tailor
+        try:
+            title, msg_tpl = TAILOR_CANCEL_APPROVED
+            await create_notification(
+                db=db, user_id=tailor_id, tenant_id=tenant_id,
+                notification_type="task_cancellation_resolved",
+                title=title,
+                message=msg_tpl.format(garment_name=task.garment_name),
+                data={"task_id": str(task.id)},
+            )
+        except Exception:
+            logger.warning("Failed to notify tailor about approved cancellation for task %s", task.id)
+
+        return {"decision": "approve", "task_id": str(task.id), "order_status": "cancelled"}
+
+    elif decision == "reject":
+        previous_status = "in_progress" if task.production_step != "pending" else "assigned"
+        task.status = previous_status
+        task.cancellation_resolved_at = datetime.now(timezone.utc)
+        task.updated_at = datetime.now(timezone.utc)
+        await db.flush()
+        await db.commit()
+
+        # Notify tailor
+        try:
+            title, msg_tpl = TAILOR_CANCEL_REJECTED
+            await create_notification(
+                db=db, user_id=tailor_id, tenant_id=tenant_id,
+                notification_type="task_cancellation_resolved",
+                title=title,
+                message=msg_tpl.format(garment_name=task.garment_name),
+                data={"task_id": str(task.id)},
+            )
+        except Exception:
+            logger.warning("Failed to notify tailor about rejected cancellation for task %s", task.id)
+
+        return {"decision": "reject", "task_id": str(task.id), "task_status": previous_status}
+
+    elif decision == "reassign":
+        if not input_data.new_tailor_id:
+            raise ValueError("Cần chọn thợ may mới khi giao lại công việc")
+
+        # Validate new tailor
+        new_tailor = await db.get(UserDB, input_data.new_tailor_id)
+        if not new_tailor or new_tailor.role != "Tailor" or new_tailor.tenant_id != tenant_id:
+            raise ValueError("Thợ may mới không hợp lệ")
+        if not new_tailor.is_active:
+            raise ValueError("Tài khoản thợ may mới đã bị vô hiệu hóa")
+
+        # Cancel old task
+        task.status = "cancelled"
+        task.cancellation_resolved_at = datetime.now(timezone.utc)
+        task.updated_at = datetime.now(timezone.utc)
+
+        # Create new task (no commit)
+        new_task = await _create_task_no_commit(
+            db=db,
+            tenant_id=tenant_id,
+            order=order,
+            assigned_to=input_data.new_tailor_id,
+            assigned_by=owner_id,
+            garment_name=task.garment_name,
+            customer_name=task.customer_name,
+            deadline=task.deadline,
+            notes=task.notes,
+            piece_rate=task.piece_rate,
+            order_item_id=task.order_item_id,
+        )
+
+        await db.commit()
+
+        # Notify old tailor
+        try:
+            title, msg_tpl = TAILOR_REASSIGNED
+            await create_notification(
+                db=db, user_id=tailor_id, tenant_id=tenant_id,
+                notification_type="task_cancellation_resolved",
+                title=title,
+                message=msg_tpl.format(garment_name=task.garment_name),
+                data={"task_id": str(task.id)},
+            )
+        except Exception:
+            logger.warning("Failed to notify old tailor about reassignment for task %s", task.id)
+
+        # Notify new tailor
+        try:
+            deadline_text = task.deadline.strftime("%Y-%m-%d") if task.deadline else "Không có hạn"
+            title, msg_tpl = TASK_ASSIGNMENT_MESSAGE
+            await create_notification(
+                db=db, user_id=input_data.new_tailor_id, tenant_id=tenant_id,
+                notification_type="task_assigned",
+                title=title,
+                message=msg_tpl.format(garment_name=task.garment_name, deadline=deadline_text),
+                data={"task_id": str(new_task.id), "order_id": str(order.id)},
+            )
+        except Exception:
+            logger.warning("Failed to notify new tailor about assignment for task %s", new_task.id)
+
+        return {
+            "decision": "reassign",
+            "old_task_id": str(task.id),
+            "new_task_id": str(new_task.id),
+            "new_tailor_id": str(input_data.new_tailor_id),
+        }
+
+    raise ValueError(f"Quyết định không hợp lệ: {decision}")
 
 
 async def list_all_tasks(

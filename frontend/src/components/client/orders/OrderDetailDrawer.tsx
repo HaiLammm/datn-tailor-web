@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { OrderDetailResponse, OrderStatus, TailorInfoForCustomer } from "@/types/order";
+import { FAILURE_CATEGORY_LABELS, type FailureCategory } from "@/types/tailor-task";
 import { OrderStatusBadge, PaymentStatusBadge } from "./StatusBadge";
 import { formatMoney, formatDateTime } from "@/utils/format";
+import { resolveCancellation } from "@/app/actions/tailor-task-actions";
 import Avatar from "@/components/ui/Avatar";
 
 const PIPELINE_STEPS: { status: OrderStatus; label: string }[] = [
@@ -35,17 +37,50 @@ const TX_STATUS_LABELS: Record<string, string> = {
   refunded: "Đã hoàn tiền",
 };
 
+interface StaffOption {
+  id: string;
+  name: string;
+}
+
 interface OrderDetailDrawerProps {
   detail: OrderDetailResponse | null;
   isLoading: boolean;
   onClose: () => void;
+  onRefresh?: () => void;
+  tailorStaff?: StaffOption[];
 }
 
 export default function OrderDetailDrawer({
   detail,
   isLoading,
   onClose,
+  onRefresh,
+  tailorStaff = [],
 }: OrderDetailDrawerProps) {
+  const [resolving, setResolving] = useState(false);
+  const [reassignTailorId, setReassignTailorId] = useState("");
+  const [showReassign, setShowReassign] = useState(false);
+
+  async function handleResolve(decision: "approve" | "reject" | "reassign") {
+    const req = detail?.order?.active_cancellation_request;
+    if (!req) return;
+    setResolving(true);
+    try {
+      await resolveCancellation(
+        req.task_id,
+        decision,
+        decision === "reassign" ? reassignTailorId : undefined,
+        decision === "approve" ? req.failure_reason || undefined : undefined,
+      );
+      onRefresh?.();
+    } catch {
+      // best-effort
+    } finally {
+      setResolving(false);
+      setShowReassign(false);
+    }
+  }
+
   // Close on Escape key
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -176,6 +211,84 @@ export default function OrderDetailDrawer({
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Cancellation reason alert */}
+              {order.status === "cancelled" && order.cancellation_reason && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+                  <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1">
+                    Lý do huỷ đơn
+                  </p>
+                  <p className="text-sm text-red-800">{order.cancellation_reason}</p>
+                </div>
+              )}
+
+              {/* Inline cancellation approval UI */}
+              {order.active_cancellation_request && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-600 text-lg leading-none">⚠</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-amber-800">
+                        Thợ may {order.active_cancellation_request.tailor_name} yêu cầu huỷ
+                      </p>
+                      {order.active_cancellation_request.failure_category && (
+                        <p className="text-xs text-amber-700 mt-0.5">
+                          Loại lỗi: {FAILURE_CATEGORY_LABELS[order.active_cancellation_request.failure_category as FailureCategory] || order.active_cancellation_request.failure_category}
+                        </p>
+                      )}
+                      {order.active_cancellation_request.failure_reason && (
+                        <p className="text-xs text-amber-700 mt-1">
+                          {order.active_cancellation_request.failure_reason}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => handleResolve("approve")}
+                      disabled={resolving}
+                      className="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    >
+                      {resolving ? "..." : "Đồng ý huỷ"}
+                    </button>
+                    <button
+                      onClick={() => handleResolve("reject")}
+                      disabled={resolving}
+                      className="px-3 py-1.5 text-xs rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                    >
+                      Từ chối
+                    </button>
+                    <button
+                      onClick={() => setShowReassign(!showReassign)}
+                      disabled={resolving}
+                      className="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    >
+                      Giao thợ khác
+                    </button>
+                  </div>
+                  {showReassign && (
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={reassignTailorId}
+                        onChange={(e) => setReassignTailorId(e.target.value)}
+                        className="flex-1 text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-indigo-300 outline-none"
+                      >
+                        <option value="">Chọn thợ may...</option>
+                        {tailorStaff.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => reassignTailorId && handleResolve("reassign")}
+                        disabled={resolving || !reassignTailorId}
+                        className="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      >
+                        Xác nhận
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

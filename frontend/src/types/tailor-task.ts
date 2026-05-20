@@ -3,7 +3,17 @@
  * Matches backend Pydantic models in backend/src/models/tailor_task.py
  */
 
-export type TaskStatus = "assigned" | "in_progress" | "completed" | "cancelled";
+export type TaskStatus = "assigned" | "in_progress" | "completed" | "cancelled" | "cancellation_requested";
+
+export type FailureCategory = "fabric_defect" | "measurement_error" | "customer_changed_mind" | "overloaded" | "other";
+
+export const FAILURE_CATEGORY_LABELS: Record<FailureCategory, string> = {
+  fabric_defect: "Vải bị lỗi",
+  measurement_error: "Số đo sai",
+  customer_changed_mind: "Khách đổi ý",
+  overloaded: "Quá tải",
+  other: "Khác",
+};
 
 export interface TailorTask {
   id: string;
@@ -20,6 +30,9 @@ export interface TailorTask {
   piece_rate: number | null;
   design_id: string | null;
   completed_at: string | null;
+  failure_reason?: string | null;
+  failure_category?: FailureCategory | null;
+  cancellation_resolved_at?: string | null;
   is_overdue: boolean;
   days_until_deadline: number | null;
   created_at: string;
@@ -32,6 +45,7 @@ export interface TailorTaskSummary {
   in_progress: number;
   completed: number;
   cancelled: number;
+  cancellation_requested: number;
   overdue: number;
 }
 

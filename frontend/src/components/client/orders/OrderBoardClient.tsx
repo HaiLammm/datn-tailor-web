@@ -339,10 +339,12 @@ export default function OrderBoardClient() {
     mutationFn: ({
       orderId,
       newStatus,
+      cancellationReason,
     }: {
       orderId: string;
       newStatus: OrderStatus;
-    }) => updateOrderStatus(orderId, newStatus),
+      cancellationReason?: string;
+    }) => updateOrderStatus(orderId, newStatus, cancellationReason),
 
     onMutate: async ({ orderId, newStatus }) => {
       // Cancel any outgoing refetches
@@ -478,8 +480,8 @@ export default function OrderBoardClient() {
   );
 
   const handleStatusUpdate = useCallback(
-    async (orderId: string, newStatus: OrderStatus) => {
-      await mutation.mutateAsync({ orderId, newStatus });
+    async (orderId: string, newStatus: OrderStatus, cancellationReason?: string) => {
+      await mutation.mutateAsync({ orderId, newStatus, cancellationReason });
     },
     [mutation]
   );
@@ -627,6 +629,11 @@ export default function OrderBoardClient() {
           detail={detailData ?? null}
           isLoading={isDetailLoading}
           onClose={() => setSelectedOrderId(null)}
+          onRefresh={() => {
+            queryClient.invalidateQueries({ queryKey: ["owner-orders"] });
+            queryClient.invalidateQueries({ queryKey: ["owner-order-detail"] });
+          }}
+          tailorStaff={activeTailors.map((t) => ({ id: t.id, name: t.full_name || "Thợ may" }))}
         />
       )}
 

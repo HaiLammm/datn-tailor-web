@@ -89,6 +89,8 @@ class CustomerOrderDetail(BaseModel):
     # Story 10.6: Payment breakdown
     deposit_amount: Decimal | None = None
     remaining_amount: Decimal | None = None
+    # Cancellation tracking
+    cancellation_reason: str | None = None
 
     model_config = {"from_attributes": True}
 

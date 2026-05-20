@@ -96,6 +96,14 @@ export interface OrderResponse {
   security_value?: string | null;
   pickup_date?: string | null;
   return_date?: string | null;
+  cancellation_reason?: string | null;
+  active_cancellation_request?: {
+    task_id: string;
+    tailor_name: string;
+    garment_name: string;
+    failure_category?: string | null;
+    failure_reason?: string | null;
+  } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +142,15 @@ export interface OrderListItem {
   preparation_step?: string | null;
   // Story 10.6: remaining amount for payment indicator
   remaining_amount?: number | null;
+  // Cancellation tracking
+  cancellation_reason?: string | null;
+  // Tailor task info for bespoke orders
+  tailor_task_info?: {
+    tailor_name: string;
+    task_status: string;
+    garment_name: string;
+    failure_category?: string | null;
+  } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -301,6 +318,7 @@ export interface CustomerOrderDetail extends CustomerOrderSummary {
   // Story 10.6: Payment breakdown
   deposit_amount?: number | null;
   remaining_amount?: number | null;
+  cancellation_reason?: string | null;
 }
 
 export interface CustomerOrderListMeta {

@@ -143,6 +143,16 @@ export default function OrderDetailModal({
         </div>
 
         <div className="px-6 py-4 space-y-6">
+          {/* Cancellation reason alert */}
+          {order.status === "cancelled" && order.cancellation_reason && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-1">
+                Lý do huỷ đơn
+              </p>
+              <p className="text-sm text-red-800">{order.cancellation_reason}</p>
+            </div>
+          )}
+
           {/* Order Meta */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>

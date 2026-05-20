@@ -14,7 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies import OwnerOnly, OwnerOrTailor, TenantId
 from src.core.database import get_db
 from src.models.tailor_task import (
+    CancellationRequestInput,
     ProductionStepUpdateRequest,
+    ResolveCancellationInput,
     StatusUpdateRequest,
     TaskCreateRequest,
     TaskFilterParams,
@@ -380,6 +382,67 @@ async def delete_task_endpoint(
     """Delete task only if status is 'assigned' (not started)."""
     try:
         await tailor_task_service.delete_task(db, task_id, tenant_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
+        )
+
+
+# ── Tailor cancellation request + Owner resolve ──────────────────────────────
+
+
+@router.post(
+    "/{task_id}/request-cancellation",
+    response_model=dict,
+    summary="Thợ may yêu cầu huỷ công việc",
+    description="Thợ may báo lỗi / yêu cầu huỷ với lý do. Chủ tiệm sẽ duyệt.",
+)
+async def request_cancellation(
+    task_id: uuid.UUID,
+    body: CancellationRequestInput,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Tailor requests cancellation of their task with structured reason."""
+    try:
+        result = await tailor_task_service.request_task_cancellation(
+            db, task_id, user.id, tenant_id, body
+        )
+        return {"data": result.model_dump(mode="json"), "meta": {}}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
+        )
+
+
+@router.post(
+    "/{task_id}/resolve-cancellation",
+    response_model=dict,
+    summary="Chủ tiệm xử lý yêu cầu huỷ",
+    description="Chủ tiệm duyệt/từ chối/giao thợ khác cho yêu cầu huỷ từ thợ may.",
+)
+async def resolve_cancellation(
+    task_id: uuid.UUID,
+    body: ResolveCancellationInput,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Owner resolves tailor's cancellation request: approve, reject, or reassign."""
+    try:
+        result = await tailor_task_service.resolve_cancellation_request(
+            db, task_id, user.id, tenant_id, body
+        )
+        return {"data": result, "meta": {}}
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)

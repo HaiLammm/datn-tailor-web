@@ -18,13 +18,16 @@ class TailorTaskResponse(BaseModel):
     assigned_by: str
     garment_name: str
     customer_name: str
-    status: str = Field(description="assigned | in_progress | completed | cancelled")
+    status: str = Field(description="assigned | in_progress | completed | cancelled | cancellation_requested")
     production_step: str = Field(default="pending", description="pending | cutting | sewing | finishing | quality_check | done")
     deadline: str | None = None
     notes: str | None = None
     piece_rate: float | None = None
     design_id: str | None = None
     completed_at: str | None = None
+    failure_reason: str | None = None
+    failure_category: str | None = None
+    cancellation_resolved_at: str | None = None
     is_overdue: bool = False
     days_until_deadline: int | None = None
     created_at: str
@@ -39,6 +42,7 @@ class TailorTaskSummary(BaseModel):
     in_progress: int = 0
     completed: int = 0
     cancelled: int = 0
+    cancellation_requested: int = 0
     overdue: int = 0
 
 
@@ -69,6 +73,30 @@ class StatusUpdateRequest(BaseModel):
 
     status: Literal["in_progress", "completed"] = Field(
         description="Target status: in_progress or completed (no backward transitions)"
+    )
+
+
+class CancellationRequestInput(BaseModel):
+    """Request body for tailor requesting cancellation."""
+
+    failure_category: Literal[
+        "fabric_defect", "measurement_error", "customer_changed_mind", "overloaded", "other"
+    ] = Field(description="Structured failure category")
+    failure_reason: str = Field(min_length=10, max_length=2000, description="Detailed reason")
+
+
+class ResolveCancellationInput(BaseModel):
+    """Request body for owner resolving a cancellation request."""
+
+    decision: Literal["approve", "reject", "reassign"] = Field(
+        description="Owner decision on tailor cancellation request"
+    )
+    new_tailor_id: uuid.UUID | None = Field(
+        default=None, description="Required when decision=reassign"
+    )
+    cancellation_reason: str | None = Field(
+        default=None, max_length=2000,
+        description="Owner override reason for order cancellation"
     )
 
 

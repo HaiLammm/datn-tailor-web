@@ -292,3 +292,55 @@ export async function fetchTaskDetail(taskId: string): Promise<TailorTask> {
     throw new Error("Lỗi không xác định khi tải chi tiết công việc.");
   }
 }
+
+
+// ── Cancellation flow actions ─────────────────────────────────────────────
+
+
+export async function requestTaskCancellation(
+  taskId: string,
+  failureCategory: string,
+  failureReason: string,
+): Promise<TailorTask> {
+  const token = await getAuthToken();
+  const response = await fetch(
+    `${BACKEND_URL}/api/v1/tailor-tasks/${taskId}/request-cancellation`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ failure_category: failureCategory, failure_reason: failureReason }),
+    },
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err?.detail || `Lỗi ${response.status}`);
+  }
+  return (await response.json()).data as TailorTask;
+}
+
+
+export async function resolveCancellation(
+  taskId: string,
+  decision: "approve" | "reject" | "reassign",
+  newTailorId?: string,
+  cancellationReason?: string,
+): Promise<Record<string, string>> {
+  const token = await getAuthToken();
+  const body: Record<string, string | undefined> = { decision };
+  if (newTailorId) body.new_tailor_id = newTailorId;
+  if (cancellationReason) body.cancellation_reason = cancellationReason;
+
+  const response = await fetch(
+    `${BACKEND_URL}/api/v1/tailor-tasks/${taskId}/resolve-cancellation`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err?.detail || `Lỗi ${response.status}`);
+  }
+  return (await response.json()).data as Record<string, string>;
+}

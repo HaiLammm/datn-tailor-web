@@ -125,6 +125,31 @@ ORDER_REMAINING_PAID_MESSAGE = (
     "Đơn hàng {order_code} đã thanh toán đầy đủ. Cảm ơn bạn!",
 )
 
+# Tailor cancellation flow notifications
+TAILOR_CANCEL_REQUEST_TO_OWNER = (
+    "Yêu cầu huỷ từ thợ may",
+    "Thợ may {tailor_name} yêu cầu huỷ công việc '{garment_name}'. Lý do: {reason}",
+)
+
+TAILOR_CANCEL_APPROVED = (
+    "Yêu cầu huỷ đã chấp nhận",
+    "Yêu cầu huỷ công việc '{garment_name}' đã được chủ tiệm chấp nhận.",
+)
+
+TAILOR_CANCEL_REJECTED = (
+    "Tiếp tục công việc",
+    "Yêu cầu huỷ công việc '{garment_name}' bị từ chối. Vui lòng tiếp tục thực hiện.",
+)
+
+TAILOR_REASSIGNED = (
+    "Công việc đã chuyển",
+    "Công việc '{garment_name}' đã được giao cho thợ may khác.",
+)
+
+ORDER_UNDER_REVIEW = (
+    "Đơn hàng đang được xem xét",
+    "Đơn hàng {order_code} đang được xem xét. Chúng tôi sẽ thông báo kết quả sớm nhất.",
+)
 
 
 async def create_notification(

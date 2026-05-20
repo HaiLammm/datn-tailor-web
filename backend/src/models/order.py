@@ -196,6 +196,10 @@ class OrderResponse(BaseModel):
     return_date: datetime | None = None
     # Story 10.5: Preparation sub-step tracking
     preparation_step: str | None = None
+    # Cancellation tracking
+    cancellation_reason: str | None = None
+    # Active tailor task cancellation request info (for owner drawer)
+    active_cancellation_request: dict | None = None
 
     model_config = {"from_attributes": True}
 
@@ -252,6 +256,10 @@ class OrderListItem(BaseModel):
     preparation_step: str | None = None
     # Story 10.6: remaining amount for payment indicator
     remaining_amount: Decimal | None = None
+    # Cancellation tracking
+    cancellation_reason: str | None = None
+    # Tailor task info for bespoke orders
+    tailor_task_info: dict | None = None
 
     model_config = {"from_attributes": True}
 
@@ -267,6 +275,7 @@ class OrderStatusUpdate(BaseModel):
     """Request body for status update."""
 
     status: OrderStatus
+    cancellation_reason: str | None = None
 
 
 class PaymentTransactionResponse(BaseModel):

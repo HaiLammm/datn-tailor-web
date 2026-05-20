@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import type { TailorTask, TaskStatus } from "@/types/tailor-task";
-import { NEXT_STATUS } from "@/types/tailor-task";
+import { useEffect, useRef, useState } from "react";
+import type { TailorTask, TaskStatus, FailureCategory } from "@/types/tailor-task";
+import { NEXT_STATUS, FAILURE_CATEGORY_LABELS } from "@/types/tailor-task";
+import { requestTaskCancellation } from "@/app/actions/tailor-task-actions";
 
 interface TaskDetailModalProps {
   task: TailorTask;
@@ -15,12 +16,14 @@ const STATUS_LABELS: Record<string, string> = {
   assigned: "Chờ nhận",
   in_progress: "Đang làm",
   completed: "Hoàn thành",
+  cancellation_requested: "Chờ xác nhận huỷ",
 };
 
 const STATUS_COLORS: Record<string, string> = {
   assigned: "bg-amber-100 text-amber-800",
   in_progress: "bg-indigo-100 text-indigo-800",
   completed: "bg-emerald-100 text-emerald-800",
+  cancellation_requested: "bg-amber-100 text-amber-800",
 };
 
 function formatDate(iso: string | null): string {
@@ -50,6 +53,26 @@ export default function TaskDetailModal({
   const nextStatus = NEXT_STATUS[task.status];
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [failureCategory, setFailureCategory] = useState<FailureCategory | "">("");
+  const [failureReason, setFailureReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const canReport = task.status === "assigned" || task.status === "in_progress";
+  const canSubmitReport = failureCategory !== "" && failureReason.trim().length >= 10;
+
+  async function handleSubmitReport() {
+    if (!canSubmitReport || !failureCategory) return;
+    setIsSubmitting(true);
+    try {
+      await requestTaskCancellation(task.id, failureCategory, failureReason.trim());
+      onClose();
+    } catch {
+      // best-effort
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   // Focus trap and Escape key handling (WCAG 2.1 AA)
   useEffect(() => {
@@ -187,26 +210,83 @@ export default function TaskDetailModal({
           )}
         </div>
 
-        {/* Footer — Status Action */}
-        {nextStatus && (
-          <div className="p-4 border-t border-gray-200">
-            <button
-              onClick={() => onStatusToggle(task.id, nextStatus)}
-              disabled={isUpdating}
-              className={`w-full py-2.5 rounded-lg text-sm font-medium text-white transition-colors ${
-                nextStatus === "in_progress"
-                  ? "bg-[#1A2B4C] hover:bg-indigo-800"
-                  : "bg-emerald-600 hover:bg-emerald-700"
-              } ${isUpdating ? "opacity-60 cursor-not-allowed" : ""}`}
-            >
-              {isUpdating
-                ? "Đang cập nhật..."
-                : nextStatus === "in_progress"
-                  ? "Bắt đầu làm"
-                  : "Đánh dấu hoàn thành"}
-            </button>
-          </div>
-        )}
+        {/* Footer — Status Action + Report */}
+        <div className="p-4 border-t border-gray-200 space-y-3">
+          {nextStatus && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => onStatusToggle(task.id, nextStatus)}
+                disabled={isUpdating}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium text-white transition-colors ${
+                  nextStatus === "in_progress"
+                    ? "bg-[#1A2B4C] hover:bg-indigo-800"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                } ${isUpdating ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                {isUpdating
+                  ? "Đang cập nhật..."
+                  : nextStatus === "in_progress"
+                    ? "Bắt đầu làm"
+                    : "Hoàn thành"}
+              </button>
+              {canReport && (
+                <button
+                  onClick={() => setShowReportForm(!showReportForm)}
+                  className="px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 border border-red-300 hover:bg-red-50 transition-colors"
+                >
+                  Báo lỗi
+                </button>
+              )}
+            </div>
+          )}
+
+          {task.status === "cancellation_requested" && (
+            <p className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3">
+              Yêu cầu huỷ đã được gửi. Chờ chủ tiệm xác nhận.
+            </p>
+          )}
+
+          {/* Report form */}
+          {showReportForm && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-medium text-red-800">Báo lỗi / Yêu cầu huỷ</p>
+              <select
+                value={failureCategory}
+                onChange={(e) => setFailureCategory(e.target.value as FailureCategory)}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-300 outline-none"
+              >
+                <option value="">Chọn loại lỗi...</option>
+                {(Object.entries(FAILURE_CATEGORY_LABELS) as [FailureCategory, string][]).map(
+                  ([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ),
+                )}
+              </select>
+              <textarea
+                value={failureReason}
+                onChange={(e) => setFailureReason(e.target.value)}
+                placeholder="Mô tả chi tiết lý do... (tối thiểu 10 ký tự)"
+                rows={3}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-300 outline-none resize-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSubmitReport}
+                  disabled={!canSubmitReport || isSubmitting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+                </button>
+                <button
+                  onClick={() => setShowReportForm(false)}
+                  className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Huỷ
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

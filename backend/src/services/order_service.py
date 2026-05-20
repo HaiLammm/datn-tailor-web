@@ -9,7 +9,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, OrderPaymentDB, PaymentTransactionDB, TailorTaskDB, UserDB
 from src.services.notification_creator import (
@@ -20,6 +20,7 @@ from src.services.notification_creator import (
     ORDER_STATUS_MESSAGES,
     create_notification,
 )
+from src.services.customer_service import ensure_customer_profile_for_user
 from src.services.voucher_service import (
     apply_vouchers_to_order,
     refund_vouchers_for_order,
@@ -280,6 +281,22 @@ async def create_order(
     await db.commit()
     await db.refresh(order)
 
+    # Auto-create CustomerProfile for authenticated customers (Google OAuth gap fix)
+    if customer_id is not None:
+        try:
+            user_result = await db.execute(select(UserDB.email).where(UserDB.id == customer_id))
+            user_email = user_result.scalar_one_or_none()
+            await ensure_customer_profile_for_user(
+                db=db,
+                user_id=customer_id,
+                tenant_id=tenant_id,
+                full_name=order_data.customer_name,
+                phone=order_data.customer_phone,
+                email=user_email,
+            )
+        except Exception:
+            logger.warning("Failed to auto-create CustomerProfile for user %s", customer_id)
+
     # Generate payment URL for online payment methods (mock for MVP)
     payment_url: str | None = None
     if order_data.payment_method in (PaymentMethod.vnpay, PaymentMethod.momo):
@@ -331,6 +348,7 @@ async def create_order(
         security_value=order.security_value,
         pickup_date=order.pickup_date,
         return_date=order.return_date,
+        cancellation_reason=order.cancellation_reason,
     )
 
 
@@ -480,6 +498,7 @@ async def get_order(
         security_value=order.security_value,
         pickup_date=order.pickup_date,
         return_date=order.return_date,
+        cancellation_reason=order.cancellation_reason,
     )
 
 
@@ -511,11 +530,17 @@ _VALID_TRANSITIONS: dict[str, str | None] = {
 
 
 async def _all_tailor_tasks_completed(db: AsyncSession, order_id: UUID) -> bool:
-    """Check if all tailor tasks for an order are completed."""
+    """Check if all active tailor tasks for an order are completed.
+
+    Excludes cancelled/cancellation_requested tasks so reassign scenarios work correctly.
+    """
+    _active_filter = TailorTaskDB.status.not_in(["cancelled", "cancellation_requested"])
     task_result = await db.execute(
         select(
-            func.count(TailorTaskDB.id),
-            func.count(TailorTaskDB.id).filter(TailorTaskDB.status == "completed"),
+            func.count(TailorTaskDB.id).filter(_active_filter),
+            func.count(TailorTaskDB.id).filter(
+                _active_filter, TailorTaskDB.status == "completed"
+            ),
         ).where(TailorTaskDB.order_id == order_id)
     )
     total_tasks, completed_tasks = task_result.one()
@@ -607,6 +632,27 @@ async def list_orders(
     result = await db.execute(query)
     orders = result.scalars().all()
 
+    # Batch-load tailor task info for bespoke orders
+    bespoke_order_ids = [o.id for o in orders if o.service_type == "bespoke"]
+    tailor_task_map: dict[UUID, dict] = {}
+    if bespoke_order_ids:
+        task_query = (
+            select(TailorTaskDB)
+            .options(joinedload(TailorTaskDB.assignee))
+            .where(
+                TailorTaskDB.order_id.in_(bespoke_order_ids),
+                TailorTaskDB.status.not_in(["cancelled"]),
+            )
+        )
+        task_result = await db.execute(task_query)
+        for t in task_result.scalars().all():
+            tailor_task_map[t.order_id] = {
+                "tailor_name": t.assignee.full_name if t.assignee else "Thợ may",
+                "task_status": t.status,
+                "garment_name": t.garment_name,
+                "failure_category": t.failure_category,
+            }
+
     # Batch-check readiness for in_progress (→ checked) and checked (→ shipped)
     checkable_ids: set[UUID] = set()
     shippable_ids: set[UUID] = set()
@@ -661,6 +707,8 @@ async def list_orders(
             service_type=ServiceType(o.service_type) if o.service_type else ServiceType.buy,
             preparation_step=o.preparation_step,
             remaining_amount=o.remaining_amount,
+            cancellation_reason=o.cancellation_reason,
+            tailor_task_info=tailor_task_map.get(o.id),
         )
         for o in orders
     ]
@@ -842,6 +890,20 @@ async def update_order_status(
                 },
             )
 
+    # Require cancellation reason when cancelling
+    if new_status == "cancelled":
+        if not update.cancellation_reason or len(update.cancellation_reason.strip()) < 10:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_CANCELLATION_REASON_REQUIRED",
+                        "message": "Vui lòng nhập lý do huỷ đơn (tối thiểu 10 ký tự).",
+                    }
+                },
+            )
+        order.cancellation_reason = update.cancellation_reason.strip()
+
     # Refund vouchers on cancellation
     if new_status == "cancelled" and order.applied_voucher_ids:
         await refund_vouchers_for_order(db, order.id, tenant_id=order.tenant_id)
@@ -924,6 +986,7 @@ async def update_order_status(
         security_value=order.security_value,
         pickup_date=order.pickup_date,
         return_date=order.return_date,
+        cancellation_reason=order.cancellation_reason,
     )
 
 
@@ -981,6 +1044,28 @@ async def get_order_with_transactions(
         for tx in order.payment_transactions
     ]
 
+    # Check for active cancellation request on bespoke orders
+    active_cancel_req = None
+    if order.service_type == "bespoke":
+        cancel_task_result = await db.execute(
+            select(TailorTaskDB)
+            .options(joinedload(TailorTaskDB.assignee))
+            .where(
+                TailorTaskDB.order_id == order.id,
+                TailorTaskDB.status == "cancellation_requested",
+            )
+            .limit(1)
+        )
+        cancel_task = cancel_task_result.scalar_one_or_none()
+        if cancel_task:
+            active_cancel_req = {
+                "task_id": str(cancel_task.id),
+                "tailor_name": cancel_task.assignee.full_name if cancel_task.assignee else "Thợ may",
+                "garment_name": cancel_task.garment_name,
+                "failure_category": cancel_task.failure_category,
+                "failure_reason": cancel_task.failure_reason,
+            }
+
     order_response = OrderResponse(
         id=order.id,
         status=order.status,
@@ -1004,6 +1089,8 @@ async def get_order_with_transactions(
         security_value=order.security_value,
         pickup_date=order.pickup_date,
         return_date=order.return_date,
+        cancellation_reason=order.cancellation_reason,
+        active_cancellation_request=active_cancel_req,
     )
 
     return order_response, transactions

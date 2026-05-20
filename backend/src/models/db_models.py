@@ -312,6 +312,8 @@ class OrderDB(Base):
     rental_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rental_condition: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Cancellation tracking
+    cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -552,6 +554,12 @@ class TailorTaskDB(Base):
         ForeignKey("designs.id", ondelete="SET NULL"), nullable=True
     )
     completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Cancellation request fields
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    failure_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    cancellation_resolved_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(

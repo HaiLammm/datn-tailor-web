@@ -86,6 +86,40 @@ async def create_customer_profile(
     return customer
 
 
+async def ensure_customer_profile_for_user(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    full_name: str,
+    phone: str,
+    email: str | None = None,
+) -> CustomerProfileDB | None:
+    """Create CustomerProfile if none exists for this user+tenant. Idempotent."""
+    existing = await db.execute(
+        select(CustomerProfileDB).where(
+            and_(
+                CustomerProfileDB.user_id == user_id,
+                CustomerProfileDB.tenant_id == tenant_id,
+                CustomerProfileDB.is_deleted == False,  # noqa: E712
+            )
+        )
+    )
+    if existing.scalar_one_or_none():
+        return None
+
+    customer = CustomerProfileDB(
+        tenant_id=tenant_id,
+        full_name=full_name.strip(),
+        phone=phone.strip(),
+        email=email.lower() if email else None,
+        user_id=user_id,
+    )
+    db.add(customer)
+    await db.flush()
+    await db.commit()
+    return customer
+
+
 async def link_customer_to_user_by_email(
     db: AsyncSession, email: str
 ) -> uuid.UUID | None:

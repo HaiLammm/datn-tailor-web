@@ -111,6 +111,7 @@ export default function ProductionBoardClient() {
     completed: 0,
     overdue: 0,
     cancelled: 0,
+    cancellation_requested: 0,
   };
 
   return (

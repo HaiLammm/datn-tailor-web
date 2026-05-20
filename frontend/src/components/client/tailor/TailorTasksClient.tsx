@@ -100,6 +100,7 @@ export default function TailorTasksClient() {
           in_progress: updatedTasks.filter((t) => t.status === "in_progress").length,
           completed: updatedTasks.filter((t) => t.status === "completed").length,
           cancelled: updatedTasks.filter((t) => t.status === "cancelled").length,
+          cancellation_requested: updatedTasks.filter((t) => t.status === "cancellation_requested").length,
           overdue: updatedTasks.filter((t) => t.is_overdue).length,
         };
 

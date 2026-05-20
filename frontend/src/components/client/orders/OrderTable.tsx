@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { OrderListItem, OrderStatus, ServiceType, UpdatePreparationStepRequest } from "@/types/order";
 import { RENT_PREP_STEPS, BUY_PREP_STEPS } from "@/types/order";
 import { OrderStatusBadge, PaymentStatusBadge, ServiceTypeBadge } from "./StatusBadge";
@@ -20,7 +21,7 @@ interface OrderTableProps {
   sortBy: string;
   sortOrder: "asc" | "desc";
   onSortChange: (col: string) => void;
-  onStatusUpdate: (orderId: string, newStatus: OrderStatus) => Promise<void>;
+  onStatusUpdate: (orderId: string, newStatus: OrderStatus, cancellationReason?: string) => Promise<void>;
   onRowClick: (order: OrderListItem) => void;
   onApprove?: (order: OrderListItem) => void;  // Story 10.4: approve action
   onAdvancePrep?: (order: OrderListItem) => void;  // Story 10.5: advance preparation step
@@ -64,11 +65,14 @@ function PrepStepProgress({ order }: { order: OrderListItem }) {
 }
 
 interface CancelDialogProps {
-  onConfirm: () => void;
+  onConfirm: (reason: string) => void;
   onCancel: () => void;
 }
 
 function CancelDialog({ onConfirm, onCancel }: CancelDialogProps) {
+  const [reason, setReason] = useState("");
+  const canSubmit = reason.trim().length >= 10;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
@@ -79,9 +83,18 @@ function CancelDialog({ onConfirm, onCancel }: CancelDialogProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Hủy đơn hàng?</h3>
-        <p className="text-sm text-gray-600 mb-6">
-          Hành động này không thể hoàn tác. Đơn hàng sẽ chuyển sang trạng thái
-          &ldquo;Đã hủy&rdquo;.
+        <p className="text-sm text-gray-600 mb-3">
+          Hành động này không thể hoàn tác. Vui lòng nhập lý do huỷ đơn.
+        </p>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Nhập lý do huỷ đơn... (tối thiểu 10 ký tự)"
+          rows={3}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-300 focus:border-red-400 outline-none resize-none mb-1"
+        />
+        <p className={`text-xs mb-4 ${canSubmit ? "text-gray-400" : "text-red-500"}`}>
+          {reason.trim().length}/10 ký tự tối thiểu
         </p>
         <div className="flex gap-3 justify-end">
           <button
@@ -91,8 +104,9 @@ function CancelDialog({ onConfirm, onCancel }: CancelDialogProps) {
             Không
           </button>
           <button
-            onClick={onConfirm}
-            className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+            onClick={() => canSubmit && onConfirm(reason.trim())}
+            disabled={!canSubmit}
+            className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Hủy đơn
           </button>
@@ -112,6 +126,7 @@ export default function OrderTable({
   onApprove,
   onAdvancePrep,
 }: OrderTableProps) {
+  const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
 
@@ -130,12 +145,12 @@ export default function OrderTable({
     }
   }
 
-  async function handleCancel() {
+  async function handleCancel(reason: string) {
     if (!cancelTarget) return;
     setLoadingId(cancelTarget);
     setCancelTarget(null);
     try {
-      await onStatusUpdate(cancelTarget, "cancelled");
+      await onStatusUpdate(cancelTarget, "cancelled", reason);
     } finally {
       setLoadingId(null);
     }
@@ -195,7 +210,7 @@ export default function OrderTable({
           <tbody className="bg-white divide-y divide-gray-100">
             {orders.map((order) => {
               const nextStatus = order.next_valid_status as OrderStatus | null;
-              const canCancel = !["delivered", "cancelled"].includes(order.status);
+              const canCancel = !["delivered", "cancelled", "completed"].includes(order.status);
               const isLoading = loadingId === order.id;
               return (
                 <tr
@@ -239,6 +254,29 @@ export default function OrderTable({
                   <td className="px-4 py-3">
                     <OrderStatusBadge status={order.status} />
                     <PrepStepProgress order={order} />
+                    {/* Tailor task badges for bespoke orders */}
+                    {order.service_type === "bespoke" && order.tailor_task_info && (
+                      <div className="mt-1 flex items-center gap-1 flex-wrap">
+                        {order.tailor_task_info.task_status === "in_progress" || order.tailor_task_info.task_status === "assigned" ? (
+                          <>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">
+                              Đang may
+                            </span>
+                            <span className="text-[10px] text-gray-600 truncate max-w-[100px]">
+                              {order.tailor_task_info.tailor_name}
+                            </span>
+                          </>
+                        ) : order.tailor_task_info.task_status === "completed" ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium truncate max-w-[200px]">
+                            ✓ {order.tailor_task_info.tailor_name} đã hoàn thành {order.tailor_task_info.garment_name}
+                          </span>
+                        ) : order.tailor_task_info.task_status === "cancellation_requested" ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium truncate max-w-[200px]">
+                            ⚠ {order.tailor_task_info.tailor_name} yêu cầu huỷ {order.tailor_task_info.garment_name}
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
                     {/* Story 10.6: Payment indicator for orders needing remaining payment */}
                     {(order.status === "ready_to_ship" || order.status === "ready_for_pickup") &&
                       order.remaining_amount != null &&
@@ -288,8 +326,23 @@ export default function OrderTable({
                           {isLoading ? "..." : "Tiếp"}
                         </button>
                       )}
-                      {/* Generic next-status button for non-pending orders */}
-                      {order.status !== "pending" && order.status !== "preparing" && nextStatus && (
+                      {/* Bespoke: "Bàn giao cho thợ" navigates to production page */}
+                      {order.status === "in_progress" && order.service_type === "bespoke" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push("/owner/production");
+                          }}
+                          disabled={isLoading}
+                          title="Giao việc cho thợ may tại trang sản xuất"
+                          className="px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                        >
+                          Bàn giao cho thợ
+                        </button>
+                      )}
+                      {/* Generic next-status button for non-pending orders (skip bespoke in_progress) */}
+                      {order.status !== "pending" && order.status !== "preparing" && nextStatus &&
+                        !(order.status === "in_progress" && order.service_type === "bespoke") && (
                         <button
                           onClick={(e) => handleNextStatus(e, order)}
                           disabled={isLoading}

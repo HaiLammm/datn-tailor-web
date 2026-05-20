@@ -258,7 +258,8 @@ export async function fetchOrders(
  */
 export async function updateOrderStatus(
   orderId: string,
-  newStatus: OrderStatus
+  newStatus: OrderStatus,
+  cancellationReason?: string,
 ): Promise<OrderResponse> {
   const session = await auth();
   const token = session?.accessToken;
@@ -266,6 +267,9 @@ export async function updateOrderStatus(
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  const body: Record<string, string> = { status: newStatus };
+  if (cancellationReason) body.cancellation_reason = cancellationReason;
 
   try {
     const response = await fetch(
@@ -276,7 +280,7 @@ export async function updateOrderStatus(
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       }
     );
