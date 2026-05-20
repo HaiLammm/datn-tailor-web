@@ -30,6 +30,8 @@ interface ShowroomPageProps {
 export default async function ShowroomPage({ searchParams }: ShowroomPageProps) {
   const params = await searchParams;
 
+  const orderSuccess = params.order_success === "true";
+
   // Extract and validate filter params from URL for initial SSR fetch
   const filters = {
     color: typeof params.color === "string" ? params.color : undefined,
@@ -71,6 +73,18 @@ export default async function ShowroomPage({ searchParams }: ShowroomPageProps) 
           </p>
         </div>
       </header>
+
+      {/* Order success banner */}
+      {orderSuccess && (
+        <div className="bg-emerald-50 border-b border-emerald-200">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-center gap-3">
+            <svg className="w-6 h-6 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-emerald-800 font-medium">Đơn hàng đã được tạo thành công! Cảm ơn bạn đã mua sắm.</p>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

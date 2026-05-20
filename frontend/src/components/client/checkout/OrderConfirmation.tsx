@@ -197,7 +197,7 @@ export function OrderConfirmation({ order }: OrderConfirmationProps) {
           data-testid="cta-buttons"
         >
           <button
-            onClick={() => router.push("/showroom")}
+            onClick={() => router.push("/showroom?order_success=true")}
             className="flex-1 py-3 px-6 rounded-lg border-2 border-[#D4AF37] text-[#D4AF37] font-semibold text-sm hover:bg-[#D4AF37] hover:text-white transition-all duration-200 min-h-[44px]"
             data-testid="continue-shopping-btn"
           >

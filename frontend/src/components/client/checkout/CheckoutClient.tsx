@@ -43,13 +43,14 @@ export function CheckoutClient() {
 
   const hasBespokeItems = useCartStore((state) => state.hasBespokeItems);
   const measurementConfirmed = useCartStore((state) => state.measurement_confirmed);
+  const hydrated = useCartStore((state) => state._hydrated);
 
-  // Redirect to showroom if cart is empty
+  // Redirect to showroom if cart is empty (wait for hydration)
   useEffect(() => {
-    if (items.length === 0) {
+    if (hydrated && items.length === 0) {
       router.replace("/showroom");
     }
-  }, [items.length, router]);
+  }, [hydrated, items.length, router]);
 
   // Story 10.3: Redirect to measurement gate if bespoke items without confirmed measurement
   useEffect(() => {

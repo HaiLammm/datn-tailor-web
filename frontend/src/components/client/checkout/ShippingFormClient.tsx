@@ -19,19 +19,6 @@ import { formatPrice } from "@/utils/format";
 import type { PaymentMethod, SecurityType, ShippingAddress } from "@/types/order";
 
 /** Validate that a payment URL is a safe relative path (mock MVP) or known gateway domain. */
-function isSafePaymentUrl(url: string): boolean {
-  // Allow relative paths (mock MVP URLs like /checkout/confirmation?...)
-  if (url.startsWith("/")) return true;
-  // Allow known payment gateway domains
-  try {
-    const parsed = new URL(url);
-    const allowedHosts = ["pay.vnpay.vn", "payment.momo.vn", "test-payment.momo.vn", "sandbox.vnpayment.vn"];
-    return allowedHosts.includes(parsed.hostname);
-  } catch {
-    return false;
-  }
-}
-
 interface ShippingFormData {
   fullName: string;
   phone: string;
@@ -137,12 +124,14 @@ export function ShippingFormClient() {
   const depositRate = orderServiceType === "bespoke" ? 0.5 : orderServiceType === "rent" ? 0.3 : 1;
   const depositAmount = Math.round(finalTotal() * depositRate);
 
-  // Guard: redirect to showroom if cart is empty
+  const hydrated = useCartStore((state) => state._hydrated);
+
+  // Guard: redirect to showroom if cart is empty (wait for hydration)
   useEffect(() => {
-    if (items.length === 0) {
+    if (hydrated && items.length === 0) {
       router.replace("/showroom");
     }
-  }, [items.length, router]);
+  }, [hydrated, items.length, router]);
 
   // Story 10.3: Redirect to measurement gate if bespoke items without confirmed measurement
   useEffect(() => {
@@ -307,22 +296,9 @@ export function ShippingFormClient() {
           return;
         }
 
-        const { order_id, payment_url } = result.data;
-
-        if (payment_url && paymentMethod !== "cod") {
-          // VNPay / Momo: validate URL before redirect (prevent open redirect)
-          if (!isSafePaymentUrl(payment_url)) {
-            setSubmitError("URL thanh toán không hợp lệ. Vui lòng thử lại.");
-            return;
-          }
-          // Do NOT clear cart for online payments — cart is cleared on confirmation page
-          // after verifying payment succeeded
-          window.location.href = payment_url;
-        } else {
-          // COD: clear cart and redirect to confirmation
-          clearCart();
-          router.push(`/checkout/confirmation?orderId=${order_id}`);
-        }
+        const { order_id } = result.data;
+        clearCart();
+        window.location.href = `/checkout/confirmation?orderId=${order_id}`;
       } finally {
         isSubmittingRef.current = false;
       }

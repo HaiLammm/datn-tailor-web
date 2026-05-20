@@ -42,6 +42,7 @@ export interface CartState {
 }
 
 export interface CartStore extends CartState {
+  _hydrated: boolean;
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<CartItem>) => void;

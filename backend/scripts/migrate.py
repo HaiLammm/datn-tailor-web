@@ -13,7 +13,7 @@ sys.path.append(str(backend_dir))
 
 # FORCE LOAD .env from the backend directory
 env_path = backend_dir / ".env"
-load_dotenv(dotenv_path=env_path)
+load_dotenv(dotenv_path=env_path, override=False)
 
 from src.core.config import settings
 

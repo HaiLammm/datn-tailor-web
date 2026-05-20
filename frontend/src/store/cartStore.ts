@@ -34,6 +34,7 @@ export const useCartStore = create<CartStore>()(
   devtools(
     persist(
       (set, get) => ({
+        _hydrated: false,
         items: [],
         appliedVouchers: [],
         measurement_confirmed: false,
@@ -136,6 +137,9 @@ export const useCartStore = create<CartStore>()(
       {
         name: "tailor-cart",
         storage: createJSONStorage(() => localStorage),
+        onRehydrateStorage: () => () => {
+          useCartStore.setState({ _hydrated: true });
+        },
       }
     ),
     { name: "CartStore" }

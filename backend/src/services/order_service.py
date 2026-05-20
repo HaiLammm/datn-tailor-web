@@ -80,7 +80,6 @@ async def _validate_and_price_items(
             GarmentDB.id.in_(garment_ids),
             GarmentDB.tenant_id == tenant_id,
         )
-        .with_for_update()
     )
     garments_map = {g.id: g for g in result.scalars().all()}
 
@@ -98,7 +97,7 @@ async def _validate_and_price_items(
                 },
             )
 
-        if not skip_availability_check and (garment.status != "available" or garment.quantity < 1):
+        if not skip_availability_check and garment.status != "available":
             raise HTTPException(
                 status_code=422,
                 detail={
@@ -157,10 +156,6 @@ async def _validate_and_price_items(
         if item.transaction_type == "rent":
             order_item.rental_status = "active"
             order_item.deposit_amount = unit_price * Decimal("0.3")
-
-        # Decrement garment quantity (guard against negative)
-        if garment.quantity > 0:
-            garment.quantity -= 1
 
         order_items.append(order_item)
         item_details.append(

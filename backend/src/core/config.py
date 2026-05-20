@@ -5,7 +5,7 @@ import os
 from datetime import timedelta, timezone
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=False)
 
 
 class Settings:
