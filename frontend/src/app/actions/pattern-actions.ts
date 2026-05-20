@@ -169,3 +169,17 @@ export async function searchCustomers(
     return { success: false, error: "Không thể kết nối đến máy chủ" };
   }
 }
+
+// ===== Stub actions for Stories 11.5/11.6 (TODO: implement) =====
+
+export async function fetchPatternSession(
+  _sessionId: string
+): Promise<{ success: boolean; data?: PatternSessionResponse | null; error?: string; statusCode?: number }> {
+  return { success: false, error: "Not implemented" };
+}
+
+export async function fetchCustomerDetail(
+  _customerId: string
+): Promise<{ success: boolean; data?: { full_name: string } | null; error?: string }> {
+  return { success: false, error: "Not implemented" };
+}

@@ -17,7 +17,11 @@ import {
   fetchCustomerMeasurement,
   searchCustomers,
 } from "@/app/actions/pattern-actions";
-import type { PatternSessionCreate, PatternSessionResponse } from "@/types/pattern";
+import type {
+  PatternSessionCreate,
+  PatternSessionResponse,
+  PatternSessionListItem,
+} from "@/types/pattern";
 import type { MeasurementResponse } from "@/types/customer";
 
 // ===== Create Pattern Session Mutation (AC #7) =====
@@ -149,4 +153,109 @@ export function useCustomerSearch(): UseCustomerSearchResult {
     search,
     clear,
   };
+}
+
+// ===== Pattern Session Detail Query (Story 11.5) =====
+
+export function usePatternSession(
+  sessionId: string,
+  options?: { initialData?: PatternSessionResponse }
+) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["pattern-session", sessionId],
+    queryFn: async () => {
+      // TODO: implement fetchPatternSession action
+      throw new Error("Not implemented");
+    },
+    initialData: options?.initialData,
+    enabled: !!sessionId,
+  });
+
+  return {
+    session: data ?? null,
+    isLoading,
+    error: error instanceof Error ? error.message : null,
+  };
+}
+
+// ===== Generate Pattern Mutation (Story 11.5) =====
+
+export function useGeneratePattern(sessionId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      // TODO: implement generatePattern action
+      throw new Error("Not implemented");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pattern-session", sessionId] });
+    },
+  });
+}
+
+// ===== Attach Pattern to Order (Story 11.6) =====
+
+export function useAttachPattern(options?: {
+  onSuccess?: () => void;
+  onError?: (error: string) => void;
+}) {
+  return useMutation({
+    mutationFn: async (_payload: { orderId: string; patternSessionId: string }) => {
+      // TODO: implement attachPattern action
+      throw new Error("Not implemented");
+    },
+    onSuccess: () => options?.onSuccess?.(),
+    onError: (error: Error) => options?.onError?.(error.message),
+  });
+}
+
+// ===== Customer Pattern Sessions Query (Story 11.6) =====
+
+export function useCustomerPatternSessions(customerId: string) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["customer-pattern-sessions", customerId],
+    queryFn: async (): Promise<PatternSessionListItem[]> => {
+      // TODO: implement fetchCustomerPatternSessions action
+      return [];
+    },
+    enabled: !!customerId,
+  });
+
+  return {
+    sessions: data ?? [],
+    isLoading,
+  };
+}
+
+// ===== Export Piece Mutation (Story 11.6) =====
+
+export function useExportPiece() {
+  return useMutation({
+    mutationFn: async (_payload: {
+      pieceId: string;
+      format: string;
+      speed?: number;
+      power?: number;
+    }) => {
+      // TODO: implement exportPiece action
+      throw new Error("Not implemented");
+    },
+  });
+}
+
+// ===== Export Session Mutation (Story 11.6) =====
+
+export function useExportSession() {
+  return useMutation({
+    mutationFn: async (_payload: {
+      sessionId: string;
+      format: string;
+      speed?: number;
+      power?: number;
+    }) => {
+      // TODO: implement exportSession action
+      throw new Error("Not implemented");
+    },
+  });
 }

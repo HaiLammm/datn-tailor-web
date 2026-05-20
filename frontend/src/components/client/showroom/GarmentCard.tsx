@@ -156,26 +156,47 @@ export function GarmentCard({ garment, bestVouchers }: GarmentCardProps) {
         <div className="pt-3 border-t border-gray-200 mt-auto">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <p className="text-xs text-gray-500">Giá thuê</p>
+              <p className="text-xs text-gray-500">Giá</p>
               {(() => {
                 const rentalPrice = parseFloat(garment.rental_price);
-                const preview = calcDiscountPreview(rentalPrice, bestVouchers);
-                if (preview) {
-                  const discountFormatted = new Intl.NumberFormat("vi-VN", {
-                    style: "currency",
-                    currency: "VND",
-                  }).format(preview.discountedPrice);
+                const salePrice = garment.sale_price ? parseFloat(garment.sale_price) : null;
+                const fmt = (v: number) =>
+                  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(v);
+
+                const rentalPreview = calcDiscountPreview(rentalPrice, bestVouchers);
+                const salePreview = salePrice ? calcDiscountPreview(salePrice, bestVouchers) : null;
+                const hasDiscount = rentalPreview || salePreview;
+
+                const rentalDisplay = rentalPreview ? fmt(rentalPreview.discountedPrice) : priceFormatted;
+                const saleOriginal = salePrice ? fmt(salePrice) : null;
+                const saleDisplay = salePreview ? fmt(salePreview.discountedPrice) : saleOriginal;
+                const maxSaved = Math.max(rentalPreview?.totalSaved ?? 0, salePreview?.totalSaved ?? 0);
+
+                if (hasDiscount) {
                   return (
                     <>
-                      <p className="text-sm text-gray-400 line-through">{priceFormatted}</p>
-                      <p className="text-lg font-bold text-[#DC2626]">{discountFormatted}</p>
-                      <p className="text-xs text-green-600">
-                        Tiết kiệm {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(preview.totalSaved)}
+                      <p className="text-sm text-gray-400 line-through">
+                        {priceFormatted}
+                        {saleOriginal && <span> | {saleOriginal}</span>}
                       </p>
+                      <p className="text-lg font-bold text-[#DC2626]">
+                        {rentalDisplay}
+                        {saleDisplay && (
+                          <span className="text-sm font-normal text-gray-500"> | {saleDisplay}</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-green-600">Tiết kiệm đến {fmt(maxSaved)}</p>
                     </>
                   );
                 }
-                return <p className="text-lg font-bold text-[#D4AF37]">{priceFormatted}</p>;
+                return (
+                  <p className="text-lg font-bold text-[#D4AF37]">
+                    {priceFormatted}
+                    {saleDisplay && (
+                      <span className="text-sm font-normal text-gray-500"> | {saleDisplay}</span>
+                    )}
+                  </p>
+                );
               })()}
             </div>
             <Link

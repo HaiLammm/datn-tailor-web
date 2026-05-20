@@ -110,6 +110,7 @@ export default function ProductionBoardClient() {
     in_progress: 0,
     completed: 0,
     overdue: 0,
+    cancelled: 0,
   };
 
   return (

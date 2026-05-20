@@ -29,6 +29,22 @@ import type {
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 const FETCH_TIMEOUT = 10000;
 
+function extractErrorMsg(data: unknown, fallback: string): string {
+  if (!data || typeof data !== "object") return fallback;
+  const d = data as Record<string, unknown>;
+  // Direct: {error: {message: "..."}}
+  const directMsg = (d.error as Record<string, unknown>)?.message;
+  if (typeof directMsg === "string") return directMsg;
+  // FastAPI: {detail: {error: {message: "..."}}} or {detail: "..."}
+  const detail = d.detail;
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object") {
+    const nested = (detail as Record<string, unknown>).error as Record<string, unknown> | undefined;
+    if (typeof nested?.message === "string") return nested.message as string;
+  }
+  return fallback;
+}
+
 export interface CreateOrderResult {
   success: boolean;
   data?: {
@@ -69,33 +85,21 @@ export async function createOrder(
     clearTimeout(timeoutId);
 
     if (response.status === 400) {
-      const errorData = await response.json();
-      const msg =
-        errorData?.error?.message ||
-        errorData?.detail ||
-        "Dữ liệu đơn hàng không hợp lệ";
+      const errorData = await response.json().catch(() => null);
       console.error("createOrder: 400 Bad Request", errorData);
-      return { success: false, error: msg };
+      return { success: false, error: extractErrorMsg(errorData, "Dữ liệu đơn hàng không hợp lệ") };
     }
 
     if (response.status === 404) {
-      const errorData = await response.json();
-      const msg =
-        errorData?.error?.message ||
-        errorData?.detail ||
-        "Sản phẩm không tồn tại";
+      const errorData = await response.json().catch(() => null);
       console.error("createOrder: 404 Not Found", errorData);
-      return { success: false, error: msg };
+      return { success: false, error: extractErrorMsg(errorData, "Sản phẩm không tồn tại") };
     }
 
     if (response.status === 422) {
-      const errorData = await response.json();
-      const msg =
-        errorData?.error?.message ||
-        errorData?.detail ||
-        "Sản phẩm không khả dụng";
+      const errorData = await response.json().catch(() => null);
       console.error("createOrder: 422 Unprocessable", errorData);
-      return { success: false, error: msg };
+      return { success: false, error: extractErrorMsg(errorData, "Sản phẩm không khả dụng") };
     }
 
     if (!response.ok) {

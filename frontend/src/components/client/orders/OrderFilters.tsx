@@ -11,6 +11,14 @@ const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   shipped: "Đã gửi",
   delivered: "Đã giao",
   cancelled: "Đã hủy",
+  pending_measurement: "Chờ đo",
+  preparing: "Đang chuẩn bị",
+  ready_to_ship: "Sẵn sàng gửi",
+  ready_for_pickup: "Sẵn sàng lấy",
+  in_production: "Đang sản xuất",
+  renting: "Đang thuê",
+  returned: "Đã trả",
+  completed: "Hoàn thành",
 };
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {

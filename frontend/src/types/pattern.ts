@@ -89,6 +89,19 @@ export const PatternSessionCreateSchema = z.object({
 
 export type PatternSessionCreate = z.infer<typeof PatternSessionCreateSchema>;
 
+// ===== Pattern Pieces =====
+
+export type PieceType = "front_bodice" | "back_bodice" | "sleeve";
+
+export type ExportFormat = "svg" | "gcode";
+
+export interface PatternPieceResponse {
+  id: string;
+  piece_type: PieceType;
+  svg_data: string | null;
+  geometry_params: Record<string, unknown> | null;
+}
+
 // ===== Pattern Session Response Types =====
 
 export interface PatternSessionResponse {
@@ -108,6 +121,7 @@ export interface PatternSessionResponse {
   vong_bap_tay: number;
   vong_co_tay: number;
   notes: string | null;
+  pieces: PatternPieceResponse[];
   created_at: string;
   updated_at: string;
 }
@@ -146,4 +160,43 @@ export const PATTERN_TO_CUSTOMER_MAPPING: Record<MeasurementKey, string | null> 
   do_dai_tay: "sleeve_length",
   vong_bap_tay: null, // Manual input required
   vong_co_tay: "wrist",
+};
+
+export interface PatternSessionListItem {
+  id: string;
+  status: "draft" | "completed" | "exported";
+  garment_type: string;
+  piece_count: number;
+  created_at: string;
+}
+
+export const PIECE_TYPE_LABELS: Record<PieceType, string> = {
+  front_bodice: "Thân trước",
+  back_bodice: "Thân sau",
+  sleeve: "Tay áo",
+};
+
+export const PATTERN_SESSION_STATUS_LABELS: Record<string, string> = {
+  draft: "Nháp",
+  completed: "Hoàn thành",
+  exported: "Đã xuất",
+};
+
+export const GEOMETRY_PARAM_LABELS: Record<string, string> = {
+  bust_width: "Rộng ngực",
+  waist_width: "Rộng eo",
+  hip_width: "Rộng mông",
+  shoulder_width: "Rộng vai",
+  bodice_length: "Dài thân",
+  sleeve_length: "Dài tay",
+  sleeve_width: "Rộng tay",
+  neckline_width: "Rộng cổ",
+  neckline_depth: "Sâu cổ",
+  armhole_depth: "Sâu nách",
+};
+
+export const PIECE_GEOMETRY_PARAM_KEYS: Record<PieceType, string[]> = {
+  front_bodice: ["bust_width", "waist_width", "hip_width", "shoulder_width", "bodice_length", "neckline_width", "neckline_depth", "armhole_depth"],
+  back_bodice: ["bust_width", "waist_width", "hip_width", "shoulder_width", "bodice_length", "neckline_width", "armhole_depth"],
+  sleeve: ["sleeve_length", "sleeve_width", "armhole_depth"],
 };

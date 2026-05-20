@@ -16,7 +16,7 @@ export default async function ProfileOrdersPage({
 }: {
   searchParams?: Promise<Record<string, string>>;
 }) {
-  const params = await (searchParams ?? Promise.resolve({}));
+  const params = await (searchParams ?? Promise.resolve({} as Record<string, string>));
   const page = parseInt(params.page ?? "1", 10);
   const status = params.status ?? undefined;
   const orderType = (params.order_type as "buy" | "rental") ?? undefined;
