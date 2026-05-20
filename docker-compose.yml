@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tailor_db
+      POSTGRES_USER: luonghailam
+      POSTGRES_PASSWORD: 12070123a
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U luonghailam -d tailor_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://luonghailam:12070123a@db:5432/tailor_db
+      JWT_SECRET_KEY: dev-secret-key-change-in-production
+      JWT_EXPIRE_MINUTES: 60
+      CORS_ORIGINS: http://localhost:3000
+      LOG_LEVEL: INFO
+      OWNER_EMAIL: admin@tailor.com
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USER: luonghaimal@gmail.com
+      SMTP_PASSWORD: svvc evrf tnnm pqed
+      FROM_EMAIL: noreply.thanhloc.tailor@gmail.com
+      OTP_EXPIRY_MINUTES: 10
+    volumes:
+      - backend_uploads:/app/uploads
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      BACKEND_URL: http://backend:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      AUTH_SECRET: cVzrKg2qiJG1cyyrZKY0wGNARTnOXcUaEKgZWA3QfUw=
+      AUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: "true"
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+volumes:
+  postgres_data:
+  backend_uploads:
