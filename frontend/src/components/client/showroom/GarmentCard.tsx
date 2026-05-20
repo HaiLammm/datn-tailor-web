@@ -74,7 +74,7 @@ export function GarmentCard({ garment, bestVouchers }: GarmentCardProps) {
     : null;
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 border border-gray-200">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 border border-gray-200 h-full flex flex-col">
       {/* Image */}
       <div className="relative h-64 bg-gray-100">
         {garment.image_url ? (
@@ -97,7 +97,7 @@ export function GarmentCard({ garment, bestVouchers }: GarmentCardProps) {
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-4 flex flex-col flex-1">
         {/* Name */}
         <h3
           className="text-xl font-bold text-[#1A2B4C] mb-2 line-clamp-1"
@@ -106,34 +106,36 @@ export function GarmentCard({ garment, bestVouchers }: GarmentCardProps) {
           {garment.name}
         </h3>
 
-        {/* Description */}
-        {garment.description && (
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-            {garment.description}
-          </p>
-        )}
-
-        {/* Color & Occasion */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {garment.color && (
-            <span className="text-xs px-2 py-1 bg-[#F9F7F2] text-gray-700 rounded">
-              {garment.color}
-            </span>
+        <div className="flex-1">
+          {/* Description */}
+          {garment.description && (
+            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+              {garment.description}
+            </p>
           )}
-          {garment.occasion && (
-            <span className="text-xs px-2 py-1 bg-[#FEF3C7] text-[#92400E] rounded">
-              {garment.occasion.replace(/_/g, " ")}
-            </span>
+
+          {/* Color & Occasion */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {garment.color && (
+              <span className="text-xs px-2 py-1 bg-[#F9F7F2] text-gray-700 rounded">
+                {garment.color}
+              </span>
+            )}
+            {garment.occasion && (
+              <span className="text-xs px-2 py-1 bg-[#FEF3C7] text-[#92400E] rounded">
+                {garment.occasion.replace(/_/g, " ")}
+              </span>
+            )}
+          </div>
+
+          {/* Return Date (Story 5.2) */}
+          {returnDateLabel && (
+            <p className="text-xs text-gray-500 mb-3">
+              Dự kiến trả:{" "}
+              <span className="font-medium text-gray-700">{returnDateLabel}</span>
+            </p>
           )}
         </div>
-
-        {/* Return Date (Story 5.2) */}
-        {returnDateLabel && (
-          <p className="text-xs text-gray-500 mb-3">
-            Dự kiến trả:{" "}
-            <span className="font-medium text-gray-700">{returnDateLabel}</span>
-          </p>
-        )}
 
         {/* Sizes */}
         <div className="mb-3">
@@ -151,7 +153,7 @@ export function GarmentCard({ garment, bestVouchers }: GarmentCardProps) {
         </div>
 
         {/* Price + Action Buttons */}
-        <div className="pt-3 border-t border-gray-200">
+        <div className="pt-3 border-t border-gray-200 mt-auto">
           <div className="flex items-center justify-between mb-2">
             <div>
               <p className="text-xs text-gray-500">Giá thuê</p>
