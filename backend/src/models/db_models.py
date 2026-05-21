@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -512,11 +513,10 @@ class GarmentDB(Base):
 
 
 class TailorTaskDB(Base):
-    """ORM model for the `tailor_tasks` table (Story 5.3).
+    """ORM model for the `tailor_tasks` table.
 
-    Tracks production tasks assigned to tailors.
-    Denormalized garment_name and customer_name for query performance.
-    Status flow: assigned → in_progress → completed (no backward transitions).
+    Tracks production tasks with full state machine workflow.
+    Status flow: unassigned → assigned → accepted/rejected → in_progress → ...
     """
 
     __tablename__ = "tailor_tasks"
@@ -531,8 +531,8 @@ class TailorTaskDB(Base):
     order_item_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("order_items.id", ondelete="SET NULL"), nullable=True
     )
-    assigned_to: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    assigned_to: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
     )
     assigned_by: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
@@ -540,7 +540,7 @@ class TailorTaskDB(Base):
     garment_name: Mapped[str] = mapped_column(String(255), nullable=False)
     customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="assigned", index=True
+        String(50), nullable=False, default="unassigned", index=True
     )
     production_step: Mapped[str] = mapped_column(
         String(50), nullable=False, default="pending"
@@ -562,6 +562,37 @@ class TailorTaskDB(Base):
     cancellation_resolved_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # State machine columns (Story 12.1)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    submitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    hold_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    on_hold_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    resumed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    assignment_deadline_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    expected_finish_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    is_rework: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    rework_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    qc_issues: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rejection_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    reassignment_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    priority: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
@@ -571,9 +602,71 @@ class TailorTaskDB(Base):
 
     # Relationships
     order: Mapped["OrderDB"] = relationship("OrderDB")
-    assignee: Mapped["UserDB"] = relationship("UserDB", foreign_keys=[assigned_to])
+    assignee: Mapped["UserDB | None"] = relationship("UserDB", foreign_keys=[assigned_to])
     assigner: Mapped["UserDB"] = relationship("UserDB", foreign_keys=[assigned_by])
     design: Mapped["DesignDB | None"] = relationship("DesignDB")
+    stage_logs: Mapped[list["TaskStageLogDB"]] = relationship(
+        "TaskStageLogDB", back_populates="task", cascade="all, delete-orphan"
+    )
+    history: Mapped[list["TaskHistoryDB"]] = relationship(
+        "TaskHistoryDB", back_populates="task", cascade="all, delete-orphan"
+    )
+
+
+class TaskStageLogDB(Base):
+    __tablename__ = "task_stage_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tailor_tasks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    stage: Mapped[str] = mapped_column(String(100), nullable=False)
+    stage_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    task: Mapped["TailorTaskDB"] = relationship("TailorTaskDB", back_populates="stage_logs")
+
+
+class TaskHistoryDB(Base):
+    __tablename__ = "task_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tailor_tasks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    actor_role: Mapped[str] = mapped_column(String(50), nullable=False)
+    action: Mapped[str] = mapped_column(String(100), nullable=False)
+    from_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    to_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extra_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    task: Mapped["TailorTaskDB"] = relationship("TailorTaskDB", back_populates="history")
 
 
 class RentalReturnDB(Base):

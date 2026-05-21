@@ -1,10 +1,135 @@
-"""Pydantic schemas for Tailor Task endpoints (Story 5.3, 5.2)."""
+"""Pydantic schemas for Tailor Task endpoints (Story 5.3, 5.2, 12.1)."""
 
 import uuid
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+# ── Task Status (11-state union) ─────────────────────────────────────────────
+
+TaskStatus = Literal[
+    "unassigned",
+    "assigned",
+    "accepted",
+    "rejected",
+    "in_progress",
+    "on_hold",
+    "reassigning",
+    "submitted_for_qc",
+    "completed",
+    "cancelled",
+    "failed_qc",
+    "cancellation_requested",
+]
+
+TaskPriority = Literal["normal", "urgent"]
+
+RejectionCategory = Literal["overloaded", "not_specialty", "personal", "other"]
+
+StageLogStatus = Literal["pending", "in_progress", "completed", "skipped"]
+
+
+# ── New Request Schemas (Story 12.1) ─────────────────────────────────────────
+
+
+class TaskAcceptRequest(BaseModel):
+    expected_finish_at: datetime | None = Field(
+        default=None, description="Tailor's estimated completion date"
+    )
+
+
+class TaskRejectRequest(BaseModel):
+    rejection_reason: str = Field(min_length=5, max_length=2000)
+    rejection_category: RejectionCategory
+
+
+class TaskStartRequest(BaseModel):
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class TaskHoldRequest(BaseModel):
+    hold_reason: str = Field(min_length=5, max_length=2000)
+
+
+class TaskResumeRequest(BaseModel):
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class TaskSubmitForQCRequest(BaseModel):
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class QCResultRequest(BaseModel):
+    result: Literal["pass", "fail"] = Field(description="pass = completed, fail = failed_qc")
+    action_on_fail: Literal["rework", "reassign", "fail"] | None = Field(
+        default=None, description="Required when result='fail': rework/reassign/fail"
+    )
+    qc_issues: str | None = Field(
+        default=None, max_length=5000, description="Required when result='fail'"
+    )
+
+    @model_validator(mode="after")
+    def validate_fail_fields(self) -> "QCResultRequest":
+        if self.result == "fail":
+            if not self.qc_issues:
+                raise ValueError("qc_issues is required when result='fail'")
+            if not self.action_on_fail:
+                raise ValueError("action_on_fail is required when result='fail'")
+        return self
+
+
+class TaskReassignRequest(BaseModel):
+    new_tailor_id: uuid.UUID
+    reassignment_reason: str = Field(min_length=5, max_length=2000)
+
+
+class StageUpdateRequest(BaseModel):
+    stage: str = Field(max_length=100)
+    status: StageLogStatus = Field(default="in_progress")
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+# ── New Response Schemas (Story 12.1) ────────────────────────────────────────
+
+
+class TaskStageLogResponse(BaseModel):
+    id: str
+    task_id: str
+    stage: str
+    stage_order: int
+    status: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    notes: str | None = None
+    created_at: str
+
+
+class TaskHistoryResponse(BaseModel):
+    id: str
+    task_id: str
+    actor_id: str
+    actor_role: str
+    action: str
+    from_status: str | None = None
+    to_status: str | None = None
+    reason: str | None = None
+    metadata: dict | None = None
+    created_at: str
+
+
+class TailorMatchingScore(BaseModel):
+    tailor_id: str
+    tailor_name: str
+    score: float = Field(ge=0, le=100)
+    workload_score: float = Field(ge=0, le=1)
+    specialty_match: bool = True
+    on_time_rate: float = Field(ge=0, le=1)
+    reasons: list[str] = []
+
+
+# ── Existing Response Schemas (updated) ──────────────────────────────────────
 
 
 class TailorTaskResponse(BaseModel):
@@ -14,11 +139,11 @@ class TailorTaskResponse(BaseModel):
     tenant_id: str
     order_id: str
     order_item_id: str | None = None
-    assigned_to: str
+    assigned_to: str | None = None
     assigned_by: str
     garment_name: str
     customer_name: str
-    status: str = Field(description="assigned | in_progress | completed | cancelled | cancellation_requested")
+    status: str = Field(description="Task status (11-state machine)")
     production_step: str = Field(default="pending", description="pending | cutting | sewing | finishing | quality_check | done")
     deadline: str | None = None
     notes: str | None = None
@@ -28,6 +153,23 @@ class TailorTaskResponse(BaseModel):
     failure_reason: str | None = None
     failure_category: str | None = None
     cancellation_resolved_at: str | None = None
+    # New state machine fields
+    version: int = 1
+    accepted_at: str | None = None
+    started_at: str | None = None
+    submitted_at: str | None = None
+    hold_reason: str | None = None
+    on_hold_at: str | None = None
+    resumed_at: str | None = None
+    assignment_deadline_at: str | None = None
+    expected_finish_at: str | None = None
+    is_rework: bool = False
+    rework_count: int = 0
+    qc_issues: str | None = None
+    rejection_reason: str | None = None
+    rejection_category: str | None = None
+    reassignment_reason: str | None = None
+    priority: str = "normal"
     is_overdue: bool = False
     days_until_deadline: int | None = None
     created_at: str
@@ -38,10 +180,17 @@ class TailorTaskSummary(BaseModel):
     """Task count summary by status."""
 
     total: int = 0
+    unassigned: int = 0
     assigned: int = 0
+    accepted: int = 0
+    rejected: int = 0
     in_progress: int = 0
+    on_hold: int = 0
+    reassigning: int = 0
+    submitted_for_qc: int = 0
     completed: int = 0
     cancelled: int = 0
+    failed_qc: int = 0
     cancellation_requested: int = 0
     overdue: int = 0
 
@@ -60,9 +209,11 @@ class OrderInfoForTask(BaseModel):
 
 
 class TailorTaskDetailResponse(TailorTaskResponse):
-    """Detailed task view extending base response with order and design info."""
+    """Detailed task view extending base response with order, design, stages, and history."""
 
     order_info: OrderInfoForTask | None = None
+    stage_logs: list[TaskStageLogResponse] = []
+    history: list[TaskHistoryResponse] = []
 
 
 class StatusUpdateRequest(BaseModel):

@@ -151,6 +151,67 @@ ORDER_UNDER_REVIEW = (
     "Đơn hàng {order_code} đang được xem xét. Chúng tôi sẽ thông báo kết quả sớm nhất.",
 )
 
+# Story 12.2: Production task workflow notifications
+TASK_CREATED_OWNER = (
+    "Có đơn mới cần giao việc",
+    "Đơn hàng mới cần được giao cho thợ may: {garment_name}.",
+)
+
+TASK_ASSIGNED_TAILOR = (
+    "Bạn được giao công việc mới",
+    "Bạn được giao công việc: {garment_name}. Hạn phản hồi: 4 giờ.",
+)
+
+TAILOR_ACCEPTED = (
+    "Thợ đã nhận việc",
+    "{tailor_name} đã nhận công việc: {garment_name}.",
+)
+
+TAILOR_REJECTED = (
+    "Thợ từ chối việc",
+    "{tailor_name} từ chối công việc '{garment_name}'. Lý do: {reason}",
+)
+
+TASK_ON_HOLD = (
+    "Công việc tạm dừng",
+    "Công việc '{garment_name}' tạm dừng. Lý do: {reason}",
+)
+
+TASK_RESUMED = (
+    "Công việc tiếp tục",
+    "Công việc '{garment_name}' đã được tiếp tục thực hiện.",
+)
+
+TASK_SUBMITTED_QC = (
+    "Cần kiểm tra chất lượng",
+    "Công việc '{garment_name}' đã hoàn thành, cần kiểm tra chất lượng.",
+)
+
+QC_PASSED = (
+    "Kiểm tra chất lượng đạt",
+    "Công việc '{garment_name}' đã đạt kiểm tra chất lượng.",
+)
+
+QC_FAILED_REWORK = (
+    "Cần sửa lại",
+    "Công việc '{garment_name}' không đạt QC. Vấn đề: {qc_issues}",
+)
+
+TASK_REASSIGNED_OLD = (
+    "Công việc đã chuyển",
+    "Công việc '{garment_name}' đã được giao cho thợ may khác.",
+)
+
+TASK_REASSIGNED_NEW = (
+    "Bạn được giao công việc mới",
+    "Bạn được giao công việc: {garment_name}.",
+)
+
+CUSTOMER_QC_PASSED = (
+    "Sản phẩm đã may xong",
+    "Sản phẩm '{garment_name}' đã hoàn thành và đạt kiểm tra chất lượng.",
+)
+
 
 async def create_notification(
     db: AsyncSession,

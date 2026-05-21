@@ -1206,52 +1206,78 @@ async def approve_order(
                 logger.warning("Could not load measurement data for bespoke task, continuing without it")
                 measurement_notes = request.notes or ""
 
-        # Step 2b (bespoke): Create TailorTask — auto-transitions confirmed → in_progress
-        task_request = TaskCreateRequest(
+        # Step 2b (bespoke): Create unassigned task — order stays at confirmed
+        from src.models.db_models import TailorTaskDB as _TailorTaskDB
+        from datetime import timedelta as _timedelta
+
+        garment_name = "Áo dài"
+        if order.items:
+            first_item = order.items[0]
+            if first_item.garment:
+                garment_name = first_item.garment.name
+
+        deadline_at = None
+        if order.delivery_date:
+            deadline_at = order.delivery_date - _timedelta(days=3)
+
+        new_task = _TailorTaskDB(
+            tenant_id=tenant_id,
             order_id=order_id,
-            assigned_to=request.assigned_to,
+            assigned_to=request.assigned_to if request.assigned_to else None,
+            assigned_by=owner_id,
+            garment_name=garment_name,
+            customer_name=order.customer_name,
+            status="assigned" if request.assigned_to else "unassigned",
+            deadline=deadline_at,
             notes=measurement_notes if measurement_notes else None,
         )
-        try:
-            task_item = await create_task(db, task_request, owner_id, tenant_id)
-            task_id = UUID(task_item.id)
-        except ValueError as e:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "error": {
-                        "code": "ERR_TASK_CREATION_FAILED",
-                        "message": str(e),
-                    }
-                },
-            ) from e
-        except PermissionError as e:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": {
-                        "code": "ERR_PERMISSION_DENIED",
-                        "message": str(e),
-                    }
-                },
-            ) from e
-        except Exception as e:
-            logger.error("Unexpected error creating bespoke task for order %s: %s", _order_id_str, e)
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "error": {
-                        "code": "ERR_TASK_CREATION_FAILED",
-                        "message": "Không thể tạo công việc cho thợ may. Vui lòng thử lại.",
-                    }
-                },
-            ) from e
+        if request.assigned_to:
+            new_task.assignment_deadline_at = datetime.now(timezone.utc) + _timedelta(hours=4)
 
-        # create_task() already committed (pending→confirmed→in_progress + task)
-        new_status = "in_progress"
+        db.add(new_task)
+        await db.flush()
+        task_id = new_task.id
+
+        # Do NOT auto-transition order to in_progress — stays at confirmed
+        await db.commit()
+
+        new_status = "confirmed"
         routing_destination = "tailor"
 
-        # Customer notification (new transaction since create_task committed)
+        # Notify owner about new task
+        try:
+            from src.services.notification_creator import TASK_CREATED_OWNER
+            title, msg_tpl = TASK_CREATED_OWNER
+            await create_notification(
+                db=db,
+                user_id=owner_id,
+                tenant_id=_tenant_id,
+                notification_type="task_created",
+                title=title,
+                message=msg_tpl.format(garment_name=garment_name),
+                data={"task_id": str(task_id), "order_id": _order_id_str},
+            )
+        except Exception:
+            logger.warning("Failed to create task notification for bespoke order %s", _order_id_str)
+
+        # If assigned, notify tailor
+        if request.assigned_to:
+            try:
+                from src.services.notification_creator import TASK_ASSIGNED_TAILOR
+                title, msg_tpl = TASK_ASSIGNED_TAILOR
+                await create_notification(
+                    db=db,
+                    user_id=request.assigned_to,
+                    tenant_id=_tenant_id,
+                    notification_type="task_assigned",
+                    title=title,
+                    message=msg_tpl.format(garment_name=garment_name),
+                    data={"task_id": str(task_id), "order_id": _order_id_str},
+                )
+            except Exception:
+                logger.warning("Failed to notify tailor about assignment for order %s", _order_id_str)
+
+        # Customer notification
         if _customer_id is not None and not _is_internal:
             try:
                 title, msg_template = ORDER_APPROVED_BESPOKE_MESSAGE

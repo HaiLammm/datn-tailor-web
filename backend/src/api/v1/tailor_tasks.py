@@ -1,8 +1,9 @@
-"""Tailor Tasks API Router (Story 5.3, 5.2).
+"""Tailor Tasks API Router (Story 5.3, 5.2, 12.2).
 
 Authenticated endpoints for Tailor/Owner roles.
 Provides task listing, status updates, task detail views,
-and Owner task management (create, list-all, update, delete).
+Owner task management (create, list-all, update, delete),
+and full state machine workflow endpoints.
 """
 
 import logging
@@ -16,10 +17,17 @@ from src.core.database import get_db
 from src.models.tailor_task import (
     CancellationRequestInput,
     ProductionStepUpdateRequest,
+    QCResultRequest,
     ResolveCancellationInput,
     StatusUpdateRequest,
+    TaskAcceptRequest,
     TaskCreateRequest,
     TaskFilterParams,
+    TaskHoldRequest,
+    TaskReassignRequest,
+    TaskRejectRequest,
+    TaskResumeRequest,
+    TaskStartRequest,
     TaskUpdateRequest,
 )
 from src.services import tailor_task_service
@@ -390,6 +398,182 @@ async def delete_task_endpoint(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
         )
+
+
+# ── Story 12.2: State Machine Workflow Endpoints ────────────────────────────
+
+
+@router.post(
+    "/{task_id}/accept",
+    response_model=dict,
+    summary="Thợ may nhận việc",
+)
+async def accept_task_endpoint(
+    task_id: uuid.UUID,
+    body: TaskAcceptRequest,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.accept_task(db, task_id, user.id, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{task_id}/reject",
+    response_model=dict,
+    summary="Thợ may từ chối việc",
+)
+async def reject_task_endpoint(
+    task_id: uuid.UUID,
+    body: TaskRejectRequest,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.reject_task(db, task_id, user.id, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{task_id}/start",
+    response_model=dict,
+    summary="Bắt đầu công việc",
+)
+async def start_task_endpoint(
+    task_id: uuid.UUID,
+    body: TaskStartRequest,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.start_task(db, task_id, user.id, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{task_id}/hold",
+    response_model=dict,
+    summary="Tạm dừng công việc",
+)
+async def hold_task_endpoint(
+    task_id: uuid.UUID,
+    body: TaskHoldRequest,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.hold_task(db, task_id, user.id, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{task_id}/resume",
+    response_model=dict,
+    summary="Tiếp tục công việc",
+)
+async def resume_task_endpoint(
+    task_id: uuid.UUID,
+    body: TaskResumeRequest,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.resume_task(db, task_id, user.id, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{task_id}/submit-qc",
+    response_model=dict,
+    summary="Gửi kiểm tra chất lượng",
+)
+async def submit_qc_endpoint(
+    task_id: uuid.UUID,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.submit_for_qc(db, task_id, user.id, tenant_id)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{task_id}/qc-result",
+    response_model=dict,
+    summary="Kết quả kiểm tra chất lượng",
+)
+async def qc_result_endpoint(
+    task_id: uuid.UUID,
+    body: QCResultRequest,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.process_qc_result(db, task_id, user.id, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{task_id}/reassign",
+    response_model=dict,
+    summary="Giao lại công việc cho thợ may khác",
+)
+async def reassign_task_endpoint(
+    task_id: uuid.UUID,
+    body: TaskReassignRequest,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.reassign_task(db, task_id, user.id, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{task_id}/stages/{stage_order}/complete",
+    response_model=dict,
+    summary="Hoàn thành bước sản xuất",
+)
+async def complete_stage_endpoint(
+    task_id: uuid.UUID,
+    stage_order: int,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.complete_stage(db, task_id, stage_order, user.id, tenant_id)
+    return {"data": result, "meta": {}}
+
+
+@router.get(
+    "/{task_id}/history",
+    response_model=dict,
+    summary="Lịch sử thay đổi trạng thái",
+)
+async def get_task_history_endpoint(
+    task_id: uuid.UUID,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.get_task_history(db, task_id, tenant_id)
+    return {"data": [r.model_dump(mode="json") for r in result], "meta": {}}
+
+
+@router.get(
+    "/matching-scores/{order_id}",
+    response_model=dict,
+    summary="Điểm phù hợp thợ may cho đơn hàng",
+)
+async def get_matching_scores_endpoint(
+    order_id: uuid.UUID,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await tailor_task_service.get_matching_scores(db, order_id, tenant_id)
+    return {"data": [r.model_dump(mode="json") for r in result], "meta": {}}
 
 
 # ── Tailor cancellation request + Owner resolve ──────────────────────────────
