@@ -104,6 +104,24 @@ export interface OrderResponse {
     failure_category?: string | null;
     failure_reason?: string | null;
   } | null;
+  tailor_task_info?: {
+    tailor_name: string;
+    task_status: string;
+    garment_name: string;
+    failure_category?: string | null;
+    progress_percent: number | null;
+    current_stage: string | null;
+    is_rework: boolean;
+    rework_count: number;
+    expected_finish_at: string | null;
+    stage_logs: Array<{
+      stage: string;
+      stage_order: number;
+      status: string;
+      started_at: string | null;
+      completed_at: string | null;
+    }> | null;
+  } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +168,10 @@ export interface OrderListItem {
     task_status: string;
     garment_name: string;
     failure_category?: string | null;
+    progress_percent: number | null;
+    current_stage: string | null;
+    is_rework: boolean;
+    rework_count: number;
   } | null;
 }
 

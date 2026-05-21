@@ -314,9 +314,10 @@ async def get_order_detail_endpoint(
     Returns:
         API Response Wrapper: {"data": {"order": {...}, "transactions": [...]}}
     """
-    order, transactions = await order_service.get_order_with_transactions(
+    order, transactions, tailor_task_info = await order_service.get_order_with_transactions(
         db, order_id, tenant_id
     )
+    order.tailor_task_info = tailor_task_info
     return {
         "data": {
             "order": order.model_dump(mode="json"),

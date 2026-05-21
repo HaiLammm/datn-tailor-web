@@ -200,6 +200,8 @@ class OrderResponse(BaseModel):
     cancellation_reason: str | None = None
     # Active tailor task cancellation request info (for owner drawer)
     active_cancellation_request: dict | None = None
+    # Story 12.3: Enriched tailor task info for detail view
+    tailor_task_info: dict | None = None
 
     model_config = {"from_attributes": True}
 

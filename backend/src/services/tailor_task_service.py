@@ -248,10 +248,12 @@ async def accept_task(
     else:
         task.expected_finish_at = now + timedelta(days=7)
 
-    # Transition order confirmed → in_progress (same transaction)
+    # Transition order confirmed → in_production (same transaction)
     order = await db.get(OrderDB, task.order_id)
     if order and order.status == "confirmed":
-        order.status = "in_progress"
+        order.status = "in_production"
+        if not order.preparation_step:
+            order.preparation_step = "cutting"
         order.updated_at = datetime.now(timezone.utc)
 
     await db.flush()
@@ -497,11 +499,20 @@ async def process_qc_result(
         await _transition_task(db, task, "completed", actor_id, "Owner")
         task.completed_at = now
 
+        order_result = await db.execute(
+            select(OrderDB).where(OrderDB.id == task.order_id).with_for_update()
+        )
+        order = order_result.scalar_one_or_none()
+        if order and order.service_type == "bespoke" and order.status == "in_production":
+            from src.services.order_service import _all_tailor_tasks_completed
+            if await _all_tailor_tasks_completed(db, task.order_id):
+                order.status = "ready_to_ship"
+                order.updated_at = datetime.now(timezone.utc)
+
         await db.flush()
         await db.commit()
 
         # Notify customer
-        order = await db.get(OrderDB, task.order_id)
         if order and order.customer_id:
             try:
                 title, msg_tpl = CUSTOMER_QC_PASSED
