@@ -32,19 +32,7 @@ function formatDeadline(deadline: string): string {
   });
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  assigned: "Chờ nhận",
-  in_progress: "Đang làm",
-  completed: "Hoàn thành",
-  cancelled: "Đã hủy",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  assigned: "bg-amber-100 text-amber-800",
-  in_progress: "bg-indigo-100 text-indigo-800",
-  completed: "bg-emerald-100 text-emerald-800",
-  cancelled: "bg-gray-100 text-gray-800",
-};
+import { STATUS_BADGE } from "@/types/tailor-task";
 
 export default function TailorDashboardClient() {
   const { data, isLoading, error } = useQuery({
@@ -76,17 +64,17 @@ export default function TailorDashboardClient() {
     );
   }
 
-  // Filter urgent tasks: overdue OR deadline within 2 days AND not completed/cancelled
+  const terminalStatuses = ["completed", "cancelled", "rejected", "reassigning", "unassigned"];
   const urgentTasks = data.tasks
     .filter(
       (t) =>
-        (t.is_overdue ||
-          (t.days_until_deadline !== null &&
-            t.days_until_deadline <= 2 &&
-            t.status !== "completed" &&
-            t.status !== "cancelled"))
+        !terminalStatuses.includes(t.status) &&
+          (t.is_overdue ||
+            t.status === "assigned" ||
+            t.status === "failed_qc" ||
+            (t.days_until_deadline !== null && t.days_until_deadline <= 2))
     )
-    .slice(0, 3); // Top 3
+    .slice(0, 5);
 
   return (
     <div className="space-y-4" data-testid="tailor-dashboard">
@@ -160,10 +148,10 @@ export default function TailorDashboardClient() {
                   )}
                   <span
                     className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      STATUS_COLORS[task.status] || STATUS_COLORS.assigned
+                      (STATUS_BADGE[task.status] ?? STATUS_BADGE.assigned).className
                     }`}
                   >
-                    {STATUS_LABELS[task.status] || task.status}
+                    {(STATUS_BADGE[task.status] ?? STATUS_BADGE.assigned).label}
                   </span>
                 </div>
               </Link>

@@ -11,9 +11,13 @@ interface TaskFiltersProps {
 const STATUS_OPTIONS = [
   { value: "", label: "Tất cả trạng thái" },
   { value: "assigned", label: "Chờ nhận" },
-  { value: "in_progress", label: "Đang làm" },
+  { value: "accepted", label: "Đã nhận" },
+  { value: "in_progress", label: "Đang may" },
+  { value: "on_hold", label: "Tạm dừng" },
+  { value: "submitted_for_qc", label: "Chờ kiểm tra" },
   { value: "completed", label: "Hoàn thành" },
-  { value: "cancelled", label: "Đã hủy" },
+  { value: "failed_qc", label: "Không đạt QC" },
+  { value: "cancelled", label: "Đã huỷ" },
 ];
 
 const MONTH_OPTIONS = [

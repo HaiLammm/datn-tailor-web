@@ -1,13 +1,11 @@
 "use client";
 
-import type { TailorTask, TaskStatus } from "@/types/tailor-task";
+import type { TailorTask } from "@/types/tailor-task";
 import TaskRow from "./TaskRow";
 
 interface TaskListProps {
   tasks: TailorTask[];
-  onStatusToggle: (taskId: string, newStatus: TaskStatus) => void;
   onRowClick: (task: TailorTask) => void;
-  updatingTaskId: string | null;
 }
 
 function SkeletonRow() {
@@ -33,11 +31,11 @@ export function TaskListSkeleton() {
   );
 }
 
+const TERMINAL_STATUSES = ["completed", "cancelled", "rejected", "reassigning", "unassigned"];
+
 export default function TaskList({
   tasks,
-  onStatusToggle,
   onRowClick,
-  updatingTaskId,
 }: TaskListProps) {
   if (tasks.length === 0) {
     return (
@@ -47,12 +45,11 @@ export default function TaskList({
     );
   }
 
-  const activeTasks = tasks.filter((t) => t.status !== "completed");
-  const completedTasks = tasks.filter((t) => t.status === "completed");
+  const activeTasks = tasks.filter((t) => !TERMINAL_STATUSES.includes(t.status));
+  const completedTasks = tasks.filter((t) => TERMINAL_STATUSES.includes(t.status));
 
   return (
     <div className="space-y-4">
-      {/* Active Tasks */}
       {activeTasks.length > 0 && (
         <div data-testid="task-list-active">
           <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
@@ -63,29 +60,24 @@ export default function TaskList({
               <TaskRow
                 key={task.id}
                 task={task}
-                onStatusToggle={onStatusToggle}
                 onRowClick={onRowClick}
-                isUpdating={updatingTaskId === task.id}
               />
             ))}
           </div>
         </div>
       )}
 
-      {/* Completed Tasks */}
       {completedTasks.length > 0 && (
         <div data-testid="task-list-completed">
           <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-            Đã hoàn thành ({completedTasks.length})
+            Kết thúc ({completedTasks.length})
           </h3>
           <div className="space-y-2">
             {completedTasks.map((task) => (
               <TaskRow
                 key={task.id}
                 task={task}
-                onStatusToggle={onStatusToggle}
                 onRowClick={onRowClick}
-                isUpdating={updatingTaskId === task.id}
               />
             ))}
           </div>

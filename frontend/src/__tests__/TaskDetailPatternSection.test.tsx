@@ -23,11 +23,28 @@ const baseTask: TailorTask = {
   garment_name: "Áo dài lụa",
   customer_name: "Nguyễn Văn A",
   status: "in_progress",
+  production_step: "cutting",
   deadline: "2026-06-01T00:00:00Z",
   notes: null,
   piece_rate: 500000,
   design_id: null,
   completed_at: null,
+  version: 1,
+  accepted_at: null,
+  started_at: "2026-05-02T10:00:00Z",
+  submitted_at: null,
+  hold_reason: null,
+  on_hold_at: null,
+  resumed_at: null,
+  assignment_deadline_at: null,
+  expected_finish_at: null,
+  is_rework: false,
+  rework_count: 0,
+  qc_issues: null,
+  rejection_reason: null,
+  rejection_category: null,
+  reassignment_reason: null,
+  priority: "normal",
   is_overdue: false,
   days_until_deadline: 25,
   created_at: "2026-05-01T10:00:00Z",
@@ -41,8 +58,7 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
     mockUsePatternSession.mockReturnValue({
       session: null,
       isLoading: false,
-      isFetching: false,
-      error: null,
+            error: null,
     });
   });
 
@@ -51,7 +67,7 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
       <TaskDetailModal
         task={baseTask}
         onClose={() => {}}
-        onStatusToggle={() => {}}
+        onTaskUpdated={() => {}}
       />
     );
 
@@ -68,7 +84,7 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
       <TaskDetailModal
         task={taskWithNullPattern}
         onClose={() => {}}
-        onStatusToggle={() => {}}
+        onTaskUpdated={() => {}}
       />
     );
 
@@ -81,7 +97,6 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
         id: "ps-1",
         tenant_id: "tenant-1",
         customer_id: "customer-1",
-        created_by: "owner-1",
         garment_type: "ao_dai",
         status: "exported" as const,
         pieces: [],
@@ -100,8 +115,7 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
         notes: null,
       },
       isLoading: false,
-      isFetching: false,
-      error: null,
+            error: null,
     });
 
     const taskWithPattern = {
@@ -113,7 +127,7 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
       <TaskDetailModal
         task={taskWithPattern}
         onClose={() => {}}
-        onStatusToggle={() => {}}
+        onTaskUpdated={() => {}}
       />
     );
 
@@ -124,8 +138,7 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
     mockUsePatternSession.mockReturnValue({
       session: null,
       isLoading: true,
-      isFetching: true,
-      error: null,
+            error: null,
     });
 
     const taskWithPattern = {
@@ -137,7 +150,7 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
       <TaskDetailModal
         task={taskWithPattern}
         onClose={() => {}}
-        onStatusToggle={() => {}}
+        onTaskUpdated={() => {}}
       />
     );
 

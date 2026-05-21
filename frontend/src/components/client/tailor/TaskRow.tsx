@@ -1,35 +1,19 @@
 "use client";
 
 import type { TailorTask, TaskStatus } from "@/types/tailor-task";
-import { NEXT_STATUS } from "@/types/tailor-task";
+import { STATUS_BADGE } from "@/types/tailor-task";
 
 interface TaskRowProps {
   task: TailorTask;
-  onStatusToggle: (taskId: string, newStatus: TaskStatus) => void;
   onRowClick: (task: TailorTask) => void;
-  isUpdating?: boolean;
 }
 
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; className: string }
-> = {
-  assigned: {
-    label: "Chờ nhận",
-    className: "bg-amber-100 text-amber-800 hover:bg-amber-200",
-  },
-  in_progress: {
-    label: "Đang làm",
-    className: "bg-indigo-100 text-indigo-800 hover:bg-indigo-200",
-  },
-  completed: {
-    label: "Hoàn thành",
-    className: "bg-emerald-100 text-emerald-800",
-  },
-  cancelled: {
-    label: "Đã hủy",
-    className: "bg-gray-100 text-gray-800",
-  },
+const ACTION_LABELS: Partial<Record<TaskStatus, string>> = {
+  assigned: "Nhận việc",
+  accepted: "Bắt đầu",
+  in_progress: "Đang may",
+  on_hold: "Tiếp tục",
+  failed_qc: "Sửa lại",
 };
 
 function formatDeadline(deadline: string | null, daysUntil: number | null): string {
@@ -59,34 +43,36 @@ function formatPieceRate(rate: number | null): string {
 
 export default function TaskRow({
   task,
-  onStatusToggle,
   onRowClick,
-  isUpdating,
 }: TaskRowProps) {
-  const statusConfig = STATUS_CONFIG[task.status] || STATUS_CONFIG.assigned;
-  const nextStatus = NEXT_STATUS[task.status];
-  const canToggle = nextStatus !== null;
-
-  const handleStatusClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (canToggle && !isUpdating) {
-      onStatusToggle(task.id, nextStatus);
-    }
-  };
+  const badge = STATUS_BADGE[task.status] ?? STATUS_BADGE.assigned;
+  const actionLabel = ACTION_LABELS[task.status];
+  const isTerminal = ["completed", "cancelled", "rejected", "reassigning", "unassigned"].includes(task.status);
 
   return (
     <div
       className={`flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:border-[#1A2B4C]/30 transition-colors ${
-        isUpdating ? "opacity-60" : ""
-      } ${task.status === "cancelled" ? "opacity-60" : ""}`}
+        isTerminal ? "opacity-60" : ""}`}
       onClick={() => onRowClick(task)}
       data-testid={`task-row-${task.id}`}
     >
       {/* Customer & Garment */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[#1A1A2E] truncate" data-testid={`task-customer-${task.id}`}>
-          {task.customer_name}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-medium text-[#1A1A2E] truncate" data-testid={`task-customer-${task.id}`}>
+            {task.customer_name}
+          </p>
+          {task.priority === "urgent" && (
+            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-600 text-white font-medium">
+              GẤP
+            </span>
+          )}
+          {task.is_rework && (
+            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-amber-600 text-white font-medium">
+              Sửa lần {task.rework_count}
+            </span>
+          )}
+        </div>
         <p className="text-xs text-gray-500 truncate" data-testid={`task-garment-${task.id}`}>{task.garment_name}</p>
       </div>
 
@@ -113,20 +99,18 @@ export default function TaskRow({
         </div>
       )}
 
-      {/* Status Badge (clickable toggle) */}
-      <button
-        onClick={handleStatusClick}
-        disabled={!canToggle || isUpdating}
-        className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
-          statusConfig.className
-        } ${canToggle ? "cursor-pointer" : "cursor-default"} ${
-          isUpdating ? "animate-pulse" : ""
-        }`}
-        title={canToggle ? `Chuyển sang: ${NEXT_STATUS[task.status] === "in_progress" ? "Đang làm" : "Hoàn thành"}` : ""}
-        data-testid={`task-status-toggle-${task.id}`}
-      >
-        {statusConfig.label}
-      </button>
+      {/* Status Badge */}
+      <div className="shrink-0 flex items-center gap-1.5">
+        {actionLabel && !isTerminal && (
+          <span className="text-[10px] text-gray-400 hidden sm:inline">{actionLabel} →</span>
+        )}
+        <span
+          className={`text-xs px-3 py-1.5 rounded-full font-medium ${badge.className}`}
+          data-testid={`task-status-toggle-${task.id}`}
+        >
+          {badge.label}
+        </span>
+      </div>
     </div>
   );
 }
