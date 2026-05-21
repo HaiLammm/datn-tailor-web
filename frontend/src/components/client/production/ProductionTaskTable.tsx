@@ -1,13 +1,8 @@
 "use client";
 
+import { STATUS_BADGE } from "@/types/tailor-task";
 import type { OwnerTaskItem } from "@/types/tailor-task";
 import DeadlineCountdown from "./DeadlineCountdown";
-
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  assigned: { label: "Chờ nhận", className: "bg-amber-100 text-amber-800" },
-  in_progress: { label: "Đang làm", className: "bg-indigo-100 text-indigo-800" },
-  completed: { label: "Hoàn thành", className: "bg-emerald-100 text-emerald-800" },
-};
 
 interface ProductionTaskTableProps {
   tasks: OwnerTaskItem[];
@@ -47,11 +42,12 @@ export default function ProductionTaskTable({
     );
   }
 
-  const columns = [
+  const columns: { key: string; label: string; sortable?: boolean }[] = [
     { key: "customer_name", label: "Khách hàng" },
     { key: "garment_name", label: "Sản phẩm" },
     { key: "assignee_name", label: "Thợ may" },
     { key: "status", label: "Trạng thái" },
+    { key: "progress", label: "Tiến độ", sortable: false },
     { key: "deadline", label: "Hạn chót" },
     { key: "piece_rate", label: "Tiền công" },
   ];
@@ -64,11 +60,11 @@ export default function ProductionTaskTable({
             {columns.map((col) => (
               <th
                 key={col.key}
-                onClick={() => onSort(col.key)}
-                className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-[#1A1A2E] select-none"
+                onClick={() => col.sortable !== false && onSort(col.key)}
+                className={`text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider select-none ${col.sortable !== false ? "cursor-pointer hover:text-[#1A1A2E]" : ""}`}
               >
                 {col.label}
-                <SortIcon active={sortBy === col.key} order={sortOrder} />
+                {col.sortable !== false && <SortIcon active={sortBy === col.key} order={sortOrder} />}
               </th>
             ))}
           </tr>
@@ -79,14 +75,13 @@ export default function ProductionTaskTable({
               label: task.status,
               className: "bg-gray-100 text-gray-800",
             };
-            const isOverdueRow = task.is_overdue;
 
             return (
               <tr
                 key={task.id}
                 onClick={() => onTaskClick(task)}
                 className={`border-b border-gray-100 cursor-pointer transition-colors hover:bg-gray-50 ${
-                  isOverdueRow ? "bg-red-50/50" : ""
+                  task.is_overdue ? "bg-red-50/50" : ""
                 }`}
                 data-testid={`task-row-${task.id}`}
               >
@@ -94,17 +89,34 @@ export default function ProductionTaskTable({
                   {task.customer_name}
                 </td>
                 <td className="py-3 px-3 text-gray-700">{task.garment_name}</td>
-                <td className="py-3 px-3 text-gray-700">{task.assignee_name}</td>
+                <td className="py-3 px-3 text-gray-700">
+                  {task.assignee_name || <span className="text-gray-400 italic">Chưa giao</span>}
+                </td>
                 <td className="py-3 px-3">
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      task.is_overdue
-                        ? "bg-red-100 text-red-800 animate-pulse"
-                        : badge.className
-                    }`}
-                  >
-                    {task.is_overdue ? "Quá hạn" : badge.label}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        task.is_overdue
+                          ? "bg-red-100 text-red-800 animate-pulse"
+                          : badge.className
+                      }`}
+                    >
+                      {task.is_overdue ? "Quá hạn" : badge.label}
+                    </span>
+                    {task.priority === "urgent" && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500 text-white">
+                        Gấp
+                      </span>
+                    )}
+                    {task.is_rework && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500 text-white">
+                        Sửa lại #{task.rework_count}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 px-3 text-gray-700">
+                  <ProgressCell task={task} />
                 </td>
                 <td className="py-3 px-3">
                   <DeadlineCountdown
@@ -123,4 +135,19 @@ export default function ProductionTaskTable({
       </table>
     </div>
   );
+}
+
+function ProgressCell({ task }: { task: OwnerTaskItem }) {
+  const activeStatuses = ["in_progress", "on_hold", "submitted_for_qc", "completed", "failed_qc"];
+  if (!activeStatuses.includes(task.status)) {
+    return <span className="text-gray-400">—</span>;
+  }
+
+  // Use stage_logs if available on the task (detail response), otherwise show status text
+  const stageCount = task.status === "completed" ? 100 : null;
+  if (stageCount === 100) {
+    return <span className="text-emerald-600 font-medium">100%</span>;
+  }
+
+  return <span className="text-indigo-600 font-medium">{task.status === "submitted_for_qc" ? "QC" : "…"}</span>;
 }

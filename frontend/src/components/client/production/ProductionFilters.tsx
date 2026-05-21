@@ -9,6 +9,18 @@ interface ProductionFiltersProps {
   tailors: ActiveStaffUser[];
 }
 
+const STATUS_OPTIONS = [
+  { value: "unassigned", label: "Chờ giao việc" },
+  { value: "assigned", label: "Chờ nhận" },
+  { value: "accepted", label: "Đã nhận" },
+  { value: "in_progress", label: "Đang may" },
+  { value: "on_hold", label: "Tạm dừng" },
+  { value: "submitted_for_qc", label: "Chờ kiểm tra" },
+  { value: "completed", label: "Hoàn thành" },
+  { value: "failed_qc", label: "Không đạt QC" },
+  { value: "overdue", label: "Quá hạn" },
+];
+
 export default function ProductionFilters({
   filters,
   onFiltersChange,
@@ -45,10 +57,11 @@ export default function ProductionFilters({
         data-testid="filter-status"
       >
         <option value="">Tất cả trạng thái</option>
-        <option value="assigned">Chờ nhận</option>
-        <option value="in_progress">Đang làm</option>
-        <option value="completed">Hoàn thành</option>
-        <option value="overdue">Quá hạn</option>
+        {STATUS_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
       </select>
 
       {/* Clear filters */}

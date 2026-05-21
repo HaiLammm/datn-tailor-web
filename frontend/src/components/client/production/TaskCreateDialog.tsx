@@ -6,10 +6,11 @@ import * as Dialog from "@radix-ui/react-dialog";
 
 import {
   createTask,
+  fetchMatchingScores,
   fetchOrdersForAssignment,
 } from "@/app/actions/owner-task-actions";
 import type { ActiveStaffUser } from "@/types/staff";
-import type { TaskCreateRequest } from "@/types/tailor-task";
+import type { TaskCreateRequest, TailorMatchingScore } from "@/types/tailor-task";
 
 interface TaskCreateDialogProps {
   open: boolean;
@@ -38,10 +39,18 @@ export default function TaskCreateDialog({
     enabled: open,
   });
 
+  const { data: matchingScores, isLoading: scoresLoading } = useQuery({
+    queryKey: ["matching-scores", orderId],
+    queryFn: () => fetchMatchingScores(orderId),
+    staleTime: 60_000,
+    enabled: open && !!orderId,
+  });
+
   const mutation = useMutation({
     mutationFn: (req: TaskCreateRequest) => createTask(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-tasks"] });
+      resetForm();
       onClose();
     },
     onError: (err: Error) => {
@@ -53,6 +62,16 @@ export default function TaskCreateDialog({
     (t) => t.role === "Tailor" && t.is_active
   );
   const orders = ordersData?.data ?? [];
+  const scores: TailorMatchingScore[] = matchingScores ?? [];
+
+  function resetForm() {
+    setOrderId("");
+    setAssignedTo("");
+    setDeadline("");
+    setNotes("");
+    setPieceRate("");
+    setFormError(null);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,14 +81,10 @@ export default function TaskCreateDialog({
       setFormError("Vui lòng chọn đơn hàng");
       return;
     }
-    if (!assignedTo) {
-      setFormError("Vui lòng chọn thợ may");
-      return;
-    }
 
     const request: TaskCreateRequest = {
       order_id: orderId,
-      assigned_to: assignedTo,
+      assigned_to: assignedTo || null,
     };
 
     if (deadline) {
@@ -79,18 +94,21 @@ export default function TaskCreateDialog({
       request.notes = notes.trim();
     }
     if (pieceRate) {
-      request.piece_rate = parseFloat(pieceRate);
+      const parsed = parseFloat(pieceRate);
+      if (!isNaN(parsed)) {
+        request.piece_rate = parsed;
+      }
     }
 
     mutation.mutate(request);
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog.Root open={open} onOpenChange={(o) => { if (!o) { resetForm(); onClose(); } }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/30 z-50" />
         <Dialog.Content
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg bg-white rounded-xl shadow-xl p-6"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-xl shadow-xl p-6"
           data-testid="task-create-dialog"
         >
           <Dialog.Title className="text-lg font-semibold text-[#1A1A2E] mb-4">
@@ -105,7 +123,7 @@ export default function TaskCreateDialog({
               </label>
               <select
                 value={orderId}
-                onChange={(e) => setOrderId(e.target.value)}
+                onChange={(e) => { setOrderId(e.target.value); setAssignedTo(""); }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-[#1A1A2E] focus:ring-2 focus:ring-[#1A2B4C]/20 focus:border-[#1A2B4C]"
                 data-testid="select-order"
                 disabled={ordersLoading}
@@ -121,10 +139,48 @@ export default function TaskCreateDialog({
               </select>
             </div>
 
-            {/* Tailor selector */}
+            {/* Matching scores */}
+            {orderId && scores.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Điểm phù hợp thợ may
+                </label>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="text-left py-1.5 px-2 font-medium text-gray-500">Thợ may</th>
+                        <th className="text-right py-1.5 px-2 font-medium text-gray-500">Tải</th>
+                        <th className="text-right py-1.5 px-2 font-medium text-gray-500">Đúng hạn</th>
+                        <th className="text-right py-1.5 px-2 font-medium text-gray-500">Điểm</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {scores.map((s) => (
+                        <tr
+                          key={s.tailor_id}
+                          onClick={() => setAssignedTo(s.tailor_id)}
+                          className={`border-b border-gray-100 cursor-pointer transition-colors hover:bg-blue-50 ${
+                            assignedTo === s.tailor_id ? "bg-blue-100" : ""
+                          }`}
+                        >
+                          <td className="py-1.5 px-2 font-medium">{s.tailor_name}</td>
+                          <td className="py-1.5 px-2 text-right">{(s.workload_score * 100).toFixed(0)}%</td>
+                          <td className="py-1.5 px-2 text-right">{(s.on_time_rate * 100).toFixed(0)}%</td>
+                          <td className="py-1.5 px-2 text-right font-semibold">{s.score.toFixed(0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {scoresLoading && <p className="text-xs text-gray-400 mt-1">Đang tải điểm...</p>}
+              </div>
+            )}
+
+            {/* Tailor selector (fallback / manual) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Thợ may *
+                Thợ may <span className="text-gray-400 text-xs">(để trống = chờ giao việc)</span>
               </label>
               <select
                 value={assignedTo}
@@ -132,7 +188,7 @@ export default function TaskCreateDialog({
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-[#1A1A2E] focus:ring-2 focus:ring-[#1A2B4C]/20 focus:border-[#1A2B4C]"
                 data-testid="select-tailor"
               >
-                <option value="">Chọn thợ may</option>
+                <option value="">Chưa giao (unassigned)</option>
                 {activeTailors.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.full_name || t.email}
@@ -211,7 +267,7 @@ export default function TaskCreateDialog({
                 className="px-4 py-2 text-sm font-medium text-white bg-[#1A2B4C] rounded-lg hover:bg-[#1A2B4C]/90 disabled:opacity-50"
                 data-testid="btn-submit-task"
               >
-                {mutation.isPending ? "Đang giao..." : "Giao việc"}
+                {mutation.isPending ? "Đang giao..." : assignedTo ? "Giao việc" : "Tạo việc"}
               </button>
             </div>
           </form>

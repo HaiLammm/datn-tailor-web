@@ -1,8 +1,8 @@
 "use server";
 
 /**
- * Server actions for Owner task management (Story 5.2).
- * Owner-only: create, list-all, update, delete tailor tasks.
+ * Server actions for Owner task management (Story 5.2, 12.4).
+ * Owner-only: create, list-all, update, delete, QC, reassign, matching scores.
  */
 
 import { auth } from "@/auth";
@@ -12,6 +12,10 @@ import type {
   OwnerTaskListResponse,
   TaskCreateRequest,
   TaskUpdateRequest,
+  TaskHistory,
+  TailorMatchingScore,
+  QCResultRequest,
+  TaskReassignRequest,
 } from "@/types/tailor-task";
 import type { OrderListResponse } from "@/types/order";
 import type { StaffManagementResponse } from "@/types/staff";
@@ -32,7 +36,11 @@ export async function fetchAllTasks(
   const url = new URL(`${BACKEND_URL}/api/v1/tailor-tasks`);
 
   if (filters?.assigned_to) url.searchParams.set("assigned_to", filters.assigned_to);
-  if (filters?.status) url.searchParams.set("status", filters.status);
+  if (filters?.status === "overdue") {
+    url.searchParams.set("overdue_only", "true");
+  } else if (filters?.status) {
+    url.searchParams.set("status", filters.status);
+  }
   if (filters?.overdue_only) url.searchParams.set("overdue_only", "true");
 
   const controller = new AbortController();
@@ -281,4 +289,71 @@ export async function fetchStaffData(): Promise<StaffManagementResponse> {
     }
     throw error;
   }
+}
+
+// ── Story 12.4: New State Machine Actions ───────────────────────────────────
+
+async function getToken(): Promise<string> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) throw new Error("Chưa đăng nhập. Vui lòng đăng nhập lại.");
+  return token;
+}
+
+async function apiCall<T>(
+  path: string,
+  options: { method?: string; body?: unknown } = {}
+): Promise<T> {
+  const token = await getToken();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(`${BACKEND_URL}${path}`, {
+      method: options.method || "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      if (response.status === 409) {
+        throw new Error("Dữ liệu đã thay đổi, vui lòng tải lại.");
+      }
+      throw new Error(err?.detail || err?.error?.message || `Lỗi máy chủ (HTTP ${response.status})`);
+    }
+
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    const json = await response.json();
+    return (json.data ?? json) as T;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export async function fetchMatchingScores(orderId: string): Promise<TailorMatchingScore[]> {
+  return apiCall<TailorMatchingScore[]>(`/api/v1/tailor-tasks/matching-scores/${orderId}`);
+}
+
+export async function fetchTaskHistory(taskId: string): Promise<TaskHistory[]> {
+  return apiCall<TaskHistory[]>(`/api/v1/tailor-tasks/${taskId}/history`);
+}
+
+export async function qcResult(taskId: string, body: QCResultRequest): Promise<OwnerTaskItem> {
+  return apiCall<OwnerTaskItem>(`/api/v1/tailor-tasks/${taskId}/qc-result`, { method: "POST", body });
+}
+
+export async function reassignTask(
+  taskId: string,
+  body: TaskReassignRequest
+): Promise<OwnerTaskItem> {
+  return apiCall<OwnerTaskItem>(`/api/v1/tailor-tasks/${taskId}/reassign`, { method: "POST", body });
 }
