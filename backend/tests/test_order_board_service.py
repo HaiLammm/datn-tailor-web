@@ -75,6 +75,7 @@ async def seeded_db(test_db_session: AsyncSession):
             status=status,
             payment_status=pay_status,
             total_amount=Decimal(str(100000 * (i + 1))),
+            subtotal_amount=Decimal("0"),
         )
         for i, (status, pay_status) in enumerate(
             [
@@ -249,6 +250,7 @@ async def pending_order(test_db_session: AsyncSession) -> OrderDB:
         status="pending",
         payment_status="pending",
         total_amount=Decimal("900000"),
+        subtotal_amount=Decimal("0"),
     )
     item = OrderItemDB(
         garment_id=garment.id,
@@ -448,6 +450,7 @@ async def in_progress_order(test_db_session: AsyncSession) -> OrderDB:
         status="in_progress",
         payment_status="pending",
         total_amount=Decimal("900000"),
+        subtotal_amount=Decimal("0"),
     )
     item = OrderItemDB(
         garment_id=garment.id,

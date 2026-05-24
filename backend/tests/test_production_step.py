@@ -62,6 +62,7 @@ async def db(test_db_engine):
             customer_phone="0901234567",
             shipping_address={},
             total_amount=Decimal("500000"),
+            subtotal_amount=Decimal("0"),
         )
         order_b = OrderDB(
             id=ORDER_B_ID,
@@ -70,6 +71,7 @@ async def db(test_db_engine):
             customer_phone="0909876543",
             shipping_address={},
             total_amount=Decimal("300000"),
+            subtotal_amount=Decimal("0"),
         )
         session.add_all([order_a, order_b])
 

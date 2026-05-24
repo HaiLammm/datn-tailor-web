@@ -88,7 +88,7 @@ async def db(test_db_engine):
             id=ORDER_ID, tenant_id=TENANT_ID,
             customer_name="Nguyễn Thị Lan", customer_phone="0901234567",
             shipping_address={"city": "Hà Nội"}, total_amount=Decimal("3000000"),
-            status="confirmed",
+            subtotal_amount=Decimal("0"), status="confirmed",
         )
         session.add(order)
 
@@ -97,7 +97,7 @@ async def db(test_db_engine):
             id=ORDER_PENDING_ID, tenant_id=TENANT_ID,
             customer_name="Trần Văn B", customer_phone="0909876543",
             shipping_address={}, total_amount=Decimal("500000"),
-            status="pending",
+            subtotal_amount=Decimal("0"), status="pending",
         )
         session.add(order_pending)
 

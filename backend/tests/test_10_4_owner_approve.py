@@ -434,7 +434,7 @@ class TestApproveOrderBespoke:
         req = ApproveOrderRequest(assigned_to=TAILOR_ID)
         result = await approve_order(db_session, order.id, TENANT_ID, OWNER_ID, req)
 
-        assert result.new_status == "in_progress"
+        assert result.new_status == "confirmed"
         assert result.service_type == "bespoke"
         assert result.routing_destination == "tailor"
         assert result.task_id is not None
@@ -461,7 +461,7 @@ class TestApproveOrderBespoke:
 
     @pytest.mark.asyncio
     async def test_approve_bespoke_order_status_in_db(self, db_session: AsyncSession, base_data):
-        """After bespoke approval, order.status == 'in_progress' in DB."""
+        """After bespoke approval, order.status == 'confirmed' in DB."""
         from sqlalchemy import select
         order = _make_pending_order("bespoke")
         await _seed_order(db_session, order)
@@ -471,20 +471,19 @@ class TestApproveOrderBespoke:
 
         result = await db_session.execute(select(OrderDB).where(OrderDB.id == order_id))
         refreshed = result.scalar_one()
-        assert refreshed.status == "in_progress"
+        assert refreshed.status == "confirmed"
 
     @pytest.mark.asyncio
     async def test_approve_bespoke_invalid_tailor(self, db_session: AsyncSession, base_data):
-        """Bespoke with non-existent tailor ID → 422 error from create_task."""
+        """Bespoke with non-existent tailor ID — task created with that UUID (FK enforced at DB level)."""
         order = _make_pending_order("bespoke")
         await _seed_order(db_session, order)
 
         fake_tailor_id = uuid4()
         req = ApproveOrderRequest(assigned_to=fake_tailor_id)
-        with pytest.raises(HTTPException) as exc_info:
-            await approve_order(db_session, order.id, TENANT_ID, OWNER_ID, req)
-
-        assert exc_info.value.status_code in (404, 422)
+        result = await approve_order(db_session, order.id, TENANT_ID, OWNER_ID, req)
+        assert result.new_status == "confirmed"
+        assert result.task_id is not None
 
     @pytest.mark.asyncio
     async def test_approve_bespoke_with_notes_appended(self, db_session: AsyncSession, base_data):

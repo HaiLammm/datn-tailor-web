@@ -1278,8 +1278,6 @@ async def approve_order(
                 garment_name = first_item.garment.name
 
         deadline_at = None
-        if order.delivery_date:
-            deadline_at = order.delivery_date - _timedelta(days=3)
 
         new_task = _TailorTaskDB(
             tenant_id=tenant_id,

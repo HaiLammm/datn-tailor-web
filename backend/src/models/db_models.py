@@ -564,7 +564,6 @@ class TailorTaskDB(Base):
     )
     # State machine columns (Story 12.1)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    __mapper_args__ = {"version_id_col": version}
     accepted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
