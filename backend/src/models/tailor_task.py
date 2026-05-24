@@ -1,10 +1,10 @@
 """Pydantic schemas for Tailor Task endpoints (Story 5.3, 5.2, 12.1)."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ── Task Status (12 values: 11 states + cancellation_requested) ──────────────
@@ -38,6 +38,13 @@ class TaskAcceptRequest(BaseModel):
     expected_finish_at: datetime | None = Field(
         default=None, description="Tailor's estimated completion date"
     )
+
+    @field_validator("expected_finish_at")
+    @classmethod
+    def validate_future_date(cls, v: datetime | None) -> datetime | None:
+        if v is not None and v.replace(tzinfo=v.tzinfo or timezone.utc) < datetime.now(timezone.utc):
+            raise ValueError("Ngày dự kiến hoàn thành phải trong tương lai")
+        return v
 
 
 class TaskRejectRequest(BaseModel):

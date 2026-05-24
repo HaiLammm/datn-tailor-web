@@ -180,7 +180,7 @@ async def _get_task_for_transition(
         select(TailorTaskDB).where(
             TailorTaskDB.id == task_id,
             TailorTaskDB.tenant_id == tenant_id,
-        )
+        ).with_for_update()
     )
     task = result.scalar_one_or_none()
     if task is None:
@@ -244,7 +244,10 @@ async def accept_task(
     await _transition_task(db, task, "accepted", actor_id, "Tailor")
     task.accepted_at = now
     if request.expected_finish_at:
-        task.expected_finish_at = request.expected_finish_at
+        eft = request.expected_finish_at
+        if eft.tzinfo is None:
+            eft = eft.replace(tzinfo=timezone.utc)
+        task.expected_finish_at = eft
     else:
         task.expected_finish_at = now + timedelta(days=7)
 
@@ -336,6 +339,8 @@ async def start_task(
 
     if task.status != "accepted":
         raise HTTPException(status_code=400, detail="Chỉ có thể bắt đầu khi trạng thái là 'accepted'")
+    if task.assigned_to != actor_id:
+        raise HTTPException(status_code=403, detail="Chỉ thợ may được giao mới có thể thực hiện hành động này")
 
     now = datetime.now(timezone.utc)
     await _transition_task(db, task, "in_progress", actor_id, "Tailor")
@@ -343,6 +348,7 @@ async def start_task(
     if request.notes:
         task.notes = request.notes
 
+    await db.execute(sa_delete(TaskStageLogDB).where(TaskStageLogDB.task_id == task_id))
     _create_stage_logs(db, task.id, tenant_id, _resolve_stage_key(task.garment_name))
 
     await db.flush()
@@ -362,6 +368,8 @@ async def hold_task(
 
     if task.status != "in_progress":
         raise HTTPException(status_code=400, detail="Chỉ có thể tạm dừng khi đang thực hiện")
+    if task.assigned_to != actor_id:
+        raise HTTPException(status_code=403, detail="Chỉ thợ may được giao mới có thể thực hiện hành động này")
 
     now = datetime.now(timezone.utc)
     await _transition_task(db, task, "on_hold", actor_id, "Tailor", reason=request.hold_reason)
@@ -399,6 +407,8 @@ async def resume_task(
 
     if task.status != "on_hold":
         raise HTTPException(status_code=400, detail="Chỉ có thể tiếp tục khi đang tạm dừng")
+    if task.assigned_to != actor_id:
+        raise HTTPException(status_code=403, detail="Chỉ thợ may được giao mới có thể thực hiện hành động này")
 
     now = datetime.now(timezone.utc)
     await _transition_task(db, task, "in_progress", actor_id, "Tailor")
@@ -438,6 +448,8 @@ async def submit_for_qc(
 
     if task.status != "in_progress":
         raise HTTPException(status_code=400, detail="Chỉ có thể gửi kiểm tra khi đang thực hiện")
+    if task.assigned_to != actor_id:
+        raise HTTPException(status_code=403, detail="Chỉ thợ may được giao mới có thể thực hiện hành động này")
 
     # Validate all stages completed
     stage_result = await db.execute(
@@ -509,15 +521,17 @@ async def process_qc_result(
                 order.status = "ready_to_ship"
                 order.updated_at = datetime.now(timezone.utc)
 
+        customer_id = order.customer_id if order else None
+
         await db.flush()
         await db.commit()
 
         # Notify customer
-        if order and order.customer_id:
+        if customer_id:
             try:
                 title, msg_tpl = CUSTOMER_QC_PASSED
                 await create_notification(
-                    db=db, user_id=order.customer_id, tenant_id=tenant_id,
+                    db=db, user_id=customer_id, tenant_id=tenant_id,
                     notification_type="qc_passed",
                     title=title,
                     message=msg_tpl.format(garment_name=task.garment_name),
@@ -596,7 +610,7 @@ async def reassign_task(
 ) -> TailorTaskResponse:
     task = await _get_task_for_transition(db, task_id, tenant_id)
 
-    reassignable = ["assigned", "in_progress", "on_hold", "failed_qc"]
+    reassignable = ["assigned", "in_progress", "on_hold", "failed_qc", "unassigned"]
     if task.status not in reassignable:
         raise HTTPException(
             status_code=400,
@@ -612,16 +626,19 @@ async def reassign_task(
         raise HTTPException(status_code=400, detail="Tài khoản thợ may đã bị vô hiệu hóa")
     if new_tailor.tenant_id != tenant_id:
         raise HTTPException(status_code=403, detail="Thợ may không thuộc cùng cơ sở")
-    if new_tailor.id == task.assigned_to:
+    if task.assigned_to and new_tailor.id == task.assigned_to:
         raise HTTPException(status_code=400, detail="Không thể giao lại cho cùng thợ may")
 
     old_tailor_id = task.assigned_to
     meta = {"old_tailor_id": str(old_tailor_id) if old_tailor_id else None, "new_tailor_id": str(request.new_tailor_id)}
 
     now = datetime.now(timezone.utc)
-    await _transition_task(db, task, "reassigning", actor_id, "Owner", reason=request.reassignment_reason, metadata=meta)
-    await _transition_task(db, task, "unassigned", actor_id, "Owner")
-    await _transition_task(db, task, "assigned", actor_id, "Owner")
+    if task.status == "unassigned":
+        await _transition_task(db, task, "assigned", actor_id, "Owner", reason=request.reassignment_reason, metadata=meta)
+    else:
+        await _transition_task(db, task, "reassigning", actor_id, "Owner", reason=request.reassignment_reason, metadata=meta)
+        await _transition_task(db, task, "unassigned", actor_id, "Owner")
+        await _transition_task(db, task, "assigned", actor_id, "Owner")
 
     task.assigned_to = request.new_tailor_id
     task.reassignment_reason = request.reassignment_reason
@@ -694,7 +711,7 @@ async def complete_stage(
     current_in_progress.completed_at = now
     current_in_progress.updated_at = now
 
-    next_stage = next((s for s in stages if s.stage_order == stage_order + 1), None)
+    next_stage = next((s for s in stages if s.stage_order > stage_order and s.status == "pending"), None)
     if next_stage:
         next_stage.status = "in_progress"
         next_stage.started_at = now
@@ -723,6 +740,12 @@ async def get_matching_scores(
     order_id: uuid.UUID,
     tenant_id: uuid.UUID,
 ) -> list[TailorMatchingScore]:
+    order = await db.execute(
+        select(OrderDB).where(OrderDB.id == order_id, OrderDB.tenant_id == tenant_id)
+    )
+    if order.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đơn hàng")
+
     result = await db.execute(
         select(UserDB).where(
             UserDB.tenant_id == tenant_id,
@@ -775,7 +798,7 @@ async def get_matching_scores(
         workload_score = max(0.0, 1.0 - (active_tasks / 5.0))
 
         total, on_time = ontime_map.get(tailor.id, (0, 0))
-        on_time_rate = (on_time / total) if total > 0 else 0.5
+        on_time_rate = (on_time / total) if total > 0 else 1.0
 
         specialty_match = True
         overall_score = workload_score * 0.5 + on_time_rate * 0.3 + (1.0 if specialty_match else 0.0) * 0.2
@@ -819,7 +842,7 @@ async def get_task_history(
         TaskHistoryResponse(
             id=str(r.id),
             task_id=str(r.task_id),
-            actor_id=str(r.actor_id) if r.actor_id else "",
+            actor_id=str(r.actor_id) if r.actor_id else None,
             actor_role=r.actor_role,
             action=r.action,
             from_status=r.from_status,
@@ -1020,14 +1043,15 @@ async def update_task_status(
     Supports: assigned→in_progress, in_progress→completed.
     """
     # Use legacy-style error raising for backward compatibility
-    query = select(TailorTaskDB).where(TailorTaskDB.id == task_id)
+    query = select(TailorTaskDB).where(
+        TailorTaskDB.id == task_id,
+        TailorTaskDB.tenant_id == tenant_id,
+    ).with_for_update()
     result = await db.execute(query)
     task = result.scalar_one_or_none()
 
     if task is None:
         raise ValueError("Không tìm thấy công việc")
-    if task.tenant_id != tenant_id:
-        raise PermissionError("Công việc này không thuộc về hộp kinh doanh của bạn")
     if task.assigned_to != tailor_id:
         raise PermissionError("Bạn không có quyền cập nhật công việc này")
 
@@ -1218,7 +1242,7 @@ async def create_task(
         select(func.count(TailorTaskDB.id)).where(
             TailorTaskDB.order_id == request.order_id,
             TailorTaskDB.tenant_id == tenant_id,
-            TailorTaskDB.status.not_in(["cancelled", "cancellation_requested"]),
+            TailorTaskDB.status.not_in(["cancelled", "cancellation_requested", "unassigned", "rejected"]),
         )
     )
     if existing_task_result.scalar_one() > 0:

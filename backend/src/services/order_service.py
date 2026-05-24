@@ -546,10 +546,7 @@ async def _all_tailor_tasks_completed(db: AsyncSession, order_id: UUID) -> bool:
     )
     total_tasks, completed_tasks = task_result.one()
     if total_tasks == 0:
-        all_result = await db.execute(
-            select(func.count(TailorTaskDB.id)).where(TailorTaskDB.order_id == order_id)
-        )
-        return all_result.scalar_one() > 0
+        return False
     return total_tasks == completed_tasks
 
 
@@ -1268,7 +1265,7 @@ async def approve_order(
                 measurement_notes = request.notes or ""
 
         # Step 2b (bespoke): Create unassigned task — order stays at confirmed
-        from src.models.db_models import TailorTaskDB as _TailorTaskDB
+        from src.models.db_models import TailorTaskDB as _TailorTaskDB, TaskHistoryDB as _TaskHistoryDB
         from datetime import timedelta as _timedelta
 
         garment_name = "Áo dài"
@@ -1277,7 +1274,7 @@ async def approve_order(
             if first_item.garment:
                 garment_name = first_item.garment.name
 
-        deadline_at = None
+        deadline_at = (order.delivery_date - _timedelta(days=3)) if order.delivery_date else None
 
         new_task = _TailorTaskDB(
             tenant_id=tenant_id,
@@ -1296,6 +1293,18 @@ async def approve_order(
         db.add(new_task)
         await db.flush()
         task_id = new_task.id
+
+        initial_status = "assigned" if request.assigned_to else "unassigned"
+        db.add(_TaskHistoryDB(
+            task_id=task_id,
+            tenant_id=tenant_id,
+            actor_id=owner_id,
+            actor_role="Owner",
+            action="task_created",
+            from_status=None,
+            to_status=initial_status,
+        ))
+        await db.flush()
 
         # Do NOT auto-transition order to in_progress — stays at confirmed
         await db.commit()

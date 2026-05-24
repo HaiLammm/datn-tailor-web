@@ -313,7 +313,8 @@ class OrderDB(Base):
     rental_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rental_condition: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    # Cancellation tracking
+    # Delivery & cancellation tracking
+    delivery_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
@@ -1042,6 +1043,9 @@ class PatternPieceDB(Base):
     """
 
     __tablename__ = "pattern_pieces"
+    __table_args__ = (
+        UniqueConstraint("session_id", "piece_type", name="uq_piece_session_type"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(
