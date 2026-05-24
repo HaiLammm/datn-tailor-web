@@ -1,15 +1,7 @@
 /**
  * ShowroomFilter Component Tests - Story 2.3
  *
- * Tests:
- * - Filter chip groups render correctly for all 5 dimensions
- * - Chip toggle updates URL params
- * - Multi-select (AND logic) via URL params
- * - Clear filters works
- * - Active filter summary with remove buttons
- * - Keyboard navigation (Tab + Enter/Space)
- * - ARIA labels and roles
- * - Minimum touch targets (44px)
+ * Tests select-based filter UI with 5 dimensions.
  */
 
 import { describe, it, expect, jest, beforeEach } from "@jest/globals";
@@ -17,22 +9,18 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { fetchGarmentColors } from "@/app/actions/garment-actions";
 
 import { ShowroomFilter } from "@/components/client/showroom/ShowroomFilter";
 
-// Mock Next.js navigation hooks
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
   useSearchParams: jest.fn(),
 }));
 
-// Mock TanStack Query
 jest.mock("@tanstack/react-query", () => ({
   useQuery: jest.fn(),
 }));
 
-// Mock server actions
 jest.mock("@/app/actions/garment-actions", () => ({
   fetchGarmentColors: jest.fn(),
 }));
@@ -50,8 +38,7 @@ describe("ShowroomFilter (Story 2.3)", () => {
     mockGet.mockReturnValue(null);
     (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
     (useSearchParams as jest.Mock).mockReturnValue(mockSearchParams);
-    
-    // Default mock for dynamic colors (Review Follow-up MEDIUM)
+
     (useQuery as jest.Mock).mockReturnValue({
       data: ["Đỏ", "Xanh"],
       isLoading: false,
@@ -68,7 +55,7 @@ describe("ShowroomFilter (Story 2.3)", () => {
     expect(screen.getByText("Loại")).toBeInTheDocument();
   });
 
-  it("should render material chip options", () => {
+  it("should render material options in select dropdown", () => {
     render(<ShowroomFilter />);
 
     expect(screen.getByText("Lụa")).toBeInTheDocument();
@@ -80,7 +67,7 @@ describe("ShowroomFilter (Story 2.3)", () => {
     expect(screen.getByText("Pha")).toBeInTheDocument();
   });
 
-  it("should render size chip options", () => {
+  it("should render size options in select dropdown", () => {
     render(<ShowroomFilter />);
 
     expect(screen.getByText("S")).toBeInTheDocument();
@@ -90,7 +77,7 @@ describe("ShowroomFilter (Story 2.3)", () => {
     expect(screen.getByText("XXL")).toBeInTheDocument();
   });
 
-  it("should render occasion chip options", () => {
+  it("should render occasion options in select dropdown", () => {
     render(<ShowroomFilter />);
 
     expect(screen.getByText("Lễ Cưới")).toBeInTheDocument();
@@ -98,11 +85,11 @@ describe("ShowroomFilter (Story 2.3)", () => {
     expect(screen.getByText("Công Sở")).toBeInTheDocument();
   });
 
-  it("should toggle chip and update URL on click", () => {
+  it("should toggle filter and update URL on select change", () => {
     render(<ShowroomFilter />);
 
-    const luaChip = screen.getByText("Lụa");
-    fireEvent.click(luaChip);
+    const materialSelect = screen.getByLabelText("Lọc theo Chất liệu");
+    fireEvent.change(materialSelect, { target: { value: "lua" } });
 
     expect(mockPush).toHaveBeenCalledWith(
       expect.stringContaining("material=lua"),
@@ -112,7 +99,7 @@ describe("ShowroomFilter (Story 2.3)", () => {
     );
   });
 
-  it("should deselect chip when clicking active chip", () => {
+  it("should clear filter when selecting empty option", () => {
     mockGet.mockImplementation((key: string) => {
       if (key === "material") return "lua";
       return null;
@@ -121,11 +108,9 @@ describe("ShowroomFilter (Story 2.3)", () => {
 
     render(<ShowroomFilter />);
 
-    // Get the chip checkbox (not the summary remove button)
-    const luaChip = screen.getByRole("checkbox", { name: "Chất liệu: Lụa" });
-    fireEvent.click(luaChip);
+    const materialSelect = screen.getByLabelText("Lọc theo Chất liệu");
+    fireEvent.change(materialSelect, { target: { value: "" } });
 
-    // Should remove material from URL
     expect(mockPush).toHaveBeenCalled();
     const pushedUrl = mockPush.mock.calls[0][0] as string;
     expect(pushedUrl).not.toContain("material=lua");
@@ -166,66 +151,17 @@ describe("ShowroomFilter (Story 2.3)", () => {
     expect(mockPush).toHaveBeenCalledWith("/showroom");
   });
 
-  it("should have correct ARIA roles and labels", () => {
+  it("should have correct ARIA role and labels", () => {
     render(<ShowroomFilter />);
 
     const filterContainer = screen.getByRole("search");
     expect(filterContainer).toHaveAttribute("aria-label", "Bộ lọc sản phẩm");
 
-    const chipGroups = screen.getAllByRole("group");
-    expect(chipGroups.length).toBe(5);
-
-    const checkboxes = screen.getAllByRole("checkbox");
-    expect(checkboxes.length).toBeGreaterThan(0);
-    checkboxes.forEach((cb) => {
-      expect(cb).toHaveAttribute("aria-label");
+    const selects = screen.getAllByRole("combobox");
+    expect(selects.length).toBe(5);
+    selects.forEach((sel) => {
+      expect(sel).toHaveAttribute("aria-label");
     });
-  });
-
-  it("should mark active chip with aria-checked=true", () => {
-    mockGet.mockImplementation((key: string) => {
-      if (key === "size") return "M";
-      return null;
-    });
-    mockSearchParams.toString.mockReturnValue("size=M");
-
-    render(<ShowroomFilter />);
-
-    const checkboxes = screen.getAllByRole("checkbox");
-    const mChip = checkboxes.find((cb) => cb.textContent === "M");
-    expect(mChip).toHaveAttribute("aria-checked", "true");
-  });
-
-  it("should have min 44px touch targets on chips", () => {
-    render(<ShowroomFilter />);
-
-    const checkboxes = screen.getAllByRole("checkbox");
-    checkboxes.forEach((chip) => {
-      expect(chip.className).toContain("min-h-[44px]");
-      expect(chip.className).toContain("min-w-[44px]");
-    });
-  });
-
-  it("should support keyboard navigation with Enter", () => {
-    render(<ShowroomFilter />);
-
-    const luaChip = screen.getByRole("checkbox", { name: "Chất liệu: Lụa" });
-    fireEvent.keyDown(luaChip, { key: "Enter" });
-    
-    expect(mockPush).toHaveBeenCalledWith(
-      expect.stringContaining("material=lua"),
-    );
-  });
-
-  it("should support keyboard navigation with Space", () => {
-    render(<ShowroomFilter />);
-
-    const sChip = screen.getByRole("checkbox", { name: "Kích cỡ: S" });
-    fireEvent.keyDown(sChip, { key: " " });
-    
-    expect(mockPush).toHaveBeenCalledWith(
-      expect.stringContaining("size=S"),
-    );
   });
 
   it("should handle multi-filter URL correctly", () => {
@@ -237,8 +173,8 @@ describe("ShowroomFilter (Story 2.3)", () => {
 
     render(<ShowroomFilter />);
 
-    const tetChip = screen.getByText("Tết");
-    fireEvent.click(tetChip);
+    const occasionSelect = screen.getByLabelText("Lọc theo Dịp");
+    fireEvent.change(occasionSelect, { target: { value: "tet" } });
 
     expect(mockPush).toHaveBeenCalledWith(
       expect.stringContaining("material=lua"),
@@ -254,8 +190,8 @@ describe("ShowroomFilter (Story 2.3)", () => {
 
     render(<ShowroomFilter />);
 
-    const sChip = screen.getByText("S");
-    fireEvent.click(sChip);
+    const sizeSelect = screen.getByLabelText("Lọc theo Kích cỡ");
+    fireEvent.change(sizeSelect, { target: { value: "S" } });
 
     expect(mockPush).toHaveBeenCalledWith(
       expect.stringContaining("page=1"),

@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import type { OrderDetailResponse, OrderStatus, TailorInfoForCustomer } from "@/types/order";
 import { FAILURE_CATEGORY_LABELS, type FailureCategory } from "@/types/tailor-task";
 import { OrderStatusBadge, PaymentStatusBadge } from "./StatusBadge";
 import { formatMoney, formatDateTime } from "@/utils/format";
 import { resolveCancellation } from "@/app/actions/tailor-task-actions";
 import Avatar from "@/components/ui/Avatar";
+import { PatternAttachDialog } from "@/components/client/design/PatternAttachDialog";
+import { useDetachPattern } from "@/hooks/usePatternSession";
 
 const PIPELINE_STEPS: { status: OrderStatus; label: string }[] = [
   { status: "pending", label: "Chờ xác nhận" },
@@ -60,6 +63,18 @@ export default function OrderDetailDrawer({
   const [resolving, setResolving] = useState(false);
   const [reassignTailorId, setReassignTailorId] = useState("");
   const [showReassign, setShowReassign] = useState(false);
+  const [attachDialogOpen, setAttachDialogOpen] = useState(false);
+  const [showDetachConfirm, setShowDetachConfirm] = useState(false);
+
+  const detachMutation = useDetachPattern({
+    onSuccess: () => {
+      setShowDetachConfirm(false);
+      onRefresh?.();
+    },
+    onError: () => {
+      setShowDetachConfirm(false);
+    },
+  });
 
   async function handleResolve(decision: "approve" | "reject" | "reassign") {
     const req = detail?.order?.active_cancellation_request;
@@ -288,6 +303,75 @@ export default function OrderDetailDrawer({
                         Xác nhận
                       </button>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* Pattern attachment section (bespoke only) */}
+              {order.service_type === "bespoke" && (
+                <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    Rập đính kèm
+                  </p>
+                  {order.pattern_session_id ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-[#1A1A2E] font-medium">
+                        Phiên #{order.pattern_session_id.slice(0, 8)}
+                      </span>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/design-session/${order.pattern_session_id}`}
+                          className="px-3 py-1.5 text-xs rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          Xem rập
+                        </Link>
+                        {!showDetachConfirm ? (
+                          <button
+                            onClick={() => setShowDetachConfirm(true)}
+                            className="px-3 py-1.5 text-xs rounded-md text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            Gỡ rập
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => detachMutation.mutate(order.id)}
+                              disabled={detachMutation.isPending}
+                              className="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                            >
+                              {detachMutation.isPending ? "..." : "Xác nhận"}
+                            </button>
+                            <button
+                              onClick={() => setShowDetachConfirm(false)}
+                              className="px-3 py-1.5 text-xs rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                              Huỷ
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-500">
+                        Chưa có rập. Đính kèm rập để giao việc cho thợ may.
+                      </p>
+                      <button
+                        onClick={() => setAttachDialogOpen(true)}
+                        className="mt-3 px-4 py-2 text-sm font-medium text-white bg-[#D4AF37] rounded-lg hover:bg-[#C4A030] transition-colors"
+                      >
+                        Đính kèm rập
+                      </button>
+                    </div>
+                  )}
+                  {order.customer_id && (
+                    <PatternAttachDialog
+                      orderId={order.id}
+                      customerId={order.customer_id}
+                      open={attachDialogOpen}
+                      onOpenChange={setAttachDialogOpen}
+                      onAttached={() => onRefresh?.()}
+                    />
                   )}
                 </div>
               )}

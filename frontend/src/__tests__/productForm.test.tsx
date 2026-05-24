@@ -76,7 +76,7 @@ describe("ProductForm - Create Mode", () => {
     expect(screen.getByText(/Loại áo dài/)).toBeInTheDocument();
     expect(screen.getByText(/Giá thuê/)).toBeInTheDocument();
     expect(screen.getByText(/Kích cỡ có sẵn/)).toBeInTheDocument();
-    expect(screen.getByText(/URL ảnh chính/)).toBeInTheDocument();
+    expect(screen.getByText(/Ảnh chính/)).toBeInTheDocument();
   });
 
   it("renders all SIZE_OPTIONS as toggle chips", () => {

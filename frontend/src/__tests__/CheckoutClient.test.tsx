@@ -10,6 +10,11 @@ import { CheckoutClient } from "@/components/client/checkout/CheckoutClient";
 import { useCartStore } from "@/store/cartStore";
 import type { CartItem } from "@/types/cart";
 
+// Mock next-auth
+jest.mock("next-auth/react", () => ({
+  useSession: () => ({ data: { user: { name: "Test User" } }, status: "authenticated" }),
+}));
+
 // Mock next/navigation
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
@@ -58,7 +63,7 @@ const makeRentItem = (overrides: Partial<CartItem> = {}): CartItem => ({
 describe("CheckoutClient", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useCartStore.setState({ items: [] });
+    useCartStore.setState({ items: [], _hydrated: true });
     mockVerifyCartItems.mockResolvedValue([]);
   });
 

@@ -75,7 +75,7 @@ describe("PasswordChangeForm", () => {
     fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới"), {
       target: { value: "DifferentPass1" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Cập nhật mật khẩu/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/ }));
 
     await waitFor(() => {
       expect(screen.getByText(/không khớp/)).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe("PasswordChangeForm", () => {
     fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới"), {
       target: { value: "NewPass99" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Cập nhật mật khẩu/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/ }));
 
     await waitFor(() => {
       expect(mockChangePassword).toHaveBeenCalledWith({
@@ -123,15 +123,15 @@ describe("PasswordChangeForm", () => {
     fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới"), {
       target: { value: "NewPass99" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Cập nhật mật khẩu/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/ }));
 
     await waitFor(() => {
       expect(screen.getByText("Mật khẩu hiện tại không đúng")).toBeInTheDocument();
     });
   });
 
-  it("clears form and closes collapsible on success", async () => {
-    mockChangePassword.mockResolvedValue({ success: true });
+  it("transitions to OTP step on successful password submit", async () => {
+    mockChangePassword.mockResolvedValue({ success: true, otpRequired: true });
     render(<PasswordChangeForm hasPassword={true} />);
     openForm();
 
@@ -144,14 +144,11 @@ describe("PasswordChangeForm", () => {
     fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu mới"), {
       target: { value: "NewPass99" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Cập nhật mật khẩu/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/ }));
 
     await waitFor(() => {
-      // Toast shown
-      expect(screen.getByText("Mật khẩu đã cập nhật")).toBeInTheDocument();
+      expect(screen.getByText("Mã OTP đã gửi đến email của bạn")).toBeInTheDocument();
     });
-    // Form should close (fields no longer visible)
-    expect(screen.queryByLabelText("Mật khẩu hiện tại")).not.toBeInTheDocument();
   });
 
   it("OAuth user sees informational message instead of form (AC7)", () => {

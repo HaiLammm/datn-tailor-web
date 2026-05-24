@@ -26,6 +26,7 @@ const makeTask = (overrides: Partial<OwnerTaskItem> = {}): OwnerTaskItem => ({
   customer_name: "Nguyễn Thị Lan",
   assignee_name: "Thợ may A",
   status: "assigned",
+  production_step: "cutting",
   deadline: null,
   notes: null,
   piece_rate: null,
@@ -33,6 +34,22 @@ const makeTask = (overrides: Partial<OwnerTaskItem> = {}): OwnerTaskItem => ({
   completed_at: null,
   is_overdue: false,
   days_until_deadline: null,
+  version: 1,
+  accepted_at: null,
+  started_at: null,
+  submitted_at: null,
+  hold_reason: null,
+  on_hold_at: null,
+  resumed_at: null,
+  assignment_deadline_at: null,
+  expected_finish_at: null,
+  is_rework: false,
+  rework_count: 0,
+  qc_issues: null,
+  rejection_reason: null,
+  rejection_category: null,
+  reassignment_reason: null,
+  priority: "normal",
   created_at: "2026-03-19T08:00:00.000Z",
   updated_at: "2026-03-19T08:00:00.000Z",
   ...overrides,
@@ -40,9 +57,18 @@ const makeTask = (overrides: Partial<OwnerTaskItem> = {}): OwnerTaskItem => ({
 
 const makeSummary = (overrides: Partial<TailorTaskSummary> = {}): TailorTaskSummary => ({
   total: 3,
+  unassigned: 0,
   assigned: 1,
+  accepted: 0,
+  rejected: 0,
   in_progress: 1,
+  on_hold: 0,
+  reassigning: 0,
+  submitted_for_qc: 0,
   completed: 1,
+  cancelled: 0,
+  failed_qc: 0,
+  cancellation_requested: 0,
   overdue: 0,
   ...overrides,
 });
@@ -227,6 +253,7 @@ describe("ProductionTaskTable", () => {
   it("shows '—' when piece_rate is null", () => {
     const task = makeTask({ piece_rate: null });
     render(<ProductionTaskTable {...defaultProps} tasks={[task]} />);
-    expect(screen.getByText("—")).toBeInTheDocument();
+    const dashes = screen.getAllByText("—");
+    expect(dashes.length).toBeGreaterThanOrEqual(1);
   });
 });

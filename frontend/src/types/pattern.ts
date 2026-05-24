@@ -198,6 +198,17 @@ export const GEOMETRY_PARAM_LABELS: Record<string, string> = {
   armhole_depth: "Sâu nách",
 };
 
+// ===== Story 11.6: Attach Pattern Types =====
+
+export interface AttachPatternRequest {
+  pattern_session_id: string | null;
+}
+
+export interface AttachPatternResponse {
+  order_id: string;
+  pattern_session_id: string | null;
+}
+
 export const PIECE_GEOMETRY_PARAM_KEYS: Record<PieceType, string[]> = {
   front_bodice: ["bust_width", "waist_width", "hip_width", "shoulder_width", "bodice_length", "neckline_width", "neckline_depth", "armhole_depth"],
   back_bodice: ["bust_width", "waist_width", "hip_width", "shoulder_width", "bodice_length", "neckline_width", "armhole_depth"],

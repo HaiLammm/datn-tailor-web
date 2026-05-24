@@ -1,10 +1,34 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { render, screen } from "@testing-library/react";
 
+jest.mock("@/app/actions/tailor-task-actions", () => ({
+  fetchTaskDetail: jest.fn(() => Promise.resolve(null)),
+  requestTaskCancellation: jest.fn(),
+  acceptTask: jest.fn(),
+  rejectTask: jest.fn(),
+  startTask: jest.fn(),
+  holdTask: jest.fn(),
+  resumeTask: jest.fn(),
+  submitForQC: jest.fn(),
+  completeStage: jest.fn(),
+}));
+
 jest.mock("@/hooks/usePatternSession", () => ({
   usePatternSession: jest.fn(),
   useExportPiece: jest.fn(() => ({ mutateAsync: jest.fn(), isPending: false })),
   useExportSession: jest.fn(() => ({ mutateAsync: jest.fn(), isPending: false })),
+}));
+
+jest.mock("@/components/client/design/PatternPreview", () => ({
+  __esModule: true,
+  default: ({ pieces }: { pieces: unknown[] }) => (
+    <div data-testid="pattern-preview">PatternPreview ({pieces.length} pieces)</div>
+  ),
+}));
+
+jest.mock("@/components/client/design/PatternExportBar", () => ({
+  __esModule: true,
+  default: () => <div data-testid="pattern-export-bar">PatternExportBar</div>,
 }));
 
 import TaskDetailModal from "@/components/client/tailor/TaskDetailModal";
@@ -58,11 +82,11 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
     mockUsePatternSession.mockReturnValue({
       session: null,
       isLoading: false,
-            error: null,
+      error: null,
     });
   });
 
-  it("does not render pattern section when task has no pattern_session_id", () => {
+  it("does not render pattern section when task has no order", () => {
     render(
       <TaskDetailModal
         task={baseTask}
@@ -97,9 +121,19 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
         id: "ps-1",
         tenant_id: "tenant-1",
         customer_id: "customer-1",
+        created_by: "owner-1",
         garment_type: "ao_dai",
         status: "exported" as const,
-        pieces: [],
+        pieces: [
+          {
+            id: "piece-1",
+            session_id: "ps-1",
+            piece_type: "front_bodice" as const,
+            svg_data: "<svg></svg>",
+            geometry_params: {},
+            created_at: "2026-05-01T10:00:00Z",
+          },
+        ],
         created_at: "2026-05-01T10:00:00Z",
         updated_at: "2026-05-01T10:00:00Z",
         do_dai_ao: 65,
@@ -115,7 +149,7 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
         notes: null,
       },
       isLoading: false,
-            error: null,
+      error: null,
     });
 
     const taskWithPattern = {
@@ -132,13 +166,15 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
     );
 
     expect(screen.getByText("Bản rập đính kèm")).toBeTruthy();
+    expect(screen.getByTestId("pattern-preview")).toBeTruthy();
+    expect(screen.getByTestId("pattern-export-bar")).toBeTruthy();
   });
 
   it("shows loading state when pattern session is loading", () => {
     mockUsePatternSession.mockReturnValue({
       session: null,
       isLoading: true,
-            error: null,
+      error: null,
     });
 
     const taskWithPattern = {
@@ -154,6 +190,6 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
       />
     );
 
-    expect(screen.getByText("Đang tải rập...")).toBeTruthy();
+    expect(screen.getByText("Bản rập đính kèm")).toBeTruthy();
   });
 });

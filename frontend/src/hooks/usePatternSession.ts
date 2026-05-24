@@ -13,10 +13,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import {
+  attachPatternToOrder,
   createPatternSession,
+  detachPatternFromOrder,
   exportPatternPiece,
   exportPatternSession,
   fetchCustomerMeasurement,
+  fetchCustomerPatternSessions,
   fetchPatternSession,
   generatePatternPieces,
   searchCustomers,
@@ -211,10 +214,36 @@ export function useAttachPattern(options?: {
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }) {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async (_payload: { orderId: string; patternSessionId: string }) => {
-      // Story 11.6 — not yet implemented
-      throw new Error("Not implemented");
+    mutationFn: async (payload: { orderId: string; patternSessionId: string }) => {
+      const result = await attachPatternToOrder(payload.orderId, payload.patternSessionId);
+      if (!result.success) {
+        throw new Error(result.error || "Không thể đính kèm rập");
+      }
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-pattern-sessions"] });
+      options?.onSuccess?.();
+    },
+    onError: (error: Error) => options?.onError?.(error.message),
+  });
+}
+
+// ===== Detach Pattern from Order (Story 11.6) =====
+
+export function useDetachPattern(options?: {
+  onSuccess?: () => void;
+  onError?: (error: string) => void;
+}) {
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const result = await detachPatternFromOrder(orderId);
+      if (!result.success) {
+        throw new Error(result.error || "Không thể gỡ rập");
+      }
     },
     onSuccess: () => options?.onSuccess?.(),
     onError: (error: Error) => options?.onError?.(error.message),
@@ -227,10 +256,14 @@ export function useCustomerPatternSessions(customerId: string) {
   const { data, isLoading } = useQuery({
     queryKey: ["customer-pattern-sessions", customerId],
     queryFn: async (): Promise<PatternSessionListItem[]> => {
-      // Story 11.6 — not yet implemented
-      return [];
+      const result = await fetchCustomerPatternSessions(customerId);
+      if (!result.success) {
+        throw new Error(result.error || "Không thể tải danh sách");
+      }
+      return result.data || [];
     },
     enabled: !!customerId,
+    staleTime: 30000,
   });
 
   return {

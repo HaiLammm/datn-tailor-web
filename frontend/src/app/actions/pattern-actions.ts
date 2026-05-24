@@ -10,7 +10,7 @@
  */
 
 import { auth } from "@/auth";
-import type { PatternSessionCreate, PatternSessionResponse } from "@/types/pattern";
+import type { PatternSessionCreate, PatternSessionResponse, AttachPatternResponse, PatternSessionListItem } from "@/types/pattern";
 import type { MeasurementResponse } from "@/types/customer";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
@@ -163,6 +163,119 @@ export async function searchCustomers(
     };
   } catch (error) {
     console.error("Error searching customers:", error);
+    if (error instanceof Error && error.message === "Không có quyền truy cập") {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Không thể kết nối đến máy chủ" };
+  }
+}
+
+// ===== Story 11.6: Attach/detach pattern + list customer sessions =====
+
+export async function attachPatternToOrder(
+  orderId: string,
+  patternSessionId: string
+): Promise<{ success: boolean; data?: AttachPatternResponse; error?: string }> {
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${BACKEND_URL}/api/v1/orders/${orderId}/attach-pattern`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ pattern_session_id: patternSessionId }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { success: false, error: "Đơn hàng hoặc phiên thiết kế không tồn tại" };
+      }
+      if (response.status === 422) {
+        const body = await response.json();
+        return { success: false, error: body.detail?.message || "Không thể đính kèm rập" };
+      }
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, error: "Không có quyền thực hiện" };
+      }
+      return { success: false, error: "Không thể đính kèm rập" };
+    }
+
+    const result = await response.json();
+    return { success: true, data: result.data };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Không có quyền truy cập") {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Không thể kết nối đến máy chủ" };
+  }
+}
+
+export async function detachPatternFromOrder(
+  orderId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${BACKEND_URL}/api/v1/orders/${orderId}/attach-pattern`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ pattern_session_id: null }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { success: false, error: "Đơn hàng không tồn tại" };
+      }
+      return { success: false, error: "Không thể gỡ rập" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Không có quyền truy cập") {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Không thể kết nối đến máy chủ" };
+  }
+}
+
+export async function fetchCustomerPatternSessions(
+  customerId: string
+): Promise<{ success: boolean; data?: PatternSessionListItem[]; error?: string }> {
+  try {
+    const token = await getAuthToken();
+    const params = new URLSearchParams({
+      customer_id: customerId,
+      status: "completed,exported",
+    });
+    const response = await fetch(`${BACKEND_URL}/api/v1/patterns/sessions?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, error: "Không có quyền truy cập" };
+      }
+      return { success: false, error: "Không thể tải danh sách phiên thiết kế" };
+    }
+
+    const result = await response.json();
+    const sessions: PatternSessionListItem[] = (result.data || []).map(
+      (s: { id: string; status: string; garment_type: string; pieces?: unknown[]; piece_count?: number; created_at: string }) => ({
+        id: s.id,
+        status: s.status as PatternSessionListItem["status"],
+        garment_type: s.garment_type,
+        piece_count: s.piece_count ?? (Array.isArray(s.pieces) ? s.pieces.length : 0),
+        created_at: s.created_at,
+      })
+    );
+    return { success: true, data: sessions };
+  } catch (error) {
     if (error instanceof Error && error.message === "Không có quyền truy cập") {
       return { success: false, error: error.message };
     }

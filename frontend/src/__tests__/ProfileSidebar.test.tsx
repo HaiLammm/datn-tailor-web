@@ -19,14 +19,13 @@ describe("ProfileSidebar", () => {
     mockPathname = "/profile";
   });
 
-  it("render đủ 6 mục navigation (desktop + mobile nav)", () => {
+  it("render đủ 5 mục navigation (desktop + mobile nav)", () => {
     render(<ProfileSidebar />);
     // getAllByText because desktop+mobile both render; at least one instance per item
     expect(screen.getAllByText("Thông tin cá nhân").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Đơn hàng").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Số đo").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Lịch hẹn").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Thông báo").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Voucher").length).toBeGreaterThan(0);
   });
 
@@ -64,7 +63,6 @@ describe("ProfileSidebar", () => {
     expect(screen.getAllByRole("link", { name: /Đơn hàng/i })[0]).toHaveAttribute("href", "/profile/orders");
     expect(screen.getAllByRole("link", { name: /Số đo/i })[0]).toHaveAttribute("href", "/profile/measurements");
     expect(screen.getAllByRole("link", { name: /Lịch hẹn/i })[0]).toHaveAttribute("href", "/profile/appointments");
-    expect(screen.getAllByRole("link", { name: /Thông báo/i })[0]).toHaveAttribute("href", "/profile/notifications");
     expect(screen.getAllByRole("link", { name: /Voucher/i })[0]).toHaveAttribute("href", "/profile/vouchers");
   });
 });

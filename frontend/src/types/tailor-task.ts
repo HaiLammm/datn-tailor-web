@@ -78,6 +78,8 @@ export interface TailorTask {
   piece_rate: number | null;
   design_id: string | null;
   completed_at: string | null;
+  // Story 11.6: Pattern attachment via order
+  order?: { pattern_session_id?: string | null } | null;
   failure_reason?: string | null;
   failure_category?: FailureCategory | null;
   cancellation_resolved_at?: string | null;

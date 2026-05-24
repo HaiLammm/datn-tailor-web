@@ -8,25 +8,22 @@ jest.mock("@/hooks/usePatternSession", () => ({
 
 import { PatternAttachDialog } from "@/components/client/design/PatternAttachDialog";
 import { useAttachPattern, useCustomerPatternSessions } from "@/hooks/usePatternSession";
-import type { PatternSessionStatus } from "@/types/pattern";
 
 const mockUseAttachPattern = useAttachPattern as jest.MockedFunction<typeof useAttachPattern>;
 const mockUseCustomerPatternSessions = useCustomerPatternSessions as jest.MockedFunction<typeof useCustomerPatternSessions>;
 
 const mockSessions = [
   {
-    id: "session-1",
-    customer_id: "customer-1",
+    id: "session-1-uuid-full",
     garment_type: "ao_dai",
-    status: "completed" as PatternSessionStatus,
+    status: "completed" as const,
     created_at: "2026-05-01T10:00:00Z",
     piece_count: 3,
   },
   {
-    id: "session-2",
-    customer_id: "customer-1",
+    id: "session-2-uuid-full",
     garment_type: "vest",
-    status: "exported" as PatternSessionStatus,
+    status: "exported" as const,
     created_at: "2026-05-02T10:00:00Z",
     piece_count: 3,
   },
@@ -47,7 +44,6 @@ describe("PatternAttachDialog", () => {
     mockUseCustomerPatternSessions.mockReturnValue({
       sessions: mockSessions,
       isLoading: false,
-      error: null,
     });
   });
 
@@ -63,14 +59,13 @@ describe("PatternAttachDialog", () => {
     );
 
     expect(screen.getByText("Chọn phiên thiết kế")).toBeTruthy();
-    expect(screen.getAllByText(/^Phiên #session-/).length).toBe(2);
+    expect(screen.getAllByText(/Phiên #session-/).length).toBe(2);
   });
 
   it("renders empty state when no sessions", () => {
     mockUseCustomerPatternSessions.mockReturnValue({
       sessions: [],
       isLoading: false,
-      error: null,
     });
 
     render(
@@ -90,7 +85,6 @@ describe("PatternAttachDialog", () => {
     mockUseCustomerPatternSessions.mockReturnValue({
       sessions: [],
       isLoading: true,
-      error: null,
     });
 
     render(
@@ -106,7 +100,7 @@ describe("PatternAttachDialog", () => {
     expect(screen.getByText("Đang tải...")).toBeTruthy();
   });
 
-  it("calls mutate when attach button is clicked after selecting session", async () => {
+  it("calls mutate when attach button clicked after selecting session", async () => {
     render(
       <PatternAttachDialog
         orderId="order-1"
@@ -136,7 +130,7 @@ describe("PatternAttachDialog", () => {
     });
   });
 
-  it("disables attach button when no session is selected", () => {
+  it("disables attach button when no session selected", () => {
     render(
       <PatternAttachDialog
         orderId="order-1"

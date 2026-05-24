@@ -115,7 +115,7 @@ describe("OrderConfirmation", () => {
   it("navigates to showroom on 'Tiếp tục mua sắm'", () => {
     render(<OrderConfirmation order={MOCK_ORDER} />);
     fireEvent.click(screen.getByTestId("continue-shopping-btn"));
-    expect(mockPush).toHaveBeenCalledWith("/showroom");
+    expect(mockPush).toHaveBeenCalledWith("/showroom?order_success=true");
   });
 
   it("navigates to orders on 'Xem đơn hàng'", () => {

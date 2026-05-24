@@ -20,6 +20,10 @@ import {
   submitForQC,
   completeStage,
 } from "@/app/actions/tailor-task-actions";
+import { usePatternSession, useExportPiece, useExportSession } from "@/hooks/usePatternSession";
+import PatternPreview from "@/components/client/design/PatternPreview";
+import PatternExportBar from "@/components/client/design/PatternExportBar";
+import type { PatternPieceResponse } from "@/types/pattern";
 
 interface TaskDetailModalProps {
   task: TailorTask;
@@ -58,6 +62,44 @@ function formatVND(amount: number | null): string {
     currency: "VND",
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function PatternSection({ patternSessionId }: { patternSessionId: string }) {
+  const { session, isLoading, error } = usePatternSession(patternSessionId);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-4">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Bản rập đính kèm</p>
+        <div className="flex justify-center py-6">
+          <div className="w-5 h-5 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !session || !session.pieces?.length) {
+    return null;
+  }
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Bản rập đính kèm</p>
+      <div className="max-h-[400px] overflow-hidden rounded-lg border border-gray-100">
+        <PatternPreview pieces={session.pieces} />
+      </div>
+      <PatternExportBar
+        sessionId={session.id}
+        pieces={session.pieces}
+        activePiece={session.pieces[0] ?? null}
+        onToast={(msg) => setToastMsg(msg)}
+      />
+      {toastMsg && (
+        <p className="text-xs text-gray-600">{toastMsg}</p>
+      )}
+    </div>
+  );
 }
 
 export default function TaskDetailModal({
@@ -327,6 +369,11 @@ export default function TaskDetailModal({
               </svg>
               Xem Blueprint / Sanity Check
             </a>
+          )}
+
+          {/* Pattern Preview (Story 11.6) */}
+          {task.order?.pattern_session_id && (
+            <PatternSection patternSessionId={task.order.pattern_session_id} />
           )}
 
           {/* ── Stage Checklist ─────────────────────────────────────────────── */}

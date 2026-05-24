@@ -7,6 +7,10 @@ import { describe, it, expect } from "@jest/globals";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+}));
+
 import { OrderStatusBadge, PaymentStatusBadge } from "@/components/client/orders/StatusBadge";
 import OrderTable from "@/components/client/orders/OrderTable";
 import type { OrderListItem, OrderStatus } from "@/types/order";
@@ -76,6 +80,7 @@ describe("OrderTable", () => {
     sortOrder: "desc" as const,
     onSortChange: jest.fn(),
     onStatusUpdate: jest.fn().mockResolvedValue(undefined),
+    onApprove: jest.fn(),
     onRowClick: jest.fn(),
   };
 
@@ -90,9 +95,9 @@ describe("OrderTable", () => {
     expect(screen.getByText("Chờ xác nhận")).toBeInTheDocument();
   });
 
-  it("shows 'Next Status' button for pending order", () => {
+  it("shows 'Phê duyệt' button for pending order", () => {
     render(<OrderTable {...defaultProps} />);
-    expect(screen.getByText("Xác nhận")).toBeInTheDocument();
+    expect(screen.getByText("Phê duyệt")).toBeInTheDocument();
   });
 
   it("shows 'Cancel' button for non-terminal orders", () => {

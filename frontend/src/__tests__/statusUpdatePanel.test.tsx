@@ -68,7 +68,7 @@ describe("StatusUpdatePanel", () => {
         fireEvent.click(maintenanceBtn);
 
         await waitFor(() => {
-            expect(actions.updateGarmentStatus).toHaveBeenCalledWith("1", "maintenance", undefined, undefined, undefined);
+            expect(actions.updateGarmentStatus).toHaveBeenCalledWith("1", "maintenance", undefined, undefined, undefined, undefined);
             expect(onSuccess).toHaveBeenCalled();
         });
     });
@@ -138,7 +138,7 @@ describe("StatusUpdatePanel", () => {
 
         await waitFor(() => {
             expect(actions.updateGarmentStatus).toHaveBeenCalledWith(
-                "1", "rented", "2026-12-31", "Nguyen Van A", "a@example.com"
+                "1", "rented", "2026-12-31", "Nguyen Van A", "a@example.com", 1
             );
             expect(onSuccess).toHaveBeenCalled();
         });

@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-05-25  # Epic 11: Story 11.5 done
+last_updated: 2026-05-25  # Epic 11: Story 11.6 review
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -131,7 +131,7 @@ development_status:
   11-3-svg-gcode-export-api: done
   11-4-profile-driven-measurement-form-ui: in-progress
   11-5-split-pane-pattern-preview: done  # Code Review 2026-05-25: 10/10 patch items fixed (4H/6M)
-  11-6-dual-export-order-attachment: backlog
+  11-6-dual-export-order-attachment: review
   epic-11-retrospective: optional
 
   epic-12: in-progress  # Bespoke Production Task Workflow — Full State Machine Redesign

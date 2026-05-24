@@ -90,6 +90,9 @@ export interface OrderResponse {
   created_at: string;
   tailor_info?: TailorInfoForCustomer[] | null;
   service_type?: ServiceType;
+  // Story 11.6: Pattern attachment
+  pattern_session_id?: string | null;
+  customer_id?: string | null;
   deposit_amount?: number | null;
   remaining_amount?: number | null;
   security_type?: string | null;
