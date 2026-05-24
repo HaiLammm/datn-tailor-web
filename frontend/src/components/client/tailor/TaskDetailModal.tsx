@@ -108,7 +108,17 @@ function PatternSection({ patternSessionId }: { patternSessionId: string }) {
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Bản rập đính kèm</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Bản rập đính kèm</p>
+        <a
+          href={`/design-session/${patternSessionId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-[#1A2B4C] hover:underline"
+        >
+          Xem rập ↗
+        </a>
+      </div>
       <div className="max-h-[400px] overflow-hidden rounded-lg border border-gray-100">
         <PatternPreview pieces={session.pieces} onActivePieceChange={handleActivePieceChange} />
       </div>
