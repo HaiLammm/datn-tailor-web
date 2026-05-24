@@ -15,9 +15,14 @@ import type { MeasurementResponse } from "@/types/customer";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
-/**
- * Get auth token from session
- */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function assertUUID(id: string, label: string): void {
+  if (!UUID_REGEX.test(id)) {
+    throw new Error(`${label} không hợp lệ`);
+  }
+}
+
 async function getAuthToken(): Promise<string> {
   const session = await auth();
   if (!session?.accessToken) {
@@ -83,6 +88,7 @@ export async function fetchCustomerMeasurement(
   customerId: string
 ): Promise<{ success: boolean; data?: MeasurementResponse | null; error?: string }> {
   try {
+    assertUUID(customerId, "Customer ID");
     const token = await getAuthToken();
 
     const response = await fetch(
@@ -177,6 +183,8 @@ export async function attachPatternToOrder(
   patternSessionId: string
 ): Promise<{ success: boolean; data?: AttachPatternResponse; error?: string }> {
   try {
+    assertUUID(orderId, "Order ID");
+    assertUUID(patternSessionId, "Pattern session ID");
     const token = await getAuthToken();
     const response = await fetch(`${BACKEND_URL}/api/v1/orders/${orderId}/attach-pattern`, {
       method: "POST",
@@ -216,6 +224,7 @@ export async function detachPatternFromOrder(
   orderId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    assertUUID(orderId, "Order ID");
     const token = await getAuthToken();
     const response = await fetch(`${BACKEND_URL}/api/v1/orders/${orderId}/attach-pattern`, {
       method: "POST",
@@ -247,6 +256,7 @@ export async function fetchCustomerPatternSessions(
   customerId: string
 ): Promise<{ success: boolean; data?: PatternSessionListItem[]; error?: string }> {
   try {
+    assertUUID(customerId, "Customer ID");
     const token = await getAuthToken();
     const params = new URLSearchParams({
       customer_id: customerId,
@@ -289,6 +299,7 @@ export async function fetchPatternSession(
   sessionId: string
 ): Promise<{ success: boolean; data?: PatternSessionResponse | null; error?: string; statusCode?: number }> {
   try {
+    assertUUID(sessionId, "Session ID");
     const token = await getAuthToken();
     const response = await fetch(`${BACKEND_URL}/api/v1/patterns/sessions/${sessionId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -319,6 +330,7 @@ export async function fetchCustomerDetail(
   customerId: string
 ): Promise<{ success: boolean; data?: { full_name: string } | null; error?: string }> {
   try {
+    assertUUID(customerId, "Customer ID");
     const token = await getAuthToken();
     const response = await fetch(`${BACKEND_URL}/api/v1/customers/${customerId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -340,6 +352,7 @@ export async function generatePatternPieces(
   sessionId: string
 ): Promise<{ success: boolean; data?: PatternSessionResponse; error?: string }> {
   try {
+    assertUUID(sessionId, "Session ID");
     const token = await getAuthToken();
     const response = await fetch(`${BACKEND_URL}/api/v1/patterns/sessions/${sessionId}/generate`, {
       method: "POST",
@@ -372,6 +385,7 @@ export async function exportPatternPiece(
   power?: number
 ): Promise<{ success: boolean; data?: { content: string; filename: string; contentType: string }; error?: string }> {
   try {
+    assertUUID(pieceId, "Piece ID");
     const token = await getAuthToken();
     const params = new URLSearchParams({ format });
     if (speed != null) params.set("speed", String(speed));
@@ -412,6 +426,7 @@ export async function exportPatternSession(
   power?: number
 ): Promise<{ success: boolean; data?: { content: string; filename: string; contentType: string }; error?: string }> {
   try {
+    assertUUID(sessionId, "Session ID");
     const token = await getAuthToken();
     const params = new URLSearchParams({ format });
     if (speed != null) params.set("speed", String(speed));

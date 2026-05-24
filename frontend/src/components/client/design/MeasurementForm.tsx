@@ -274,6 +274,9 @@ function MeasurementInput({
 // ===== Main Component =====
 
 export default function MeasurementForm({ onSessionCreated, onError }: MeasurementFormProps) {
+  // Guard against double-click submit
+  const isSubmittingRef = useRef(false);
+
   // Customer selection state
   const [selectedCustomer, setSelectedCustomer] = useState<SelectedCustomer | null>(null);
   const [isManuallyEdited, setIsManuallyEdited] = useState(false);
@@ -290,6 +293,7 @@ export default function MeasurementForm({ onSessionCreated, onError }: Measureme
       onSessionCreated?.(data.id);
     },
     onError: (error) => {
+      isSubmittingRef.current = false;
       onError?.(error);
     },
   });
@@ -313,26 +317,28 @@ export default function MeasurementForm({ onSessionCreated, onError }: Measureme
   // Auto-fill measurements when customer measurement is loaded (AC #2)
   useEffect(() => {
     if (measurement && !isManuallyEdited) {
-      // Map customer measurement fields to pattern fields
       for (const field of PATTERN_MEASUREMENT_FIELDS) {
         const customerField = PATTERN_TO_CUSTOMER_MAPPING[field.key];
-        if (customerField && measurement[customerField as keyof MeasurementResponse] != null) {
+        if (customerField) {
           const value = measurement[customerField as keyof MeasurementResponse];
           if (typeof value === "number") {
             setValue(field.key, value);
+          } else {
+            setValue(field.key, undefined as unknown as number);
           }
         }
       }
       setAutoFillDate(measurement.measured_date);
     }
-  }, [measurement, isManuallyEdited, setValue]);
+  }, [measurement, isManuallyEdited, setValue, selectedCustomer?.id]);
 
   // Handle customer selection
   const handleCustomerSelect = useCallback((customer: SelectedCustomer) => {
     setSelectedCustomer(customer);
     setIsManuallyEdited(false);
     setAutoFillDate(null);
-  }, []);
+    reset();
+  }, [reset]);
 
   // Handle customer clear
   const handleCustomerClear = useCallback(() => {
@@ -356,6 +362,8 @@ export default function MeasurementForm({ onSessionCreated, onError }: Measureme
   // Handle form submission (AC #7)
   const onSubmit = useCallback(
     (data: PatternMeasurementInput) => {
+      if (isSubmittingRef.current) return;
+      isSubmittingRef.current = true;
       createSession({
         customer_id: selectedCustomer?.id ?? null,
         garment_type: "ao_dai",

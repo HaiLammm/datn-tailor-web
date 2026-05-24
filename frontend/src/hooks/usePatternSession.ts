@@ -10,7 +10,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   attachPatternToOrder,
@@ -118,23 +118,37 @@ interface UseCustomerSearchResult {
 export function useCustomerSearch(): UseCustomerSearchResult {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounced search (300ms as per AC #1)
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
   const search = useCallback((query: string) => {
     setSearchQuery(query);
-    
-    // Only search with 2+ characters (AC #1)
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
     if (query.length >= 2) {
-      const timer = setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         setDebouncedQuery(query);
       }, 300);
-      return () => clearTimeout(timer);
     } else {
       setDebouncedQuery("");
     }
   }, []);
 
   const clear = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     setSearchQuery("");
     setDebouncedQuery("");
   }, []);
