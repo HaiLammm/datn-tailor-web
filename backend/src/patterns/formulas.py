@@ -101,17 +101,8 @@ def generate_sleeve(measurements: dict[str, Any]) -> dict[str, float]:
     wrist_width = vong_co_tay / 2 + 1
     sleeve_length = do_dai_tay
 
-    # Bodice fields are not applicable to sleeve piece; fill with 0 placeholders
-    # so GeometryParams model validates cleanly (sleeve_specific fields used instead).
     return {
-        "bust_width": 0.0,
-        "waist_width": 0.0,
-        "hip_width": 0.0,
-        "armhole_drop": 0.0,
-        "neck_depth": 0.0,
-        "hem_width": 0.0,
         "seam_allowance": 1.0,
-        # Sleeve-specific
         "cap_height": round(cap_height, 1),
         "bicep_width": round(bicep_width, 1),
         "wrist_width": round(wrist_width, 1),

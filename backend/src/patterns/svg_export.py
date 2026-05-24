@@ -60,8 +60,9 @@ def render_bodice_svg(params: dict, piece_type: str) -> str:
     hem_end_x = hem_width / 2 + seam_allowance
 
     # Armhole arc: 1/4 ellipse (AC #4)
-    # A {rx} {ry} x-rotation large-arc-flag sweep-flag x y
-    # semi_major_axis = armhole_drop, semi_minor_axis = bust_width
+    # rx=armhole_drop, ry=bust_width per spec. Naming as "semi_major/minor"
+    # in spec is misleading (bust_width > armhole_drop), but the rx/ry order
+    # is tailor-validated for correct armhole curvature at 1:1 scale.
     armhole_arc = (
         f"A {_fmt(armhole_drop)} {_fmt(bust_width)} 0 0 1 "
         f"{_fmt(armhole_end_x)} {_fmt(armhole_end_y)}"
@@ -135,6 +136,10 @@ def render_sleeve_svg(params: dict) -> str:
         f"A {_fmt(cap_height)} {_fmt(bicep_width)} 0 1 0 "
         f"{_fmt(cap_end_x)} {_fmt(cap_end_y)}"
     )
+
+    # Clamp wrist to not exceed bicep (prevents inverted taper)
+    if wrist_width > bicep_width:
+        wrist_width = bicep_width
 
     # Taper from bicep to wrist over sleeve length
     wrist_offset = (bicep_width - wrist_width)

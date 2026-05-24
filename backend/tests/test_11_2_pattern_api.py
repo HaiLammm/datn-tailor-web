@@ -417,7 +417,7 @@ class TestMeasurementValidation:
 
     @pytest.mark.asyncio
     async def test_vong_nguc_below_min_returns_422(self, client, seed_users):
-        """vong_nguc < 50 → 422 Pydantic validation error."""
+        """vong_nguc < 50 → 422 with Vietnamese error message (FR99)."""
         payload = {**SAMPLE_PAYLOAD, "vong_nguc": "10.0"}  # min is 50
         resp = client.post(
             "/api/v1/patterns/sessions",
@@ -425,6 +425,11 @@ class TestMeasurementValidation:
             headers=_owner_a_headers(),
         )
         assert resp.status_code == 422
+        body = resp.json()
+        detail = body.get("detail", {})
+        assert detail.get("code") == "ERR_INVALID_MEASUREMENTS"
+        assert "Vòng ngực" in detail.get("message", "")
+        assert "50" in detail.get("message", "") and "180" in detail.get("message", "")
 
     @pytest.mark.asyncio
     async def test_vong_nguc_above_max_returns_422(self, client, seed_users):

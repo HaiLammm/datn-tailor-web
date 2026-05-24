@@ -11,6 +11,7 @@ Service layer conventions:
 import io
 import logging
 import zipfile
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -126,7 +127,7 @@ async def generate_patterns(
     """
     result = await db.execute(
         select(PatternSessionDB)
-        .options(selectinload(PatternSessionDB.pieces))
+        .with_for_update()
         .where(
             PatternSessionDB.id == session_id,
             PatternSessionDB.tenant_id == tenant_id,
@@ -183,6 +184,7 @@ async def generate_patterns(
 
     # Transition status to completed
     session.status = "completed"
+    session.updated_at = datetime.now(timezone.utc)
 
     await db.flush()  # assigns IDs + created_at to all piece_db records
     await db.commit()

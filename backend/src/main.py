@@ -5,8 +5,10 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.v1.auth import router as auth_router
@@ -82,6 +84,60 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Vietnamese measurement validation labels (FR99)
+_MEASUREMENT_INFO_VI: dict[str, tuple[str, int, int]] = {
+    "do_dai_ao": ("Độ dài áo", 30, 200),
+    "ha_eo": ("Hạ eo", 5, 50),
+    "vong_co": ("Vòng cổ", 20, 60),
+    "vong_nach": ("Vòng nách", 25, 70),
+    "vong_nguc": ("Vòng ngực", 50, 180),
+    "vong_eo": ("Vòng eo", 40, 160),
+    "vong_mong": ("Vòng mông", 50, 180),
+    "do_dai_tay": ("Độ dài tay", 30, 100),
+    "vong_bap_tay": ("Vòng bắp tay", 15, 60),
+    "vong_co_tay": ("Vòng cổ tay", 10, 35),
+}
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    if not request.url.path.startswith("/api/v1/patterns/"):
+        return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+    errors_vi: list[str] = []
+    other_errors: list[dict] = []
+
+    for error in exc.errors():
+        loc = error.get("loc", ())
+        field_name = loc[-1] if loc else None
+
+        if field_name in _MEASUREMENT_INFO_VI:
+            label, min_val, max_val = _MEASUREMENT_INFO_VI[field_name]
+            error_type = error.get("type", "")
+            if "missing" in error_type:
+                errors_vi.append(f"{label} là bắt buộc")
+            elif any(k in error_type for k in ("greater_than", "less_than", "decimal")):
+                errors_vi.append(f"{label} phải từ {min_val} đến {max_val} cm")
+            else:
+                errors_vi.append(f"{label} phải là số hợp lệ")
+        else:
+            other_errors.append(error)
+
+    if errors_vi:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": {
+                    "code": "ERR_INVALID_MEASUREMENTS",
+                    "message": "; ".join(errors_vi),
+                    "errors": errors_vi,
+                }
+            },
+        )
+
+    return JSONResponse(status_code=422, content={"detail": other_errors or exc.errors()})
+
 
 # Register routers
 app.include_router(auth_router)

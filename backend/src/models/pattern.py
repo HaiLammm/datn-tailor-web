@@ -8,6 +8,8 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -57,18 +59,19 @@ class GeometryParams(BaseModel):
     Computed geometric parameters from deterministic formula engine.
     """
 
-    bust_width: float
-    waist_width: float
-    hip_width: float
-    armhole_drop: float
-    neck_depth: float
-    hem_width: float = 37.0
+    # Bodice-specific (None for sleeve pieces)
+    bust_width: Optional[float] = None
+    waist_width: Optional[float] = None
+    hip_width: Optional[float] = None
+    armhole_drop: Optional[float] = None
+    neck_depth: Optional[float] = None
+    hem_width: Optional[float] = None
     seam_allowance: float = 1.0
-    # Sleeve-specific (only for sleeve piece)
-    cap_height: float | None = None
-    bicep_width: float | None = None
-    wrist_width: float | None = None
-    sleeve_length: float | None = None
+    # Sleeve-specific (None for bodice pieces)
+    cap_height: Optional[float] = None
+    bicep_width: Optional[float] = None
+    wrist_width: Optional[float] = None
+    sleeve_length: Optional[float] = None
 
 
 class PatternPieceResponse(BaseModel):
