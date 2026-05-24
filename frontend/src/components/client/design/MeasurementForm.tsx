@@ -229,9 +229,9 @@ function MeasurementInput({
     const val = e.target.value;
     if (val === "") {
       onChange(undefined);
-    } else {
+    } else if (/^-?\d{1,3}(\.\d{0,1})?$/.test(val)) {
       const num = parseFloat(val);
-      if (!isNaN(num)) {
+      if (isFinite(num)) {
         onChange(num);
       }
     }
@@ -351,7 +351,11 @@ export default function MeasurementForm({ onSessionCreated, onError }: Measureme
   // Handle measurement change (AC #5)
   const handleMeasurementChange = useCallback(
     (key: MeasurementKey, value: number | undefined) => {
-      setValue(key, value as number, { shouldValidate: true });
+      if (value === undefined) {
+        setValue(key, undefined as unknown as number, { shouldValidate: true });
+      } else {
+        setValue(key, value, { shouldValidate: true });
+      }
       if (selectedCustomer && hasMeasurement) {
         setIsManuallyEdited(true);
       }
@@ -373,9 +377,11 @@ export default function MeasurementForm({ onSessionCreated, onError }: Measureme
     [createSession, selectedCustomer]
   );
 
-  // Format date for display
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("vi-VN", {
+    if (!dateStr) return "N/A";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "N/A";
+    return d.toLocaleDateString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",

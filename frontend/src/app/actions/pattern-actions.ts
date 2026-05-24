@@ -52,16 +52,18 @@ export async function createPatternSession(
     });
 
     if (!response.ok) {
-      // Handle specific error codes
       if (response.status === 422) {
-        const errorBody = await response.json();
-        const detail = errorBody.detail;
-        if (Array.isArray(detail)) {
-          // Pydantic validation errors
-          const messages = detail.map((d: { msg: string }) => d.msg).join("; ");
-          return { success: false, error: messages };
+        try {
+          const errorBody = await response.json();
+          const detail = errorBody.detail;
+          if (Array.isArray(detail)) {
+            const messages = detail.map((d: { msg: string }) => d.msg).join("; ");
+            return { success: false, error: messages };
+          }
+          return { success: false, error: detail?.message || "Dữ liệu không hợp lệ" };
+        } catch {
+          return { success: false, error: "Dữ liệu không hợp lệ" };
         }
-        return { success: false, error: detail?.message || "Dữ liệu không hợp lệ" };
       }
       if (response.status === 401 || response.status === 403) {
         return { success: false, error: "Không có quyền tạo phiên thiết kế" };
@@ -103,7 +105,12 @@ export async function fetchCustomerMeasurement(
 
     if (!response.ok) {
       if (response.status === 404) {
-        // Customer has no measurements - this is valid (AC #3)
+        let body: { detail?: string } | null = null;
+        try { body = await response.json(); } catch { /* non-JSON 404 */ }
+        const detail = body?.detail ?? "";
+        if (/customer/i.test(detail) && /not found/i.test(detail)) {
+          return { success: false, error: "Khách hàng không tồn tại" };
+        }
         return { success: true, data: null };
       }
       if (response.status === 401 || response.status === 403) {
@@ -338,13 +345,19 @@ export async function fetchCustomerDetail(
     });
 
     if (!response.ok) {
-      return { success: true, data: null };
+      if (response.status === 404) {
+        return { success: false, error: "Khách hàng không tồn tại" };
+      }
+      return { success: false, error: "Không thể tải thông tin khách hàng" };
     }
 
     const result = await response.json();
     return { success: true, data: { full_name: result.data?.full_name ?? result.full_name ?? null } };
-  } catch {
-    return { success: true, data: null };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Không có quyền truy cập") {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Không thể kết nối đến máy chủ" };
   }
 }
 

@@ -15,6 +15,7 @@ import {
   AdaptiveCanvas,
   FabricRecommendationPanel,
   IntensitySliders,
+  MeasurementForm,
   SanityCheckDashboard,
   StylePillarSelector,
   OverrideHistoryPanel,
@@ -94,6 +95,10 @@ export function DesignSessionClient({
   const guardrailWarnings = useDesignStore((state) => state.guardrail_warnings);
   const setGuardrailResult = useDesignStore((state) => state.setGuardrailResult);
   const snapBackToSafe = useDesignStore((state) => state.snapBackToSafe);
+
+  // Story 11.4: Pattern session creation state
+  const [isPatternFormExpanded, setIsPatternFormExpanded] = useState(true);
+  const [patternError, setPatternError] = useState<string | null>(null);
 
   // Story 4.2: Sanity Check Dashboard state
   const [sanityCheckData, setSanityCheckData] = useState<SanityCheckResponse | null>(null);
@@ -304,6 +309,48 @@ export function DesignSessionClient({
             Chọn phong cách và điều chỉnh các thông số để tạo thiết kế phù hợp
             với bạn.
           </p>
+        </div>
+
+        {/* Story 11.4: Pattern Session Creation */}
+        <div className="mb-8">
+          <button
+            type="button"
+            onClick={() => { setIsPatternFormExpanded(!isPatternFormExpanded); setPatternError(null); }}
+            className="w-full flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+            aria-expanded={isPatternFormExpanded}
+            aria-controls="pattern-form-content"
+          >
+            <div className="flex items-center gap-3">
+              <svg
+                className={`w-5 h-5 text-gray-500 transition-transform ${isPatternFormExpanded ? "rotate-90" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Tạo rập mới
+              </h3>
+            </div>
+            <span className="text-sm text-gray-500">
+              {isPatternFormExpanded ? "Thu gọn" : "Mở rộng"}
+            </span>
+          </button>
+
+          {isPatternFormExpanded && (
+            <div id="pattern-form-content" className="mt-4 bg-white rounded-xl border border-gray-200 p-6">
+              {patternError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm" role="alert">
+                  {patternError}
+                </div>
+              )}
+              <MeasurementForm
+                onError={(error) => setPatternError(error)}
+                onSessionCreated={() => setPatternError(null)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Story 4.1b: Hard constraint violation banner */}
