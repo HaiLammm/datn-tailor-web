@@ -23,7 +23,7 @@ import {
 import { usePatternSession, useExportPiece, useExportSession } from "@/hooks/usePatternSession";
 import PatternPreview from "@/components/client/design/PatternPreview";
 import PatternExportBar from "@/components/client/design/PatternExportBar";
-import type { PatternPieceResponse } from "@/types/pattern";
+import type { PatternPieceResponse, PieceType } from "@/types/pattern";
 
 interface TaskDetailModalProps {
   task: TailorTask;
@@ -66,7 +66,19 @@ function formatVND(amount: number | null): string {
 
 function PatternSection({ patternSessionId }: { patternSessionId: string }) {
   const { session, isLoading, error } = usePatternSession(patternSessionId);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [activePiece, setActivePiece] = useState<PatternPieceResponse | null>(null);
+
+  const handleActivePieceChange = useCallback((pieceType: PieceType) => {
+    const piece = session?.pieces?.find((p) => p.piece_type === pieceType) ?? null;
+    setActivePiece(piece);
+  }, [session?.pieces]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   if (isLoading) {
     return (
@@ -79,24 +91,35 @@ function PatternSection({ patternSessionId }: { patternSessionId: string }) {
     );
   }
 
-  if (error || !session || !session.pieces?.length) {
+  if (error) {
+    return (
+      <div className="border border-gray-200 rounded-lg p-4">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Bản rập đính kèm</p>
+        <p className="text-sm text-red-600">Không thể tải bản rập.</p>
+      </div>
+    );
+  }
+
+  if (!session || !session.pieces?.length) {
     return null;
   }
+
+  const currentActivePiece = activePiece ?? session.pieces[0] ?? null;
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 space-y-3">
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Bản rập đính kèm</p>
       <div className="max-h-[400px] overflow-hidden rounded-lg border border-gray-100">
-        <PatternPreview pieces={session.pieces} />
+        <PatternPreview pieces={session.pieces} onActivePieceChange={handleActivePieceChange} />
       </div>
       <PatternExportBar
         sessionId={session.id}
         pieces={session.pieces}
-        activePiece={session.pieces[0] ?? null}
-        onToast={(msg) => setToastMsg(msg)}
+        activePiece={currentActivePiece}
+        onToast={(msg: string, type: "success" | "error") => setToast({ msg, type })}
       />
-      {toastMsg && (
-        <p className="text-xs text-gray-600">{toastMsg}</p>
+      {toast && (
+        <p className={`text-xs ${toast.type === "error" ? "text-red-600" : "text-gray-600"}`}>{toast.msg}</p>
       )}
     </div>
   );

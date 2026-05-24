@@ -10,7 +10,7 @@ import { formatMoney, formatDateTime } from "@/utils/format";
 import { resolveCancellation } from "@/app/actions/tailor-task-actions";
 import Avatar from "@/components/ui/Avatar";
 import { PatternAttachDialog } from "@/components/client/design/PatternAttachDialog";
-import { useDetachPattern } from "@/hooks/usePatternSession";
+import { useDetachPattern, usePatternSession } from "@/hooks/usePatternSession";
 
 const PIPELINE_STEPS: { status: OrderStatus; label: string }[] = [
   { status: "pending", label: "Chờ xác nhận" },
@@ -43,6 +43,115 @@ const TX_STATUS_LABELS: Record<string, string> = {
 interface StaffOption {
   id: string;
   name: string;
+}
+
+const GARMENT_TYPE_LABELS: Record<string, string> = {
+  ao_dai: "Áo dài",
+  vest: "Vest",
+  ao_ba_lo: "Áo ba lỗ",
+};
+
+function PatternAttachmentSection({
+  order,
+  showDetachConfirm,
+  setShowDetachConfirm,
+  detachMutation,
+  attachDialogOpen,
+  setAttachDialogOpen,
+  onRefresh,
+}: {
+  order: import("@/types/order").OrderResponse;
+  showDetachConfirm: boolean;
+  setShowDetachConfirm: (v: boolean) => void;
+  detachMutation: { mutate: (id: string) => void; isPending: boolean };
+  attachDialogOpen: boolean;
+  setAttachDialogOpen: (v: boolean) => void;
+  onRefresh?: () => void;
+}) {
+  const { session } = usePatternSession(order.pattern_session_id ?? "");
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+        Rập đính kèm
+      </p>
+      {order.pattern_session_id ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[#1A1A2E] font-medium">
+              Phiên #{order.pattern_session_id.slice(0, 8)}
+            </span>
+            <div className="flex gap-2">
+              <Link
+                href={`/design-session/${order.pattern_session_id}`}
+                className="px-3 py-1.5 text-xs rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Xem rập
+              </Link>
+              {order.status === "confirmed" && (
+                !showDetachConfirm ? (
+                  <button
+                    onClick={() => setShowDetachConfirm(true)}
+                    className="px-3 py-1.5 text-xs rounded-md text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    Gỡ rập
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => detachMutation.mutate(order.id)}
+                      disabled={detachMutation.isPending}
+                      className="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    >
+                      {detachMutation.isPending ? "..." : "Xác nhận"}
+                    </button>
+                    <button
+                      onClick={() => setShowDetachConfirm(false)}
+                      className="px-3 py-1.5 text-xs rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      Huỷ
+                    </button>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+          {session && (
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              <span>{GARMENT_TYPE_LABELS[session.garment_type] ?? session.garment_type}</span>
+              <span>·</span>
+              <span>{session.pieces?.length ?? 0} mảnh</span>
+              <span>·</span>
+              <span>{new Date(session.created_at).toLocaleDateString("vi-VN")}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-4">
+          <p className="text-sm text-gray-500">
+            Chưa có rập. Đính kèm rập để giao việc cho thợ may.
+          </p>
+          {order.status === "confirmed" && order.customer_id && (
+            <button
+              onClick={() => setAttachDialogOpen(true)}
+              className="mt-3 px-4 py-2 text-sm font-medium text-white bg-[#D4AF37] rounded-lg hover:bg-[#C4A030] transition-colors"
+            >
+              Đính kèm rập
+            </button>
+          )}
+        </div>
+      )}
+      {order.customer_id && attachDialogOpen && (
+        <PatternAttachDialog
+          orderId={order.id}
+          customerId={order.customer_id}
+          open={attachDialogOpen}
+          onOpenChange={setAttachDialogOpen}
+          onAttached={() => onRefresh?.()}
+        />
+      )}
+    </div>
+  );
 }
 
 interface OrderDetailDrawerProps {
@@ -309,71 +418,15 @@ export default function OrderDetailDrawer({
 
               {/* Pattern attachment section (bespoke only) */}
               {order.service_type === "bespoke" && (
-                <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Rập đính kèm
-                  </p>
-                  {order.pattern_session_id ? (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[#1A1A2E] font-medium">
-                        Phiên #{order.pattern_session_id.slice(0, 8)}
-                      </span>
-                      <div className="flex gap-2">
-                        <Link
-                          href={`/design-session/${order.pattern_session_id}`}
-                          className="px-3 py-1.5 text-xs rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
-                        >
-                          Xem rập
-                        </Link>
-                        {!showDetachConfirm ? (
-                          <button
-                            onClick={() => setShowDetachConfirm(true)}
-                            className="px-3 py-1.5 text-xs rounded-md text-red-600 hover:bg-red-50 transition-colors"
-                          >
-                            Gỡ rập
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => detachMutation.mutate(order.id)}
-                              disabled={detachMutation.isPending}
-                              className="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
-                            >
-                              {detachMutation.isPending ? "..." : "Xác nhận"}
-                            </button>
-                            <button
-                              onClick={() => setShowDetachConfirm(false)}
-                              className="px-3 py-1.5 text-xs rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
-                            >
-                              Huỷ
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-gray-500">
-                        Chưa có rập. Đính kèm rập để giao việc cho thợ may.
-                      </p>
-                      <button
-                        onClick={() => setAttachDialogOpen(true)}
-                        className="mt-3 px-4 py-2 text-sm font-medium text-white bg-[#D4AF37] rounded-lg hover:bg-[#C4A030] transition-colors"
-                      >
-                        Đính kèm rập
-                      </button>
-                    </div>
-                  )}
-                  {order.customer_id && (
-                    <PatternAttachDialog
-                      orderId={order.id}
-                      customerId={order.customer_id}
-                      open={attachDialogOpen}
-                      onOpenChange={setAttachDialogOpen}
-                      onAttached={() => onRefresh?.()}
-                    />
-                  )}
-                </div>
+                <PatternAttachmentSection
+                  order={order}
+                  showDetachConfirm={showDetachConfirm}
+                  setShowDetachConfirm={setShowDetachConfirm}
+                  detachMutation={detachMutation}
+                  attachDialogOpen={attachDialogOpen}
+                  setAttachDialogOpen={setAttachDialogOpen}
+                  onRefresh={onRefresh}
+                />
               )}
 
               {/* Tailor info section */}

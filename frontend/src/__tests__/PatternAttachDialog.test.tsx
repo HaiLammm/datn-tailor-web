@@ -119,7 +119,7 @@ describe("PatternAttachDialog", () => {
       fireEvent.click(sessionButtons[0]);
     }
 
-    const attachButton = screen.getByText("Đính kèm");
+    const attachButton = screen.getByText("Xác nhận đính kèm");
     fireEvent.click(attachButton);
 
     await waitFor(() => {
@@ -141,7 +141,7 @@ describe("PatternAttachDialog", () => {
       />
     );
 
-    const attachButton = screen.getByText("Đính kèm") as HTMLButtonElement;
+    const attachButton = screen.getByText("Xác nhận đính kèm") as HTMLButtonElement;
     expect(attachButton.disabled).toBe(true);
   });
 });

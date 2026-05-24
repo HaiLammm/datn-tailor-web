@@ -38,7 +38,7 @@ export function PatternAttachDialog({
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { sessions, isLoading } = useCustomerPatternSessions(customerId);
+  const { sessions, isLoading } = useCustomerPatternSessions(open ? customerId : "");
   const attachMutation = useAttachPattern({
     onSuccess: () => {
       onAttached();
@@ -140,7 +140,7 @@ export function PatternAttachDialog({
               disabled={!selectedSessionId || attachMutation.isPending}
               className="px-4 py-2 text-sm font-medium text-white bg-[#D4AF37] rounded-lg hover:bg-[#C4A030] disabled:opacity-50 transition-colors"
             >
-              {attachMutation.isPending ? "Đang đính kèm..." : "Đính kèm"}
+              {attachMutation.isPending ? "Đang đính kèm..." : "Xác nhận đính kèm"}
             </button>
           </div>
         </Dialog.Content>

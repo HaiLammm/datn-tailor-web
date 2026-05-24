@@ -252,6 +252,8 @@ export function useDetachPattern(options?: {
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }) {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (orderId: string) => {
       const result = await detachPatternFromOrder(orderId);
@@ -259,7 +261,10 @@ export function useDetachPattern(options?: {
         throw new Error(result.error || "Không thể gỡ rập");
       }
     },
-    onSuccess: () => options?.onSuccess?.(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-pattern-sessions"] });
+      options?.onSuccess?.();
+    },
     onError: (error: Error) => options?.onError?.(error.message),
   });
 }

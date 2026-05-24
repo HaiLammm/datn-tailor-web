@@ -208,8 +208,12 @@ export async function attachPatternToOrder(
         return { success: false, error: "Đơn hàng hoặc phiên thiết kế không tồn tại" };
       }
       if (response.status === 422) {
-        const body = await response.json();
-        return { success: false, error: body.detail?.message || "Không thể đính kèm rập" };
+        try {
+          const body = await response.json();
+          return { success: false, error: body.detail?.message || "Không thể đính kèm rập" };
+        } catch {
+          return { success: false, error: "Không thể đính kèm rập" };
+        }
       }
       if (response.status === 401 || response.status === 403) {
         return { success: false, error: "Không có quyền thực hiện" };
@@ -246,6 +250,14 @@ export async function detachPatternFromOrder(
     if (!response.ok) {
       if (response.status === 404) {
         return { success: false, error: "Đơn hàng không tồn tại" };
+      }
+      if (response.status === 422) {
+        try {
+          const body = await response.json();
+          return { success: false, error: body.detail?.message || "Không thể gỡ rập" };
+        } catch {
+          return { success: false, error: "Không thể gỡ rập" };
+        }
       }
       return { success: false, error: "Không thể gỡ rập" };
     }
