@@ -94,7 +94,6 @@ describe("SessionDetailClient", () => {
     mockUsePatternSession.mockReturnValue({
       session: createSession(),
       isLoading: false,
-      isFetching: false,
       error: null,
     });
 
@@ -109,7 +108,6 @@ describe("SessionDetailClient", () => {
     mockUsePatternSession.mockReturnValue({
       session: null,
       isLoading: true,
-      isFetching: false,
       error: null,
     });
 
@@ -122,7 +120,6 @@ describe("SessionDetailClient", () => {
     mockUsePatternSession.mockReturnValue({
       session: null,
       isLoading: false,
-      isFetching: false,
       error: "Phiên thiết kế không tồn tại",
     });
 
@@ -144,7 +141,6 @@ describe("SessionDetailClient", () => {
     mockUsePatternSession.mockReturnValue({
       session: draftSession,
       isLoading: false,
-      isFetching: false,
       error: null,
     });
 
@@ -160,7 +156,6 @@ describe("SessionDetailClient", () => {
     mockUsePatternSession.mockReturnValue({
       session: completedSession,
       isLoading: false,
-      isFetching: false,
       error: null,
     });
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import DOMPurify from "dompurify";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   GEOMETRY_PARAM_LABELS,
@@ -28,18 +29,19 @@ function formatGeometryValue(value: number) {
   return `${value.toFixed(1)} cm`;
 }
 
-function getTouchDistance(touches: Pick<React.TouchList, "length" | "item">) {
-  if (touches.length < 2) {
-    return 0;
-  }
+function sanitizeSvg(raw: string | null): string {
+  if (!raw) return "";
+  return DOMPurify.sanitize(raw, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    ADD_TAGS: ["use"],
+  });
+}
 
+function getTouchDistance(touches: Pick<React.TouchList, "length" | "item">) {
+  if (touches.length < 2) return 0;
   const firstTouch = touches.item(0);
   const secondTouch = touches.item(1);
-
-  if (!firstTouch || !secondTouch) {
-    return 0;
-  }
-
+  if (!firstTouch || !secondTouch) return 0;
   const dx = firstTouch.clientX - secondTouch.clientX;
   const dy = firstTouch.clientY - secondTouch.clientY;
   return Math.hypot(dx, dy);
@@ -51,7 +53,10 @@ export function PatternPreview({
   onActivePieceChange,
 }: PatternPreviewProps) {
   const orderedPieces = useMemo(
-    () => PIECE_ORDER.map((type) => pieces.find((piece) => piece.piece_type === type)).filter(Boolean) as PatternPieceResponse[],
+    () =>
+      PIECE_ORDER.map((type) => pieces.find((piece) => piece.piece_type === type)).filter(
+        Boolean
+      ) as PatternPieceResponse[],
     [pieces]
   );
 
@@ -62,25 +67,47 @@ export function PatternPreview({
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
 
+  const viewportRef = useRef<HTMLDivElement>(null);
   const dragPointerRef = useRef<{ x: number; y: number } | null>(null);
   const touchPanRef = useRef<{ x: number; y: number } | null>(null);
   const pinchRef = useRef<{ distance: number; scale: number } | null>(null);
 
   const resolvedActivePieceType =
-    activePieceType && orderedPieces.some((piece) => piece.piece_type === activePieceType)
+    activePieceType &&
+    orderedPieces.some((piece) => piece.piece_type === activePieceType)
       ? activePieceType
-      : initialPieceType && orderedPieces.some((piece) => piece.piece_type === initialPieceType)
+      : initialPieceType &&
+          orderedPieces.some((piece) => piece.piece_type === initialPieceType)
         ? initialPieceType
         : orderedPieces[0]?.piece_type ?? null;
 
   const activePiece =
-    orderedPieces.find((piece) => piece.piece_type === resolvedActivePieceType) ?? orderedPieces[0] ?? null;
+    orderedPieces.find((piece) => piece.piece_type === resolvedActivePieceType) ??
+    orderedPieces[0] ??
+    null;
+
+  // P5: depend on primitive piece_type, not object reference
+  const activePieceTypeResolved = activePiece?.piece_type ?? null;
 
   useEffect(() => {
-    if (activePiece) {
-      onActivePieceChange?.(activePiece.piece_type);
+    if (activePieceTypeResolved) {
+      onActivePieceChange?.(activePieceTypeResolved);
     }
-  }, [activePiece, onActivePieceChange]);
+  }, [activePieceTypeResolved, onActivePieceChange]);
+
+  // P3: attach wheel listener imperatively with { passive: false }
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      setScale((current) => clampScale(current + (event.deltaY < 0 ? 0.1 : -0.1)));
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, []);
 
   const resetViewport = () => {
     setScale(1);
@@ -97,15 +124,17 @@ export function PatternPreview({
     setIsDragging(true);
   };
 
-  const updatePan = (clientX: number, clientY: number, previous: { x: number; y: number }) => {
-    const deltaX = clientX - previous.x;
-    const deltaY = clientY - previous.y;
-
-    setTranslate((current) => ({
-      x: current.x + deltaX,
-      y: current.y + deltaY,
-    }));
-  };
+  const updatePan = useCallback(
+    (clientX: number, clientY: number, previous: { x: number; y: number }) => {
+      const deltaX = clientX - previous.x;
+      const deltaY = clientY - previous.y;
+      setTranslate((current) => ({
+        x: current.x + deltaX,
+        y: current.y + deltaY,
+      }));
+    },
+    []
+  );
 
   const endDrag = () => {
     dragPointerRef.current = null;
@@ -113,6 +142,12 @@ export function PatternPreview({
     pinchRef.current = null;
     setIsDragging(false);
   };
+
+  // P2: sanitize SVG
+  const sanitizedSvg = useMemo(
+    () => sanitizeSvg(activePiece?.svg_data ?? null),
+    [activePiece?.svg_data]
+  );
 
   if (!activePiece) {
     return (
@@ -127,11 +162,16 @@ export function PatternPreview({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-[#1A2B4C]">Bản xem trước SVG</h2>
-          <p className="text-sm text-stone-500">Cuộn để thu phóng, kéo để di chuyển, chạm hai ngón để phóng to.</p>
+          <p className="text-sm text-stone-500">
+            Cuộn để thu phóng, kéo để di chuyển, chạm hai ngón để phóng to.
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span data-testid="pattern-scale-label" className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
+          <span
+            data-testid="pattern-scale-label"
+            className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600"
+          >
             {Math.round(scale * 100)}%
           </span>
           <button
@@ -167,27 +207,25 @@ export function PatternPreview({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <div
+          ref={viewportRef}
           data-testid="pattern-preview-viewport"
           className={`relative min-h-[360px] overflow-hidden rounded-3xl border border-stone-200 bg-[radial-gradient(circle_at_center,_rgba(26,43,76,0.06),_transparent_55%),linear-gradient(180deg,_#fff,_#f7f3ea)] p-6 ${
             isDragging ? "cursor-grabbing" : "cursor-grab"
           }`}
           style={{ touchAction: "none" }}
-          onWheel={(event) => {
-            event.preventDefault();
-            setScale((current) => clampScale(current + (event.deltaY < 0 ? 0.1 : -0.1)));
-          }}
           onMouseDown={(event) => startDrag(event.clientX, event.clientY)}
           onMouseMove={(event) => {
-            if (!dragPointerRef.current) {
-              return;
-            }
-
+            if (!dragPointerRef.current) return;
             updatePan(event.clientX, event.clientY, dragPointerRef.current);
             dragPointerRef.current = { x: event.clientX, y: event.clientY };
           }}
           onMouseUp={endDrag}
           onMouseLeave={endDrag}
           onTouchStart={(event) => {
+            if (event.touches.length >= 3) {
+              endDrag();
+              return;
+            }
             if (event.touches.length === 2) {
               pinchRef.current = {
                 distance: getTouchDistance(event.touches),
@@ -196,7 +234,6 @@ export function PatternPreview({
               touchPanRef.current = null;
               return;
             }
-
             if (event.touches.length === 1) {
               touchPanRef.current = {
                 x: event.touches[0].clientX,
@@ -206,15 +243,18 @@ export function PatternPreview({
           }}
           onTouchMove={(event) => {
             event.preventDefault();
-
+            // P4: guard division by zero
             if (event.touches.length === 2 && pinchRef.current) {
               const nextDistance = getTouchDistance(event.touches);
-              if (nextDistance > 0) {
-                setScale(clampScale(pinchRef.current.scale * (nextDistance / pinchRef.current.distance)));
+              if (nextDistance > 0 && pinchRef.current.distance > 0) {
+                setScale(
+                  clampScale(
+                    pinchRef.current.scale * (nextDistance / pinchRef.current.distance)
+                  )
+                );
               }
               return;
             }
-
             if (event.touches.length === 1 && touchPanRef.current) {
               const touch = event.touches[0];
               updatePan(touch.clientX, touch.clientY, touchPanRef.current);
@@ -224,31 +264,44 @@ export function PatternPreview({
           onTouchEnd={endDrag}
         >
           <div className="flex h-full items-center justify-center">
-            <div
-              data-testid="pattern-preview-stage"
-              className="max-h-full max-w-full [&_svg]:h-full [&_svg]:max-h-[420px] [&_svg]:w-full [&_svg]:max-w-full"
-              style={{
-                transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-                transformOrigin: "center center",
-              }}
-              dangerouslySetInnerHTML={{ __html: activePiece.svg_data ?? "" }}
-            />
+            {/* P10: show message for empty SVG */}
+            {sanitizedSvg ? (
+              <div
+                data-testid="pattern-preview-stage"
+                className="max-h-full max-w-full [&_svg]:h-full [&_svg]:max-h-[420px] [&_svg]:w-full [&_svg]:max-w-full"
+                style={{
+                  transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+                  transformOrigin: "center center",
+                }}
+                dangerouslySetInnerHTML={{ __html: sanitizedSvg }}
+              />
+            ) : (
+              <p className="text-sm text-stone-400">Không có dữ liệu SVG cho mảnh rập này</p>
+            )}
           </div>
         </div>
 
         <div className="rounded-3xl border border-stone-200 bg-stone-50 p-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-stone-500">Thông số hình học</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-stone-500">
+            Thông số hình học
+          </h3>
           <dl className="mt-4 space-y-3 text-sm">
             {PIECE_GEOMETRY_PARAM_KEYS[activePiece.piece_type].map((key) => {
               const value = activePiece.geometry_params?.[key];
-              if (value == null) {
+              // P6: validate value is actually a finite number
+              if (typeof value !== "number" || !Number.isFinite(value)) {
                 return null;
               }
 
               return (
-                <div key={key} className="flex items-start justify-between gap-3 rounded-2xl bg-white px-3 py-2">
+                <div
+                  key={key}
+                  className="flex items-start justify-between gap-3 rounded-2xl bg-white px-3 py-2"
+                >
                   <dt className="text-stone-500">{GEOMETRY_PARAM_LABELS[key]}</dt>
-                  <dd className="font-mono font-medium text-[#1A2B4C]">{formatGeometryValue(value as number)}</dd>
+                  <dd className="font-mono font-medium text-[#1A2B4C]">
+                    {formatGeometryValue(value)}
+                  </dd>
                 </div>
               );
             })}

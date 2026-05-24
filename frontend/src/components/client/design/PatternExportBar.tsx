@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useExportPiece, useExportSession } from "@/hooks/usePatternSession";
 import type { ExportFormat, PatternPieceResponse } from "@/types/pattern";
@@ -9,6 +9,7 @@ interface PatternExportBarProps {
   sessionId: string;
   pieces: PatternPieceResponse[];
   activePiece: PatternPieceResponse | null;
+  onToast?: (message: string, type: "success" | "error") => void;
 }
 
 interface DownloadPayload {
@@ -23,20 +24,37 @@ function decodeBase64ToBlob(base64: string, contentType: string) {
   return new Blob([bytes], { type: contentType });
 }
 
+// P8: wrap in try-finally to prevent blob URL leaks
 function triggerDownload(payload: DownloadPayload) {
   const blob = decodeBase64ToBlob(payload.content, payload.contentType);
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = payload.filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  try {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = payload.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  }
 }
 
-export function PatternExportBar({ sessionId, pieces, activePiece }: PatternExportBarProps) {
+// P9: clamp speed/power to safe ranges
+function clampSpeed(value: number): number {
+  return Math.max(100, Math.min(10000, Math.round(value)));
+}
+
+function clampPower(value: number): number {
+  return Math.max(1, Math.min(100, Math.round(value)));
+}
+
+export function PatternExportBar({
+  sessionId,
+  pieces,
+  activePiece,
+  onToast,
+}: PatternExportBarProps) {
   const exportPieceMutation = useExportPiece();
   const exportSessionMutation = useExportSession();
 
@@ -44,63 +62,54 @@ export function PatternExportBar({ sessionId, pieces, activePiece }: PatternExpo
   const [batchFormat, setBatchFormat] = useState<ExportFormat>("svg");
   const [speed, setSpeed] = useState(1000);
   const [power, setPower] = useState(80);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const hasPieces = pieces.length > 0;
   const isBusy = exportPieceMutation.isPending || exportSessionMutation.isPending;
 
-  useEffect(() => {
-    if (!toast) {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => setToast(null), 3000);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
+  const showToast = (message: string, type: "success" | "error") => {
+    onToast?.(message, type);
+  };
 
   const handlePieceExport = async (format: ExportFormat) => {
-    if (!activePiece) {
-      return;
-    }
+    if (!activePiece || isBusy) return;
 
     try {
       const payload = await exportPieceMutation.mutateAsync({
         pieceId: activePiece.id,
         format,
-        speed: format === "gcode" ? speed : undefined,
-        power: format === "gcode" ? power : undefined,
+        speed: format === "gcode" ? clampSpeed(speed) : undefined,
+        power: format === "gcode" ? clampPower(power) : undefined,
       });
       triggerDownload(payload);
-      setToast({ message: `Đã tải ${format === "svg" ? "SVG" : "G-code"} xuống`, type: "success" });
+      showToast(`Đã tải ${format === "svg" ? "SVG" : "G-code"} xuống`, "success");
       if (format === "gcode") {
         setIsGcodeOpen(false);
       }
     } catch (error) {
-      setToast({
-        message: error instanceof Error ? error.message : "Không thể xuất file",
-        type: "error",
-      });
+      showToast(
+        error instanceof Error ? error.message : "Không thể xuất file",
+        "error"
+      );
     }
   };
 
   const handleSessionExport = async () => {
+    if (isBusy) return;
+
     try {
       const payload = await exportSessionMutation.mutateAsync({
         sessionId,
         format: batchFormat,
-        speed: batchFormat === "gcode" ? speed : undefined,
-        power: batchFormat === "gcode" ? power : undefined,
+        speed: batchFormat === "gcode" ? clampSpeed(speed) : undefined,
+        power: batchFormat === "gcode" ? clampPower(power) : undefined,
       });
       triggerDownload(payload);
-      setToast({
-        message: `Đã tải gói ${batchFormat === "svg" ? "SVG" : "G-code"}`,
-        type: "success",
-      });
+      showToast(`Đã tải gói ${batchFormat === "svg" ? "SVG" : "G-code"}`, "success");
     } catch (error) {
-      setToast({
-        message: error instanceof Error ? error.message : "Không thể xuất toàn bộ mảnh rập",
-        type: "error",
-      });
+      showToast(
+        error instanceof Error ? error.message : "Không thể xuất toàn bộ mảnh rập",
+        "error"
+      );
     }
   };
 
@@ -151,7 +160,9 @@ export function PatternExportBar({ sessionId, pieces, activePiece }: PatternExpo
         </label>
 
         <div className="rounded-2xl border border-dashed border-stone-200 bg-white px-3 py-2 text-xs text-stone-500">
-          {activePiece ? `Mảnh đang chọn: ${activePiece.piece_type}` : "Chưa có mảnh đang chọn"}
+          {activePiece
+            ? `Mảnh đang chọn: ${activePiece.piece_type}`
+            : "Chưa có mảnh đang chọn"}
         </div>
       </div>
 
@@ -168,7 +179,7 @@ export function PatternExportBar({ sessionId, pieces, activePiece }: PatternExpo
               min={100}
               max={10000}
               value={speed}
-              onChange={(event) => setSpeed(Number(event.target.value) || 0)}
+              onChange={(event) => setSpeed(clampSpeed(Number(event.target.value) || 1000))}
               className="w-full rounded-2xl border border-stone-200 px-3 py-2 text-sm text-stone-700 outline-none transition focus:border-indigo-300"
             />
           </label>
@@ -177,10 +188,10 @@ export function PatternExportBar({ sessionId, pieces, activePiece }: PatternExpo
             <span className="mb-1 block font-medium">Công suất laser (%)</span>
             <input
               type="number"
-              min={0}
+              min={1}
               max={100}
               value={power}
-              onChange={(event) => setPower(Number(event.target.value) || 0)}
+              onChange={(event) => setPower(clampPower(Number(event.target.value) || 80))}
               className="w-full rounded-2xl border border-stone-200 px-3 py-2 text-sm text-stone-700 outline-none transition focus:border-indigo-300"
             />
           </label>
@@ -193,19 +204,6 @@ export function PatternExportBar({ sessionId, pieces, activePiece }: PatternExpo
           >
             Tải xuống
           </button>
-        </div>
-      ) : null}
-
-      {toast ? (
-        <div
-          role={toast.type === "error" ? "alert" : "status"}
-          className={`rounded-2xl px-3 py-2 text-sm ${
-            toast.type === "success"
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-red-50 text-red-700"
-          }`}
-        >
-          {toast.message}
         </div>
       ) : null}
     </div>

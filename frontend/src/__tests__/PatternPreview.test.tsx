@@ -66,7 +66,7 @@ describe("PatternPreview", () => {
 
     expect(screen.getByText("Front Piece")).toBeTruthy();
     expect(container.querySelector("svg")).not.toBeNull();
-    expect(screen.getByText("Ngang ngực")).toBeTruthy();
+    expect(screen.getByText("Rộng ngực")).toBeTruthy();
   });
 
   it("switches displayed SVG when piece tab changes", () => {

@@ -14,7 +14,11 @@ import { useCallback, useState } from "react";
 
 import {
   createPatternSession,
+  exportPatternPiece,
+  exportPatternSession,
   fetchCustomerMeasurement,
+  fetchPatternSession,
+  generatePatternPieces,
   searchCustomers,
 } from "@/app/actions/pattern-actions";
 import type {
@@ -164,11 +168,15 @@ export function usePatternSession(
   const { data, isLoading, error } = useQuery({
     queryKey: ["pattern-session", sessionId],
     queryFn: async () => {
-      // TODO: implement fetchPatternSession action
-      throw new Error("Not implemented");
+      const result = await fetchPatternSession(sessionId);
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "Không thể tải phiên thiết kế");
+      }
+      return result.data;
     },
     initialData: options?.initialData,
     enabled: !!sessionId,
+    staleTime: 30000,
   });
 
   return {
@@ -185,8 +193,11 @@ export function useGeneratePattern(sessionId: string) {
 
   return useMutation({
     mutationFn: async () => {
-      // TODO: implement generatePattern action
-      throw new Error("Not implemented");
+      const result = await generatePatternPieces(sessionId);
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "Không thể tạo mẫu rập");
+      }
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pattern-session", sessionId] });
@@ -202,7 +213,7 @@ export function useAttachPattern(options?: {
 }) {
   return useMutation({
     mutationFn: async (_payload: { orderId: string; patternSessionId: string }) => {
-      // TODO: implement attachPattern action
+      // Story 11.6 — not yet implemented
       throw new Error("Not implemented");
     },
     onSuccess: () => options?.onSuccess?.(),
@@ -216,7 +227,7 @@ export function useCustomerPatternSessions(customerId: string) {
   const { data, isLoading } = useQuery({
     queryKey: ["customer-pattern-sessions", customerId],
     queryFn: async (): Promise<PatternSessionListItem[]> => {
-      // TODO: implement fetchCustomerPatternSessions action
+      // Story 11.6 — not yet implemented
       return [];
     },
     enabled: !!customerId,
@@ -228,34 +239,50 @@ export function useCustomerPatternSessions(customerId: string) {
   };
 }
 
-// ===== Export Piece Mutation (Story 11.6) =====
+// ===== Export Piece Mutation (Story 11.5) =====
 
 export function useExportPiece() {
   return useMutation({
-    mutationFn: async (_payload: {
+    mutationFn: async (payload: {
       pieceId: string;
       format: string;
       speed?: number;
       power?: number;
     }) => {
-      // TODO: implement exportPiece action
-      throw new Error("Not implemented");
+      const result = await exportPatternPiece(
+        payload.pieceId,
+        payload.format,
+        payload.speed,
+        payload.power
+      );
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "Không thể xuất file");
+      }
+      return result.data;
     },
   });
 }
 
-// ===== Export Session Mutation (Story 11.6) =====
+// ===== Export Session Mutation (Story 11.5) =====
 
 export function useExportSession() {
   return useMutation({
-    mutationFn: async (_payload: {
+    mutationFn: async (payload: {
       sessionId: string;
       format: string;
       speed?: number;
       power?: number;
     }) => {
-      // TODO: implement exportSession action
-      throw new Error("Not implemented");
+      const result = await exportPatternSession(
+        payload.sessionId,
+        payload.format,
+        payload.speed,
+        payload.power
+      );
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "Không thể xuất toàn bộ mảnh rập");
+      }
+      return result.data;
     },
   });
 }

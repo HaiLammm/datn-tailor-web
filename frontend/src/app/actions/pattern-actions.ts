@@ -170,16 +170,163 @@ export async function searchCustomers(
   }
 }
 
-// ===== Stub actions for Stories 11.5/11.6 (TODO: implement) =====
+// ===== Story 11.5: Session detail + generate + export =====
 
 export async function fetchPatternSession(
-  _sessionId: string
+  sessionId: string
 ): Promise<{ success: boolean; data?: PatternSessionResponse | null; error?: string; statusCode?: number }> {
-  return { success: false, error: "Not implemented" };
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${BACKEND_URL}/api/v1/patterns/sessions/${sessionId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { success: false, error: "Phiên thiết kế không tồn tại", statusCode: 404 };
+      }
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, error: "Không có quyền truy cập", statusCode: response.status };
+      }
+      return { success: false, error: "Không thể tải phiên thiết kế", statusCode: response.status };
+    }
+
+    const result = await response.json();
+    return { success: true, data: result.data };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Không có quyền truy cập") {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Không thể kết nối đến máy chủ" };
+  }
 }
 
 export async function fetchCustomerDetail(
-  _customerId: string
+  customerId: string
 ): Promise<{ success: boolean; data?: { full_name: string } | null; error?: string }> {
-  return { success: false, error: "Not implemented" };
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${BACKEND_URL}/api/v1/customers/${customerId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return { success: true, data: null };
+    }
+
+    const result = await response.json();
+    return { success: true, data: { full_name: result.data?.full_name ?? result.full_name ?? null } };
+  } catch {
+    return { success: true, data: null };
+  }
+}
+
+export async function generatePatternPieces(
+  sessionId: string
+): Promise<{ success: boolean; data?: PatternSessionResponse; error?: string }> {
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${BACKEND_URL}/api/v1/patterns/sessions/${sessionId}/generate`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      if (response.status === 422) {
+        const body = await response.json();
+        return { success: false, error: body.detail?.message || "Không thể tạo mẫu rập" };
+      }
+      return { success: false, error: "Không thể tạo mẫu rập" };
+    }
+
+    const result = await response.json();
+    return { success: true, data: result.data };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Không có quyền truy cập") {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Không thể kết nối đến máy chủ" };
+  }
+}
+
+export async function exportPatternPiece(
+  pieceId: string,
+  format: string,
+  speed?: number,
+  power?: number
+): Promise<{ success: boolean; data?: { content: string; filename: string; contentType: string }; error?: string }> {
+  try {
+    const token = await getAuthToken();
+    const params = new URLSearchParams({ format });
+    if (speed != null) params.set("speed", String(speed));
+    if (power != null) params.set("power", String(power));
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/patterns/pieces/${pieceId}/export?${params}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!response.ok) {
+      return { success: false, error: "Không thể xuất file" };
+    }
+
+    const blob = await response.blob();
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    const ext = format === "svg" ? "svg" : "gcode";
+    return {
+      success: true,
+      data: {
+        content: buffer.toString("base64"),
+        filename: `pattern-piece-${pieceId.slice(0, 8)}.${ext}`,
+        contentType: blob.type || (format === "svg" ? "image/svg+xml" : "application/octet-stream"),
+      },
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Không có quyền truy cập") {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Không thể kết nối đến máy chủ" };
+  }
+}
+
+export async function exportPatternSession(
+  sessionId: string,
+  format: string,
+  speed?: number,
+  power?: number
+): Promise<{ success: boolean; data?: { content: string; filename: string; contentType: string }; error?: string }> {
+  try {
+    const token = await getAuthToken();
+    const params = new URLSearchParams({ format });
+    if (speed != null) params.set("speed", String(speed));
+    if (power != null) params.set("power", String(power));
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/patterns/sessions/${sessionId}/export?${params}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!response.ok) {
+      return { success: false, error: "Không thể xuất toàn bộ mảnh rập" };
+    }
+
+    const blob = await response.blob();
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    return {
+      success: true,
+      data: {
+        content: buffer.toString("base64"),
+        filename: `pattern-session-${sessionId.slice(0, 8)}.zip`,
+        contentType: blob.type || "application/zip",
+      },
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Không có quyền truy cập") {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Không thể kết nối đến máy chủ" };
+  }
 }

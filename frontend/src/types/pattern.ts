@@ -97,9 +97,11 @@ export type ExportFormat = "svg" | "gcode";
 
 export interface PatternPieceResponse {
   id: string;
+  session_id: string;
   piece_type: PieceType;
   svg_data: string | null;
   geometry_params: Record<string, unknown> | null;
+  created_at: string;
 }
 
 // ===== Pattern Session Response Types =====
@@ -108,6 +110,7 @@ export interface PatternSessionResponse {
   id: string;
   tenant_id: string;
   customer_id: string | null;
+  created_by: string;
   garment_type: string;
   status: "draft" | "completed" | "exported";
   do_dai_ao: number;
