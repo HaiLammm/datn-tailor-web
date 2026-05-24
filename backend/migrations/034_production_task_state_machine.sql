@@ -38,6 +38,14 @@ ALTER TABLE tailor_tasks
     ADD CONSTRAINT chk_rejection_category
     CHECK (rejection_category IN ('overloaded', 'not_specialty', 'personal', 'other') OR rejection_category IS NULL);
 
+ALTER TABLE tailor_tasks
+    ADD CONSTRAINT chk_status
+    CHECK (status IN ('unassigned', 'assigned', 'accepted', 'rejected', 'in_progress', 'on_hold', 'reassigning', 'submitted_for_qc', 'completed', 'cancelled', 'failed_qc', 'cancellation_requested'));
+
+ALTER TABLE tailor_tasks
+    ADD CONSTRAINT chk_rework_count_non_negative
+    CHECK (rework_count >= 0);
+
 -- ============================================================
 -- 5. CREATE TABLE task_stage_logs
 -- ============================================================
@@ -54,7 +62,8 @@ CREATE TABLE IF NOT EXISTS task_stage_logs (
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_stage_log_status CHECK (status IN ('pending', 'in_progress', 'completed', 'skipped'))
+    CONSTRAINT chk_stage_log_status CHECK (status IN ('pending', 'in_progress', 'completed', 'skipped')),
+    CONSTRAINT uq_task_stage_order UNIQUE (task_id, stage_order)
 );
 
 CREATE INDEX IF NOT EXISTS idx_task_stage_logs_task_id ON task_stage_logs(task_id);

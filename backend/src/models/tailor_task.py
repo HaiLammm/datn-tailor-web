@@ -7,7 +7,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, model_validator
 
 
-# ── Task Status (11-state union) ─────────────────────────────────────────────
+# ── Task Status (12 values: 11 states + cancellation_requested) ──────────────
 
 TaskStatus = Literal[
     "unassigned",
@@ -77,6 +77,9 @@ class QCResultRequest(BaseModel):
                 raise ValueError("qc_issues is required when result='fail'")
             if not self.action_on_fail:
                 raise ValueError("action_on_fail is required when result='fail'")
+        else:
+            self.action_on_fail = None
+            self.qc_issues = None
         return self
 
 
@@ -109,7 +112,7 @@ class TaskStageLogResponse(BaseModel):
 class TaskHistoryResponse(BaseModel):
     id: str
     task_id: str
-    actor_id: str
+    actor_id: str | None = None
     actor_role: str
     action: str
     from_status: str | None = None
