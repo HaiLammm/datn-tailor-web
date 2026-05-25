@@ -21,8 +21,8 @@ import {
   completeStage,
 } from "@/app/actions/tailor-task-actions";
 import { usePatternSession, useExportPiece, useExportSession } from "@/hooks/usePatternSession";
-import PatternPreview from "@/components/client/design/PatternPreview";
-import PatternExportBar from "@/components/client/design/PatternExportBar";
+import { PatternPreview } from "@/components/client/design/PatternPreview";
+import { PatternExportBar } from "@/components/client/design/PatternExportBar";
 import type { PatternPieceResponse, PieceType } from "@/types/pattern";
 
 interface TaskDetailModalProps {
