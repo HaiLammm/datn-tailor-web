@@ -72,6 +72,8 @@ from src.services.notification_creator import (
     TASK_REASSIGNED_OLD,
     TASK_REASSIGNED_NEW,
     CUSTOMER_QC_PASSED,
+    ORDER_READY_SHIP_MESSAGE,
+    ORDER_READY_PICKUP_MESSAGE,
     TASK_ASSIGNED_TAILOR,
     create_notification,
 )
@@ -251,11 +253,14 @@ async def accept_task(
     else:
         task.expected_finish_at = now + timedelta(days=7)
 
-    # Transition order confirmed → in_production (same transaction)
-    order = await db.get(OrderDB, task.order_id)
-    if order and order.status == "confirmed":
+    # Transition bespoke order confirmed → in_production (same transaction)
+    order_result = await db.execute(
+        select(OrderDB).where(OrderDB.id == task.order_id).with_for_update()
+    )
+    order = order_result.scalar_one_or_none()
+    if order and order.service_type == "bespoke" and order.status == "confirmed":
         order.status = "in_production"
-        if not order.preparation_step:
+        if order.preparation_step is None:
             order.preparation_step = "cutting"
         order.updated_at = datetime.now(timezone.utc)
 
@@ -515,18 +520,21 @@ async def process_qc_result(
             select(OrderDB).where(OrderDB.id == task.order_id).with_for_update()
         )
         order = order_result.scalar_one_or_none()
+        order_transitioned = False
         if order and order.service_type == "bespoke" and order.status == "in_production":
             from src.services.order_service import _all_tailor_tasks_completed
             if await _all_tailor_tasks_completed(db, task.order_id):
-                order.status = "ready_to_ship"
+                order.status = "ready_for_pickup" if order.pickup_date else "ready_to_ship"
                 order.updated_at = datetime.now(timezone.utc)
+                order_transitioned = True
 
         customer_id = order.customer_id if order else None
+        order_code = f"ORD-{order.created_at.strftime('%Y%m%d')}-{str(order.id).replace('-', '').upper()[:6]}" if order else None
 
         await db.flush()
         await db.commit()
 
-        # Notify customer
+        # Notify customer — QC passed
         if customer_id:
             try:
                 title, msg_tpl = CUSTOMER_QC_PASSED
@@ -539,6 +547,21 @@ async def process_qc_result(
                 )
             except Exception:
                 logger.warning("Failed to notify customer about QC pass %s", task.id)
+
+        # Notify customer — order ready for ship/pickup
+        if order_transitioned and customer_id and order_code:
+            try:
+                ready_msg = ORDER_READY_PICKUP_MESSAGE if order.pickup_date else ORDER_READY_SHIP_MESSAGE
+                r_title, r_tpl = ready_msg
+                await create_notification(
+                    db=db, user_id=customer_id, tenant_id=tenant_id,
+                    notification_type="order_status",
+                    title=r_title,
+                    message=r_tpl.format(order_code=order_code),
+                    data={"order_id": str(order.id)},
+                )
+            except Exception:
+                logger.warning("Failed to notify customer about order ready %s", task.order_id)
 
     elif request.action_on_fail == "rework":
         await _transition_task(db, task, "failed_qc", actor_id, "Owner", reason=request.qc_issues)

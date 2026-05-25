@@ -168,12 +168,66 @@ async def test_failed_qc_blocks_completion(db: AsyncSession):
     assert result is False
 
 
+# ── Test 7.4: tailor_task_info enrichment ─────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_build_tailor_task_info_enrichment(db: AsyncSession):
+    order = _make_order()
+    db.add(order)
+    await db.flush()
+
+    task = _make_task(order.id, status="in_progress", task_id=uuid.uuid4())
+    db.add(task)
+    await db.flush()
+
+    s1 = TaskStageLogDB(
+        task_id=task.id, tenant_id=TENANT_ID,
+        stage="cutting", stage_order=1, status="completed",
+    )
+    s2 = TaskStageLogDB(
+        task_id=task.id, tenant_id=TENANT_ID,
+        stage="sewing", stage_order=2, status="in_progress",
+    )
+    s3 = TaskStageLogDB(
+        task_id=task.id, tenant_id=TENANT_ID,
+        stage="finishing", stage_order=3, status="pending",
+    )
+    db.add_all([s1, s2, s3])
+    await db.flush()
+    await db.commit()
+
+    # Re-fetch with eager loads
+    from sqlalchemy.orm import selectinload
+    from sqlalchemy import select as sa_select
+    result = await db.execute(
+        sa_select(TailorTaskDB)
+        .options(selectinload(TailorTaskDB.assignee), selectinload(TailorTaskDB.stage_logs))
+        .where(TailorTaskDB.id == task.id)
+    )
+    loaded_task = result.scalar_one()
+
+    from src.services.order_service import _build_tailor_task_info
+    brief = _build_tailor_task_info(loaded_task)
+    assert brief.progress_percent == pytest.approx(33.3, abs=0.1)
+    assert brief.current_stage == "sewing"
+    assert brief.is_rework is False
+    assert brief.rework_count == 0
+    assert brief.tailor_name == "Thợ May A"
+
+    detail = _build_tailor_task_info(loaded_task, detail=True)
+    assert detail.stage_logs is not None
+    assert len(detail.stage_logs) == 3
+    assert detail.stage_logs[0].stage == "cutting"
+    assert detail.stage_logs[0].status == "completed"
+
+
 # ── Test 7.5: accept_task sets preparation_step = "cutting" ──────────────────
 
 
 @pytest.mark.asyncio
 async def test_accept_task_sets_preparation_step(db: AsyncSession):
-    order = _make_order(status="confirmed")
+    order = _make_order(status="confirmed", service_type="bespoke")
     db.add(order)
     await db.flush()
 

@@ -45,6 +45,9 @@ from src.models.order import (
     PayRemainingResponse,
     RENT_PREP_STEPS,
     ServiceType,
+    StageLogBrief,
+    TailorTaskInfoBrief,
+    TailorTaskInfoDetail,
     UpdatePreparationStepRequest,
     UpdatePreparationStepResponse,
 )
@@ -529,13 +532,18 @@ _VALID_TRANSITIONS: dict[str, str | None] = {
 }
 
 
+_TASK_NON_BLOCKING = ["cancelled", "cancellation_requested", "unassigned", "rejected", "reassigning"]
+
+
 async def _all_tailor_tasks_completed(db: AsyncSession, order_id: UUID) -> bool:
     """Check if all active tailor tasks for an order are completed.
 
-    Excludes cancelled/cancellation_requested tasks so reassign scenarios work correctly.
+    Non-blocking statuses (cancelled, cancellation_requested, unassigned,
+    rejected, reassigning) are excluded from the active set.
+    failed_qc intentionally blocks — owner must resolve manually.
+    Returns False when no active tasks exist.
     """
-    _non_blocking = ["cancelled", "cancellation_requested", "unassigned", "rejected", "reassigning"]
-    _active_filter = TailorTaskDB.status.not_in(_non_blocking)
+    _active_filter = TailorTaskDB.status.not_in(_TASK_NON_BLOCKING)
     task_result = await db.execute(
         select(
             func.count(TailorTaskDB.id).filter(_active_filter),
@@ -548,6 +556,42 @@ async def _all_tailor_tasks_completed(db: AsyncSession, order_id: UUID) -> bool:
     if total_tasks == 0:
         return False
     return total_tasks == completed_tasks
+
+
+def _build_tailor_task_info(
+    task: TailorTaskDB, *, detail: bool = False,
+) -> TailorTaskInfoBrief | TailorTaskInfoDetail:
+    """Build typed tailor task info from a TailorTaskDB with eager-loaded relationships."""
+    stages = task.stage_logs or []
+    sorted_stages = sorted(stages, key=lambda x: x.stage_order or 0)
+    total = len(stages)
+    done = sum(1 for s in stages if s.status == "completed")
+
+    kwargs: dict = dict(
+        tailor_name=task.assignee.full_name if task.assignee else "Thợ may",
+        task_status=task.status,
+        garment_name=task.garment_name,
+        failure_category=task.failure_category,
+        progress_percent=round((done / total) * 100, 1) if total > 0 else None,
+        current_stage=next((s.stage for s in sorted_stages if s.status == "in_progress"), None),
+        is_rework=task.is_rework,
+        rework_count=task.rework_count,
+    )
+
+    if not detail:
+        return TailorTaskInfoBrief(**kwargs)
+
+    return TailorTaskInfoDetail(
+        **kwargs,
+        expected_finish_at=task.expected_finish_at,
+        stage_logs=[
+            StageLogBrief(
+                stage=s.stage, stage_order=s.stage_order or 0,
+                status=s.status, started_at=s.started_at, completed_at=s.completed_at,
+            )
+            for s in sorted_stages
+        ],
+    )
 
 
 def _payment_ok(payment_status: str, payment_method: str) -> bool:
@@ -637,7 +681,7 @@ async def list_orders(
 
     # Batch-load tailor task info for bespoke orders
     bespoke_order_ids = [o.id for o in orders if o.service_type == "bespoke"]
-    tailor_task_map: dict[UUID, dict] = {}
+    tailor_task_map: dict[UUID, TailorTaskInfoBrief] = {}
     if bespoke_order_ids:
         task_query = (
             select(TailorTaskDB)
@@ -652,21 +696,7 @@ async def list_orders(
         for t in task_result.scalars().unique().all():
             if t.order_id in tailor_task_map:
                 continue
-            stages = t.stage_logs or []
-            total_stages = len(stages)
-            completed_stages = sum(1 for s in stages if s.status == "completed")
-            progress_percent = round((completed_stages / total_stages) * 100, 1) if total_stages > 0 else None
-            current_stage = next((s.stage for s in sorted(stages, key=lambda x: x.stage_order) if s.status == "in_progress"), None)
-            tailor_task_map[t.order_id] = {
-                "tailor_name": t.assignee.full_name if t.assignee else "Thợ may",
-                "task_status": t.status,
-                "garment_name": t.garment_name,
-                "failure_category": t.failure_category,
-                "progress_percent": progress_percent,
-                "current_stage": current_stage,
-                "is_rework": t.is_rework,
-                "rework_count": t.rework_count,
-            }
+            tailor_task_map[t.order_id] = _build_tailor_task_info(t)
 
     # Batch-check readiness for in_progress (→ checked) and checked (→ shipped)
     checkable_ids: set[UUID] = set()
@@ -681,7 +711,7 @@ async def list_orders(
 
     def _next_status(o: OrderDB) -> str | None:
         # pending uses approve_order() — no generic next status button shown
-        if o.status in ("cancelled", "confirmed", "pending", "completed", "preparing"):
+        if o.status in ("cancelled", "confirmed", "pending", "completed", "preparing", "in_production"):
             return None
         if o.status == "in_progress":
             return "checked" if o.id in checkable_ids else None
@@ -814,6 +844,19 @@ async def update_order_status(
                     "error": {
                         "code": "ERR_CHECK_NOT_READY",
                         "message": "Chưa thể kiểm tra: cần tất cả thợ may đã hoàn thành công việc",
+                    }
+                },
+            )
+
+    # Guard: in_production → ready_to_ship requires all tailor tasks completed (QC pass)
+    if current_status == "in_production" and new_status == "ready_to_ship":
+        if not await _all_tailor_tasks_completed(db, order.id):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_PRODUCTION_NOT_READY",
+                        "message": "Chưa thể chuyển: cần tất cả công việc may đã hoàn thành QC",
                     }
                 },
             )
@@ -1009,7 +1052,7 @@ async def get_order_with_transactions(
     db: AsyncSession,
     order_id: UUID,
     tenant_id: UUID,
-) -> tuple[OrderResponse, list[PaymentTransactionResponse], dict | None]:
+) -> tuple[OrderResponse, list[PaymentTransactionResponse]]:
     """Get full order detail including payment transactions for owner drawer."""
     result = await db.execute(
         select(OrderDB)
@@ -1095,34 +1138,7 @@ async def get_order_with_transactions(
         )
         detail_task = detail_task_result.scalar_one_or_none()
         if detail_task:
-            stages = detail_task.stage_logs or []
-            sorted_stages = sorted(stages, key=lambda x: x.stage_order)
-            total_stages = len(stages)
-            completed_stages = sum(1 for s in stages if s.status == "completed")
-            progress_percent = round((completed_stages / total_stages) * 100, 1) if total_stages > 0 else None
-            current_stage = next((s.stage for s in sorted_stages if s.status == "in_progress"), None)
-            stage_logs_list = [
-                {
-                    "stage": s.stage,
-                    "stage_order": s.stage_order,
-                    "status": s.status,
-                    "started_at": s.started_at.isoformat() if s.started_at else None,
-                    "completed_at": s.completed_at.isoformat() if s.completed_at else None,
-                }
-                for s in sorted_stages
-            ]
-            tailor_task_detail_info = {
-                "tailor_name": detail_task.assignee.full_name if detail_task.assignee else "Thợ may",
-                "task_status": detail_task.status,
-                "garment_name": detail_task.garment_name,
-                "failure_category": detail_task.failure_category,
-                "progress_percent": progress_percent,
-                "current_stage": current_stage,
-                "is_rework": detail_task.is_rework,
-                "rework_count": detail_task.rework_count,
-                "expected_finish_at": detail_task.expected_finish_at.isoformat() if detail_task.expected_finish_at else None,
-                "stage_logs": stage_logs_list,
-            }
+            tailor_task_detail_info = _build_tailor_task_info(detail_task, detail=True)
 
     order_response = OrderResponse(
         id=order.id,
@@ -1149,9 +1165,10 @@ async def get_order_with_transactions(
         return_date=order.return_date,
         cancellation_reason=order.cancellation_reason,
         active_cancellation_request=active_cancel_req,
+        tailor_task_info=tailor_task_detail_info,
     )
 
-    return order_response, transactions, tailor_task_detail_info
+    return order_response, transactions
 
 
 async def approve_order(
