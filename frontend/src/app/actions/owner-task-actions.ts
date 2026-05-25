@@ -41,7 +41,7 @@ export async function fetchAllTasks(
   } else if (filters?.status) {
     url.searchParams.set("status", filters.status);
   }
-  if (filters?.overdue_only) url.searchParams.set("overdue_only", "true");
+  if (filters?.overdue_only && filters?.status !== "overdue") url.searchParams.set("overdue_only", "true");
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
@@ -329,11 +329,16 @@ async function apiCall<T>(
     }
 
     if (response.status === 204) {
-      return {} as T;
+      return [] as unknown as T;
     }
 
     const json = await response.json();
     return (json.data ?? json) as T;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Yêu cầu hết thời gian. Vui lòng thử lại.");
+    }
+    throw error;
   } finally {
     clearTimeout(timeoutId);
   }

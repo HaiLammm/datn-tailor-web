@@ -39,7 +39,7 @@ export default function TaskCreateDialog({
     enabled: open,
   });
 
-  const { data: matchingScores, isLoading: scoresLoading } = useQuery({
+  const { data: matchingScores, isFetching: scoresLoading } = useQuery({
     queryKey: ["matching-scores", orderId],
     queryFn: () => fetchMatchingScores(orderId),
     staleTime: 60_000,
@@ -140,40 +140,45 @@ export default function TaskCreateDialog({
             </div>
 
             {/* Matching scores */}
-            {orderId && scores.length > 0 && (
+            {orderId && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Điểm phù hợp thợ may
                 </label>
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left py-1.5 px-2 font-medium text-gray-500">Thợ may</th>
-                        <th className="text-right py-1.5 px-2 font-medium text-gray-500">Tải</th>
-                        <th className="text-right py-1.5 px-2 font-medium text-gray-500">Đúng hạn</th>
-                        <th className="text-right py-1.5 px-2 font-medium text-gray-500">Điểm</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {scores.map((s) => (
-                        <tr
-                          key={s.tailor_id}
-                          onClick={() => setAssignedTo(s.tailor_id)}
-                          className={`border-b border-gray-100 cursor-pointer transition-colors hover:bg-blue-50 ${
-                            assignedTo === s.tailor_id ? "bg-blue-100" : ""
-                          }`}
-                        >
-                          <td className="py-1.5 px-2 font-medium">{s.tailor_name}</td>
-                          <td className="py-1.5 px-2 text-right">{(s.workload_score * 100).toFixed(0)}%</td>
-                          <td className="py-1.5 px-2 text-right">{(s.on_time_rate * 100).toFixed(0)}%</td>
-                          <td className="py-1.5 px-2 text-right font-semibold">{s.score.toFixed(0)}</td>
+                {scoresLoading && <p className="text-xs text-gray-400 py-2">Đang tải điểm...</p>}
+                {!scoresLoading && scores.length > 0 && (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="text-left py-1.5 px-2 font-medium text-gray-500">Thợ may</th>
+                          <th className="text-right py-1.5 px-2 font-medium text-gray-500">Tải</th>
+                          <th className="text-right py-1.5 px-2 font-medium text-gray-500">Đúng hạn</th>
+                          <th className="text-right py-1.5 px-2 font-medium text-gray-500">Điểm</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {scoresLoading && <p className="text-xs text-gray-400 mt-1">Đang tải điểm...</p>}
+                      </thead>
+                      <tbody>
+                        {scores.map((s) => (
+                          <tr
+                            key={s.tailor_id}
+                            onClick={() => setAssignedTo(s.tailor_id)}
+                            className={`border-b border-gray-100 cursor-pointer transition-colors hover:bg-blue-50 ${
+                              assignedTo === s.tailor_id ? "bg-blue-100" : ""
+                            }`}
+                          >
+                            <td className="py-1.5 px-2 font-medium">{s.tailor_name}</td>
+                            <td className="py-1.5 px-2 text-right">{(s.workload_score * 100).toFixed(0)}%</td>
+                            <td className="py-1.5 px-2 text-right">{(s.on_time_rate * 100).toFixed(0)}%</td>
+                            <td className="py-1.5 px-2 text-right font-semibold">{s.score.toFixed(0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {!scoresLoading && scores.length === 0 && (
+                  <p className="text-xs text-gray-400 py-2">Không có dữ liệu điểm phù hợp</p>
+                )}
               </div>
             )}
 

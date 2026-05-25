@@ -507,12 +507,15 @@ async def process_qc_result(
 ) -> TailorTaskResponse:
     task = await _get_task_for_transition(db, task_id, tenant_id)
 
-    if task.status != "submitted_for_qc":
-        raise HTTPException(status_code=400, detail="Chỉ có thể xử lý QC khi trạng thái là 'submitted_for_qc'")
+    if task.status not in ("submitted_for_qc", "failed_qc"):
+        raise HTTPException(status_code=400, detail="Chỉ có thể xử lý QC khi trạng thái là 'submitted_for_qc' hoặc 'failed_qc'")
 
+    already_failed = task.status == "failed_qc"
     now = datetime.now(timezone.utc)
 
     if request.result == "pass":
+        if already_failed:
+            raise HTTPException(status_code=400, detail="Không thể đánh dấu đạt khi đã không đạt QC. Hãy giao sửa lại hoặc chuyển thợ.")
         await _transition_task(db, task, "completed", actor_id, "Owner")
         task.completed_at = now
 
@@ -564,7 +567,8 @@ async def process_qc_result(
                 logger.warning("Failed to notify customer about order ready %s", task.order_id)
 
     elif request.action_on_fail == "rework":
-        await _transition_task(db, task, "failed_qc", actor_id, "Owner", reason=request.qc_issues)
+        if not already_failed:
+            await _transition_task(db, task, "failed_qc", actor_id, "Owner", reason=request.qc_issues)
         await _transition_task(db, task, "in_progress", actor_id, "Owner", reason="Rework after QC failure")
         task.is_rework = True
         task.rework_count += 1
@@ -592,7 +596,8 @@ async def process_qc_result(
 
     elif request.action_on_fail == "reassign":
         old_tailor_id = task.assigned_to
-        await _transition_task(db, task, "failed_qc", actor_id, "Owner", reason=request.qc_issues)
+        if not already_failed:
+            await _transition_task(db, task, "failed_qc", actor_id, "Owner", reason=request.qc_issues)
         await _transition_task(db, task, "reassigning", actor_id, "Owner", reason="Reassign after QC failure")
         await _transition_task(db, task, "unassigned", actor_id, "Owner")
         task.assigned_to = None
@@ -615,7 +620,10 @@ async def process_qc_result(
                 logger.warning("Failed to notify old tailor about reassign %s", task.id)
 
     elif request.action_on_fail == "fail":
-        await _transition_task(db, task, "failed_qc", actor_id, "Owner", reason=request.qc_issues)
+        if already_failed:
+            await _transition_task(db, task, "cancelled", actor_id, "Owner", reason=request.qc_issues or "Hỏng vĩnh viễn")
+        else:
+            await _transition_task(db, task, "failed_qc", actor_id, "Owner", reason=request.qc_issues)
         task.qc_issues = request.qc_issues
 
         await db.flush()

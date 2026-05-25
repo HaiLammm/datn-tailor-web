@@ -376,7 +376,7 @@ function OwnerActions({
             Chuyển thợ khác
           </button>
           <button
-            onClick={() => qcMutation.mutate({ result: "fail", qc_issues: task.qc_issues || "Terminal fail", action_on_fail: "fail" })}
+            onClick={() => qcMutation.mutate({ result: "fail", qc_issues: task.qc_issues || "Hỏng vĩnh viễn", action_on_fail: "fail" })}
             disabled={qcMutation.isPending}
             className="px-3 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200 disabled:opacity-50"
           >
@@ -388,6 +388,11 @@ function OwnerActions({
         )}
         {activePanel === "reassign" && (
           <ReassignPanel mutation={reassignMutation} tailors={tailors} onCancel={() => setActivePanel(null)} />
+        )}
+        {(qcMutation.error || reassignMutation.error) && (
+          <p className="text-sm text-red-600">
+            {(qcMutation.error || reassignMutation.error)?.message}
+          </p>
         )}
       </div>
     );
