@@ -1,7 +1,7 @@
 "use client";
 
 import type { TailorTask, TaskStatus } from "@/types/tailor-task";
-import { STATUS_BADGE } from "@/types/tailor-task";
+import { STATUS_BADGE, TERMINAL_STATUSES } from "@/types/tailor-task";
 
 interface TaskRowProps {
   task: TailorTask;
@@ -47,7 +47,7 @@ export default function TaskRow({
 }: TaskRowProps) {
   const badge = STATUS_BADGE[task.status] ?? STATUS_BADGE.assigned;
   const actionLabel = ACTION_LABELS[task.status];
-  const isTerminal = ["completed", "cancelled", "rejected", "reassigning", "unassigned"].includes(task.status);
+  const isTerminal = TERMINAL_STATUSES.includes(task.status);
 
   return (
     <div
@@ -67,7 +67,7 @@ export default function TaskRow({
               GẤP
             </span>
           )}
-          {task.is_rework && (
+          {task.is_rework && task.rework_count > 0 && (
             <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-amber-600 text-white font-medium">
               Sửa lần {task.rework_count}
             </span>

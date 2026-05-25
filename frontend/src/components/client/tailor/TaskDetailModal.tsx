@@ -43,7 +43,7 @@ const HOLD_REASONS = [
   { value: "Cần xác nhận từ khách", label: "Cần xác nhận từ khách" },
   { value: "Vấn đề sức khỏe", label: "Vấn đề sức khỏe" },
   { value: "Phát hiện lỗi", label: "Phát hiện lỗi" },
-  { value: "", label: "Khác" },
+  { value: "__other", label: "Khác" },
 ];
 
 function formatDate(iso: string | null): string {
@@ -155,7 +155,7 @@ export default function TaskDetailModal({
 
   // Hold form state
   const [showHoldForm, setShowHoldForm] = useState(false);
-  const [holdReasonSelect, setHoldReasonSelect] = useState(HOLD_REASONS[0].value);
+  const [holdReasonSelect, setHoldReasonSelect] = useState("");
   const [holdReasonCustom, setHoldReasonCustom] = useState("");
 
   // Submit QC confirmation
@@ -178,6 +178,12 @@ export default function TaskDetailModal({
   const task = detail ?? initialTask;
   const stageLogs = detail?.stage_logs ?? [];
 
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   const loadDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -199,9 +205,18 @@ export default function TaskDetailModal({
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const handleFocus = (e: FocusEvent) => {
+      if (dialogRef.current && !dialogRef.current.contains(e.target as Node)) {
+        closeButtonRef.current?.focus();
+      }
+    };
     document.addEventListener("keydown", handleEscape);
+    document.addEventListener("focus", handleFocus, true);
     closeButtonRef.current?.focus();
-    return () => document.removeEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("focus", handleFocus, true);
+    };
   }, [onClose]);
 
   async function handleAction(fn: () => Promise<TailorTaskDetailResponse>): Promise<boolean> {
@@ -214,7 +229,7 @@ export default function TaskDetailModal({
       return true;
     } catch (e) {
       if (e instanceof Error && e.message === "CONFLICT") {
-        showToast("Dữ liệu đã thay đổi, vui lòng tải lại");
+        showToast("Dữ liệu đã thay đổi. Đang tải lại...");
         await loadDetail();
       } else {
         setError(e instanceof Error ? e.message : "Đã có lỗi xảy ra");
@@ -241,8 +256,8 @@ export default function TaskDetailModal({
   }
 
   async function handleHold() {
-    const reason = holdReasonSelect || holdReasonCustom.trim();
-    if (reason.length < 5) return;
+    const reason = holdReasonSelect === "__other" ? holdReasonCustom.trim() : holdReasonSelect;
+    if (!reason || reason.length < 5) return;
     const ok = await handleAction(() => holdTask(initialTask.id, task.version, { hold_reason: reason }));
     if (ok) setShowHoldForm(false);
   }
@@ -272,8 +287,9 @@ export default function TaskDetailModal({
 
   const completedStages = stageLogs.filter((s) => s.status === "completed").length;
   const totalStages = stageLogs.length;
-  const allStagesComplete = totalStages === 0 || completedStages === totalStages;
+  const allStagesComplete = detail !== null && !loading && (totalStages === 0 || completedStages === totalStages);
   const badge = STATUS_BADGE[task.status] ?? STATUS_BADGE.assigned;
+  const busy = loading || actionLoading;
 
   return (
     <div
@@ -291,7 +307,7 @@ export default function TaskDetailModal({
       >
         {/* Header */}
         <div className="sticky top-0 bg-white flex items-center justify-between p-4 border-b border-gray-200 z-10">
-          <h2 id="task-detail-title" className="text-lg font-semibold text-[#1A1A2E]">
+          <h2 id="task-detail-title" className="text-lg font-semibold text-[#1A1A2E]" data-testid="task-detail-title">
             Chi tiết công việc
           </h2>
           <button
@@ -299,6 +315,7 @@ export default function TaskDetailModal({
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Đóng"
+            data-testid="task-detail-close-button"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -322,7 +339,7 @@ export default function TaskDetailModal({
             {task.priority === "urgent" && (
               <span className="text-xs px-3 py-1 rounded-full font-medium bg-red-600 text-white">GẤP</span>
             )}
-            {task.is_rework && (
+            {task.is_rework && task.rework_count > 0 && (
               <span className="text-xs px-3 py-1 rounded-full font-medium bg-amber-600 text-white">
                 Sửa lần {task.rework_count}
               </span>
@@ -425,14 +442,14 @@ export default function TaskDetailModal({
               </p>
 
               <div className="space-y-2">
-                {stageLogs
+                {[...stageLogs]
                   .sort((a, b) => a.stage_order - b.stage_order)
                   .map((stage: TaskStageLog) => {
                     const isCurrentStage = stage.status === "in_progress";
                     const canComplete =
                       isCurrentStage &&
-                      (task.status === "in_progress" || task.status === "failed_qc") &&
-                      !actionLoading;
+                      task.status === "in_progress" &&
+                      !busy;
 
                     return (
                       <div
@@ -442,6 +459,8 @@ export default function TaskDetailModal({
                             ? "border-indigo-300 bg-indigo-50"
                             : stage.status === "completed"
                             ? "border-emerald-200 bg-emerald-50"
+                            : stage.status === "skipped"
+                            ? "border-gray-200 bg-gray-50"
                             : "border-gray-200 bg-white"
                         }`}
                       >
@@ -451,6 +470,10 @@ export default function TaskDetailModal({
                             <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
+                          ) : stage.status === "skipped" ? (
+                            <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
                           ) : isCurrentStage ? (
                             <div className="w-5 h-5 rounded-full border-2 border-indigo-500 bg-indigo-100" />
                           ) : (
@@ -458,7 +481,7 @@ export default function TaskDetailModal({
                           )}
                         </div>
 
-                        <span className={`flex-1 text-sm ${isCurrentStage ? "font-medium text-indigo-800" : stage.status === "completed" ? "text-emerald-700" : "text-gray-500"}`}>
+                        <span className={`flex-1 text-sm ${isCurrentStage ? "font-medium text-indigo-800" : stage.status === "completed" ? "text-emerald-700" : stage.status === "skipped" ? "line-through text-gray-400" : "text-gray-500"}`}>
                           {STAGE_LABELS[stage.stage] ?? stage.stage}
                         </span>
 
@@ -493,15 +516,17 @@ export default function TaskDetailModal({
             <div className="flex gap-2">
               <button
                 onClick={handleAccept}
-                disabled={actionLoading}
+                disabled={busy}
                 className="flex-1 py-3 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 transition-colors min-h-[44px]"
+                data-testid="task-accept-btn"
               >
                 {actionLoading ? "Đang xử lý..." : "Nhận việc"}
               </button>
               <button
                 onClick={() => setShowRejectForm(true)}
-                disabled={actionLoading}
+                disabled={busy}
                 className="flex-1 py-3 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors min-h-[44px]"
+                data-testid="task-reject-btn"
               >
                 Từ chối
               </button>
@@ -509,7 +534,7 @@ export default function TaskDetailModal({
           )}
 
           {/* Reject form */}
-          {showRejectForm && (
+          {showRejectForm && task.status === "assigned" && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
               <p className="text-sm font-medium text-red-800">Lý do từ chối</p>
               <select
@@ -532,7 +557,7 @@ export default function TaskDetailModal({
               <div className="flex gap-2">
                 <button
                   onClick={handleReject}
-                  disabled={!rejectionCategory || rejectionReason.trim().length < 10 || actionLoading}
+                  disabled={!rejectionCategory || rejectionReason.trim().length < 10 || busy}
                   className="flex-1 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors min-h-[44px]"
                 >
                   {actionLoading ? "Đang gửi..." : "Xác nhận từ chối"}
@@ -551,8 +576,9 @@ export default function TaskDetailModal({
           {task.status === "accepted" && (
             <button
               onClick={handleStart}
-              disabled={actionLoading}
+              disabled={busy}
               className="w-full py-3 rounded-lg text-sm font-medium text-white bg-[#1A2B4C] hover:bg-indigo-800 disabled:opacity-50 transition-colors min-h-[44px]"
+              data-testid="task-start-btn"
             >
               {actionLoading ? "Đang xử lý..." : "Bắt đầu may"}
             </button>
@@ -564,8 +590,9 @@ export default function TaskDetailModal({
               {allStagesComplete ? (
                 <button
                   onClick={() => setShowSubmitConfirm(true)}
-                  disabled={actionLoading}
+                  disabled={busy}
                   className="flex-1 py-3 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition-colors min-h-[44px]"
+                  data-testid="task-submit-qc-btn"
                 >
                   Hoàn tất & Gửi kiểm tra
                 </button>
@@ -580,8 +607,9 @@ export default function TaskDetailModal({
               )}
               <button
                 onClick={() => setShowHoldForm(true)}
-                disabled={actionLoading}
+                disabled={busy}
                 className="px-4 py-3 rounded-lg text-sm font-medium text-yellow-800 border border-yellow-300 hover:bg-yellow-50 transition-colors min-h-[44px]"
+                data-testid="task-hold-btn"
               >
                 Tạm dừng
               </button>
@@ -596,15 +624,16 @@ export default function TaskDetailModal({
                 value={holdReasonSelect}
                 onChange={(e) => {
                   setHoldReasonSelect(e.target.value);
-                  if (e.target.value) setHoldReasonCustom("");
+                  if (e.target.value !== "__other") setHoldReasonCustom("");
                 }}
                 className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-yellow-300 outline-none min-h-[44px]"
               >
+                <option value="">Chọn lý do...</option>
                 {HOLD_REASONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value || "__other"} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              {holdReasonSelect === "" && (
+              {holdReasonSelect === "__other" && (
                 <textarea
                   value={holdReasonCustom}
                   onChange={(e) => setHoldReasonCustom(e.target.value)}
@@ -616,7 +645,7 @@ export default function TaskDetailModal({
               <div className="flex gap-2">
                 <button
                   onClick={handleHold}
-                  disabled={(!holdReasonSelect && holdReasonCustom.trim().length < 5) || actionLoading}
+                  disabled={(!holdReasonSelect || (holdReasonSelect === "__other" && holdReasonCustom.trim().length < 5)) || busy}
                   className="flex-1 py-2.5 text-sm font-medium text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-colors min-h-[44px]"
                 >
                   {actionLoading ? "Đang xử lý..." : "Xác nhận tạm dừng"}
@@ -639,7 +668,7 @@ export default function TaskDetailModal({
               <div className="flex gap-2">
                 <button
                   onClick={handleSubmitQC}
-                  disabled={actionLoading}
+                  disabled={busy}
                   className="flex-1 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors min-h-[44px]"
                 >
                   {actionLoading ? "Đang gửi..." : "Xác nhận gửi"}
@@ -658,8 +687,9 @@ export default function TaskDetailModal({
           {task.status === "on_hold" && (
             <button
               onClick={handleResume}
-              disabled={actionLoading}
+              disabled={busy}
               className="w-full py-3 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors min-h-[44px]"
+              data-testid="task-resume-btn"
             >
               {actionLoading ? "Đang xử lý..." : "Tiếp tục làm việc"}
             </button>
@@ -669,8 +699,9 @@ export default function TaskDetailModal({
           {task.status === "failed_qc" && (
             <button
               onClick={handleStart}
-              disabled={actionLoading}
+              disabled={busy}
               className="w-full py-3 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 transition-colors min-h-[44px]"
+              data-testid="task-rework-btn"
             >
               {actionLoading ? "Đang xử lý..." : "Bắt đầu sửa lại"}
             </button>
@@ -732,7 +763,7 @@ export default function TaskDetailModal({
               <div className="flex gap-2">
                 <button
                   onClick={handleSubmitReport}
-                  disabled={!failureCategory || failureReason.trim().length < 10 || actionLoading}
+                  disabled={!failureCategory || failureReason.trim().length < 10 || busy}
                   className="flex-1 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors min-h-[44px]"
                 >
                   {actionLoading ? "Đang gửi..." : "Gửi yêu cầu"}
@@ -751,7 +782,7 @@ export default function TaskDetailModal({
 
       {/* Toast notification */}
       {toast.visible && (
-        <div className="fixed bottom-4 right-4 z-[60] bg-gray-900 text-white text-sm px-4 py-3 rounded-lg shadow-lg max-w-sm">
+        <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-[60] bg-gray-900 text-white text-sm px-4 py-3 rounded-lg shadow-lg">
           {toast.message}
         </div>
       )}

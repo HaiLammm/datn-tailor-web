@@ -1,6 +1,7 @@
 "use client";
 
 import type { TailorTask } from "@/types/tailor-task";
+import { TERMINAL_STATUSES } from "@/types/tailor-task";
 import TaskRow from "./TaskRow";
 
 interface TaskListProps {
@@ -30,8 +31,6 @@ export function TaskListSkeleton() {
     </div>
   );
 }
-
-const TERMINAL_STATUSES = ["completed", "cancelled", "rejected", "reassigning", "unassigned"];
 
 export default function TaskList({
   tasks,

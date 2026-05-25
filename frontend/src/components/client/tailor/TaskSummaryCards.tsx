@@ -8,6 +8,7 @@ interface TaskSummaryCardsProps {
 
 const cards: { key: keyof TailorTaskSummary; label: string; color: string }[] = [
   { key: "total", label: "Tổng cộng", color: "bg-gray-100 text-gray-800" },
+  { key: "unassigned", label: "Chờ giao việc", color: "bg-orange-100 text-orange-800" },
   { key: "assigned", label: "Chờ nhận", color: "bg-amber-100 text-amber-800" },
   { key: "accepted", label: "Đã nhận", color: "bg-blue-100 text-blue-800" },
   { key: "in_progress", label: "Đang may", color: "bg-indigo-100 text-indigo-800" },

@@ -50,6 +50,8 @@ export const STATUS_BADGE: Record<TaskStatus, { label: string; className: string
   cancellation_requested: { label: "Yêu cầu huỷ", className: "bg-orange-100 text-orange-700" },
 };
 
+export const TERMINAL_STATUSES: readonly TaskStatus[] = ["completed", "cancelled", "rejected", "reassigning", "unassigned"];
+
 export const STAGE_LABELS: Record<string, string> = {
   cutting: "Cắt",
   body_sewing: "May thân",

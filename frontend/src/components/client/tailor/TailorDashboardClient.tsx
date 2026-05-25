@@ -32,7 +32,7 @@ function formatDeadline(deadline: string): string {
   });
 }
 
-import { STATUS_BADGE } from "@/types/tailor-task";
+import { STATUS_BADGE, TERMINAL_STATUSES } from "@/types/tailor-task";
 
 export default function TailorDashboardClient() {
   const { data, isLoading, error } = useQuery({
@@ -64,11 +64,10 @@ export default function TailorDashboardClient() {
     );
   }
 
-  const terminalStatuses = ["completed", "cancelled", "rejected", "reassigning", "unassigned"];
   const urgentTasks = data.tasks
     .filter(
       (t) =>
-        !terminalStatuses.includes(t.status) &&
+        !TERMINAL_STATUSES.includes(t.status) &&
           (t.is_overdue ||
             t.status === "assigned" ||
             t.status === "failed_qc" ||
@@ -123,7 +122,7 @@ export default function TailorDashboardClient() {
             {urgentTasks.map((task: TailorTask) => (
               <Link
                 key={task.id}
-                href="/tailor/tasks?status=assigned"
+                href={`/tailor/tasks?status=${task.status}`}
                 className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <div className="flex-1 min-w-0">
