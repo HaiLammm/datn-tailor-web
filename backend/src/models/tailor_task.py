@@ -96,7 +96,7 @@ class TaskReassignRequest(BaseModel):
 
 
 class StageUpdateRequest(BaseModel):
-    stage: str = Field(max_length=100)
+    stage: str = Field(min_length=1, max_length=100)
     status: StageLogStatus = Field(default="in_progress")
     notes: str | None = Field(default=None, max_length=2000)
 

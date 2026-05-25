@@ -610,12 +610,15 @@ class TailorTaskDB(Base):
         "TaskStageLogDB", back_populates="task", cascade="all, delete-orphan"
     )
     history: Mapped[list["TaskHistoryDB"]] = relationship(
-        "TaskHistoryDB", back_populates="task", cascade="all, delete-orphan"
+        "TaskHistoryDB", back_populates="task", cascade="save-update, merge"
     )
 
 
 class TaskStageLogDB(Base):
     __tablename__ = "task_stage_logs"
+    __table_args__ = (
+        UniqueConstraint("task_id", "stage_order", name="uq_task_stage_order"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     task_id: Mapped[uuid.UUID] = mapped_column(
@@ -625,7 +628,7 @@ class TaskStageLogDB(Base):
         ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
     )
     stage: Mapped[str] = mapped_column(String(100), nullable=False)
-    stage_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    stage_order: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
     started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -638,7 +641,10 @@ class TaskStageLogDB(Base):
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     task: Mapped["TailorTaskDB"] = relationship("TailorTaskDB", back_populates="stage_logs")
