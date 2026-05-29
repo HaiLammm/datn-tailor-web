@@ -17,7 +17,13 @@ from sqlalchemy.orm import sessionmaker
 from src.core.database import get_db
 from src.core.security import create_access_token, hash_password
 from src.main import app
-from src.models.db_models import Base, CustomerProfileDB, MeasurementDB, TenantDB, UserDB
+from src.models.db_models import (
+    Base,
+    CustomerProfileDB,
+    MeasurementDB,
+    TenantDB,
+    UserDB,
+)
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -35,7 +41,9 @@ async def test_db_engine():
 @pytest_asyncio.fixture
 async def test_db_session(test_db_engine):
     """Create test database session."""
-    async_session = sessionmaker(test_db_engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = sessionmaker(
+        test_db_engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with async_session() as session:
         yield session
 
@@ -43,6 +51,7 @@ async def test_db_session(test_db_engine):
 @pytest_asyncio.fixture
 async def override_get_db(test_db_session):
     """Override FastAPI dependency to use test database."""
+
     async def _get_test_db():
         yield test_db_session
 
@@ -177,7 +186,10 @@ async def test_create_customer_with_measurements(
 
 @pytest.mark.asyncio
 async def test_create_customer_duplicate_phone(
-    test_db_session: AsyncSession, seed_test_users: dict, owner_token: str, client: AsyncClient
+    test_db_session: AsyncSession,
+    seed_test_users: dict,
+    owner_token: str,
+    client: AsyncClient,
 ):
     """AC6: Prevent duplicate phone within tenant."""
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -203,7 +215,9 @@ async def test_create_customer_duplicate_phone(
 
 
 @pytest.mark.asyncio
-async def test_create_customer_invalid_phone_format(seed_test_users: dict, owner_token: str, client: AsyncClient):
+async def test_create_customer_invalid_phone_format(
+    seed_test_users: dict, owner_token: str, client: AsyncClient
+):
     """AC6: Validate Vietnamese phone format."""
     response = await client.post(
         "/api/v1/customers",
@@ -215,7 +229,9 @@ async def test_create_customer_invalid_phone_format(seed_test_users: dict, owner
 
 
 @pytest.mark.asyncio
-async def test_create_customer_unauthorized(seed_test_users: dict, customer_token: str, client: AsyncClient):
+async def test_create_customer_unauthorized(
+    seed_test_users: dict, customer_token: str, client: AsyncClient
+):
     """AC1: Customer role cannot create customer profiles."""
     response = await client.post(
         "/api/v1/customers",
@@ -228,7 +244,10 @@ async def test_create_customer_unauthorized(seed_test_users: dict, customer_toke
 
 @pytest.mark.asyncio
 async def test_list_customers_with_search(
-    test_db_session: AsyncSession, seed_test_users: dict, owner_token: str, client: AsyncClient
+    test_db_session: AsyncSession,
+    seed_test_users: dict,
+    owner_token: str,
+    client: AsyncClient,
 ):
     """AC7, AC8: List customers with search functionality."""
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -262,7 +281,10 @@ async def test_list_customers_with_search(
 
 @pytest.mark.asyncio
 async def test_get_customer_detail(
-    test_db_session: AsyncSession, seed_test_users: dict, owner_token: str, client: AsyncClient
+    test_db_session: AsyncSession,
+    seed_test_users: dict,
+    owner_token: str,
+    client: AsyncClient,
 ):
     """AC9: Get customer with measurements history."""
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -281,6 +303,9 @@ async def test_get_customer_detail(
             tenant_id=tenant_id,
             bust=Decimal("90.0"),
             waist=Decimal("70.0"),
+            ha_eo=Decimal("38.0"),
+            vong_nach=Decimal("40.0"),
+            vong_bap_tay=Decimal("28.0"),
             is_default=True,
             measured_date=date(2026, 1, 1),
         ),
@@ -305,6 +330,9 @@ async def test_get_customer_detail(
     data = response.json()
     assert len(data["measurements"]) == 2
     assert data["default_measurement"]["bust"] == "90.0"
+    assert data["default_measurement"]["ha_eo"] == "38.0"
+    assert data["default_measurement"]["vong_nach"] == "40.0"
+    assert data["default_measurement"]["vong_bap_tay"] == "28.0"
 
 
 # ===== Test Measurement Operations =====
@@ -312,7 +340,10 @@ async def test_get_customer_detail(
 
 @pytest.mark.asyncio
 async def test_create_measurement_auto_default(
-    test_db_session: AsyncSession, seed_test_users: dict, tailor_token: str, client: AsyncClient
+    test_db_session: AsyncSession,
+    seed_test_users: dict,
+    tailor_token: str,
+    client: AsyncClient,
 ):
     """AC3: First measurement auto set as default."""
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -325,18 +356,31 @@ async def test_create_measurement_auto_default(
 
     response = await client.post(
         f"/api/v1/customers/{customer.id}/measurements",
-        json={"neck": 38.0, "bust": 90.0, "waist": 70.0},
+        json={
+            "neck": 38.0,
+            "bust": 90.0,
+            "waist": 70.0,
+            "ha_eo": 18.0,
+            "vong_nach": 38.0,
+            "vong_bap_tay": 28.0,
+        },
         headers={"Authorization": f"Bearer {tailor_token}"},
     )
 
     assert response.status_code == 201
     data = response.json()
     assert data["is_default"] is True
+    assert data["ha_eo"] == "18.00"
+    assert data["vong_nach"] == "38.00"
+    assert data["vong_bap_tay"] == "28.00"
 
 
 @pytest.mark.asyncio
 async def test_set_default_measurement(
-    test_db_session: AsyncSession, seed_test_users: dict, owner_token: str, client: AsyncClient
+    test_db_session: AsyncSession,
+    seed_test_users: dict,
+    owner_token: str,
+    client: AsyncClient,
 ):
     """AC9: Set measurement as default, unset previous."""
     tenant_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -384,7 +428,7 @@ async def test_measurement_validation_ranges(
     seed_test_users: dict, owner_token: str, client: AsyncClient
 ):
     """AC6: Validate measurement value ranges.
-    
+
     Review Fix: Create customer first to ensure 422 validation error, not 404 customer not found.
     """
     # Create customer first
@@ -435,7 +479,7 @@ async def test_delete_customer_owner_only(
     client: AsyncClient,
 ):
     """AC10: DELETE endpoint requires Owner role ONLY (RBAC violation fix).
-    
+
     Review Finding: [High] Restrict DELETE /api/v1/customers/{customer_id} to Owner role only.
     """
     # Test 1: Create customer and verify Owner can delete (204)
@@ -446,20 +490,20 @@ async def test_delete_customer_owner_only(
     )
     assert create_response.status_code == 201
     customer_id = create_response.json()["id"]
-    
+
     delete_response = await client.delete(
         f"/api/v1/customers/{customer_id}",
         headers={"Authorization": f"Bearer {owner_token}"},
     )
     assert delete_response.status_code == 204
-    
+
     # Verify customer is soft-deleted (GET returns 404)
     get_response = await client.get(
         f"/api/v1/customers/{customer_id}",
         headers={"Authorization": f"Bearer {owner_token}"},
     )
     assert get_response.status_code == 404
-    
+
     # Test 2: Tailor cannot delete - should fail (403 Forbidden)
     create_response2 = await client.post(
         "/api/v1/customers",
@@ -468,25 +512,24 @@ async def test_delete_customer_owner_only(
     )
     assert create_response2.status_code == 201
     customer_id2 = create_response2.json()["id"]
-    
+
     delete_response2 = await client.delete(
         f"/api/v1/customers/{customer_id2}",
         headers={"Authorization": f"Bearer {tailor_token}"},
     )
     assert delete_response2.status_code == 403
     assert "không có quyền" in delete_response2.json()["detail"].lower()
-    
+
     # Verify customer NOT deleted (GET still works)
     get_response2 = await client.get(
         f"/api/v1/customers/{customer_id2}",
         headers={"Authorization": f"Bearer {owner_token}"},
     )
     assert get_response2.status_code == 200
-    
+
     # Test 3: Customer role cannot delete - should fail (403)
     delete_response3 = await client.delete(
         f"/api/v1/customers/{customer_id2}",
         headers={"Authorization": f"Bearer {customer_token}"},
     )
     assert delete_response3.status_code == 403
-

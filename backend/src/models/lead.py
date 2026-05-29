@@ -77,6 +77,33 @@ class LeadCreate(LeadBase):
     pass
 
 
+class PublicLeadCreate(BaseModel):
+    """Schema for the public website contact form (Story 15.4).
+
+    Accepts ONLY the visitor-supplied fields. `source` and `classification`
+    are forced server-side (website / warm) and are intentionally NOT settable
+    here, so an anonymous caller cannot inject an arbitrary source/classification.
+    `company` is a honeypot field: it is never shown to humans, so any value
+    means the submission is almost certainly a bot.
+    """
+
+    name: str = Field(..., min_length=1, max_length=255, description="Ho ten")
+    phone: str | None = Field(None, max_length=20, description="So dien thoai")
+    email: str | None = Field(None, max_length=255, description="Email")
+    notes: str | None = Field(None, description="Loi nhan")
+    company: str | None = Field(None, description="Honeypot - phai de trong")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str | None) -> str | None:
+        return _validate_email_value(v)
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str | None) -> str | None:
+        return _validate_phone_value(v)
+
+
 class LeadUpdate(BaseModel):
     """Schema for updating a lead (Owner only) - all fields optional."""
 

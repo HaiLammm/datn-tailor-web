@@ -22,10 +22,78 @@ from src.models.lead import (
     LeadResponse,
     LeadSource,
     LeadUpdate,
+    PublicLeadCreate,
 )
 from src.services import lead_service
 
 router = APIRouter(prefix="/api/v1/leads", tags=["leads"])
+
+
+def get_default_tenant_id() -> uuid.UUID:
+    """Return the default tenant ID for public (no-auth) lead capture.
+
+    Mirrors the public booking pattern in appointments.py.
+    TODO: In production, extract from subdomain or request context.
+    """
+    return uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+@router.post(
+    "/public",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create lead from public website contact form",
+    description=(
+        "Public, UNAUTHENTICATED endpoint for the website contact form (Story 15.4). "
+        "Forces source=website and classification=warm server-side. "
+        "Includes a honeypot field (`company`) and a lightweight rate-limit."
+    ),
+)
+async def create_public_lead_endpoint(
+    data: PublicLeadCreate,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Create a lead from the public website contact form (no auth).
+
+    Anti-spam:
+      - Honeypot: if `company` is filled (bots auto-fill hidden fields), return a
+        success-shaped response WITHOUT persisting — the trap stays invisible.
+      - Rate-limit: 429 if too many website leads were created in the window.
+
+    Returns:
+        API Response Wrapper: {"data": {...LeadResponse}}
+    """
+    tenant_id = get_default_tenant_id()
+
+    # Honeypot: silently drop bot submissions (do not reveal the trap).
+    if data.company and data.company.strip():
+        return {"data": None}
+
+    recent = await lead_service.count_recent_website_leads(
+        db,
+        tenant_id,
+        email=data.email,
+        phone=data.phone,
+    )
+    if recent >= lead_service.PUBLIC_LEAD_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Bạn gửi quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.",
+        )
+
+    lead_data = LeadCreate(
+        name=data.name,
+        phone=data.phone,
+        email=data.email,
+        notes=data.notes,
+        source=LeadSource.WEBSITE,
+        classification=LeadClassification.WARM,
+    )
+    lead = await lead_service.create_lead(db, tenant_id, lead_data)
+
+    return {
+        "data": LeadResponse.model_validate(lead).model_dump(),
+    }
 
 
 @router.get(

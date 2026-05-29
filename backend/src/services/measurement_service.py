@@ -52,7 +52,10 @@ async def create_measurement(
         waist=data.waist,
         hip=data.hip,
         top_length=data.top_length,
+        ha_eo=data.ha_eo,
+        vong_nach=data.vong_nach,
         sleeve_length=data.sleeve_length,
+        vong_bap_tay=data.vong_bap_tay,
         wrist=data.wrist,
         height=data.height,
         weight=data.weight,
@@ -213,8 +216,14 @@ async def update_measurement(
         measurement.hip = data.hip
     if data.top_length is not None:
         measurement.top_length = data.top_length
+    if data.ha_eo is not None:
+        measurement.ha_eo = data.ha_eo
+    if data.vong_nach is not None:
+        measurement.vong_nach = data.vong_nach
     if data.sleeve_length is not None:
         measurement.sleeve_length = data.sleeve_length
+    if data.vong_bap_tay is not None:
+        measurement.vong_bap_tay = data.vong_bap_tay
     if data.wrist is not None:
         measurement.wrist = data.wrist
     if data.height is not None:

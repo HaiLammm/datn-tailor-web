@@ -22,6 +22,21 @@ export default function CustomerListTable() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const limit = 20;
 
+    const getErrorMessage = async (response: Response, fallback: string) => {
+        try {
+            const errorData = await response.json();
+            const detail = errorData?.detail;
+
+            if (typeof detail === "string" && detail.trim()) {
+                return detail;
+            }
+        } catch {
+            return fallback;
+        }
+
+        return fallback;
+    };
+
     // Debounce search input
     const handleSearchChange = (value: string) => {
         setSearch(value);
@@ -49,10 +64,19 @@ export default function CustomerListTable() {
             });
 
             if (!response.ok) {
-                throw new Error("Failed to fetch customers");
+                throw new Error(
+                    await getErrorMessage(response, "Lỗi khi tải danh sách khách hàng")
+                );
             }
 
-            return response.json();
+            const result = await response.json();
+            return {
+                customers: result.customers ?? [],
+                total: result.pagination?.total ?? 0,
+                page: result.pagination?.page ?? page,
+                limit: result.pagination?.limit ?? limit,
+                total_pages: result.pagination?.total_pages ?? 0,
+            } satisfies CustomerListResponse;
         },
     });
 
@@ -68,6 +92,9 @@ export default function CustomerListTable() {
         return (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-red-800">Lỗi khi tải danh sách khách hàng. Vui lòng thử lại.</p>
+                {error instanceof Error && error.message !== "Lỗi khi tải danh sách khách hàng" && (
+                    <p className="mt-2 text-sm text-red-700">{error.message}</p>
+                )}
             </div>
         );
     }
@@ -231,7 +258,7 @@ export default function CustomerListTable() {
                                                 : "Chưa có khách hàng nào"}
                                         </p>
                                         <p className="text-gray-400 text-sm mt-1">
-                                            Nhấn "Thêm khách hàng" để bắt đầu
+                                            Nhấn &quot;Thêm khách hàng&quot; để bắt đầu
                                         </p>
                                     </div>
                                 </td>

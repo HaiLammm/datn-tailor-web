@@ -17,13 +17,21 @@ interface SizeSelectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  transactionType?: "buy" | "bespoke";
 }
 
-export function SizeSelectModal({ garment, isOpen, onClose, onSuccess }: SizeSelectModalProps) {
+export function SizeSelectModal({
+  garment,
+  isOpen,
+  onClose,
+  onSuccess,
+  transactionType = "buy",
+}: SizeSelectModalProps) {
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [sizeError, setSizeError] = useState("");
   const addItem = useCartStore((state) => state.addItem);
   const focusTrapRef = useFocusTrap(isOpen);
+  const isBespoke = transactionType === "bespoke";
 
   // M2: Close on Escape key
   useEffect(() => {
@@ -45,12 +53,12 @@ export function SizeSelectModal({ garment, isOpen, onClose, onSuccess }: SizeSel
       return;
     }
 
-    const cartItem: CartItem = {
+      const cartItem: CartItem = {
       id: crypto.randomUUID(),
       garment_id: garment.id,
       garment_name: garment.name,
       image_url: garment.image_url ?? "",
-      transaction_type: "buy",
+      transaction_type: transactionType,
       size: selectedSize,
       unit_price: salePrice,
       total_price: salePrice,
@@ -89,7 +97,7 @@ export function SizeSelectModal({ garment, isOpen, onClose, onSuccess }: SizeSel
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-[#1A2B4C]" style={{ fontFamily: "Cormorant Garamond, serif" }}>
-              Chọn kích cỡ
+              {isBespoke ? "Chọn kích cỡ để đặt may" : "Chọn kích cỡ"}
             </h3>
             <button
               onClick={handleClose}
@@ -159,7 +167,7 @@ export function SizeSelectModal({ garment, isOpen, onClose, onSuccess }: SizeSel
               onClick={handleSubmit}
               className="flex-1 py-2 px-4 bg-[#D4AF37] text-white rounded-lg text-sm font-semibold hover:bg-amber-600 transition-colors min-h-[44px]"
             >
-              Thêm vào Giỏ
+              {isBespoke ? "Tiếp tục đặt may" : "Thêm vào Giỏ"}
             </button>
           </div>
         </div>

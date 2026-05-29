@@ -15,12 +15,19 @@ interface CartItemRowProps {
 }
 
 export function CartItemRow({ item, onRemove }: CartItemRowProps) {
+  const isRental = item.transaction_type === "rent";
+  const isBespoke = item.transaction_type === "bespoke";
   const detailText =
-    item.transaction_type === "buy"
-      ? `Size: ${item.size}`
-      : `Thuê: ${item.start_date} → ${item.end_date} (${item.rental_days} ngày)`;
+    isRental
+      ? `Thuê: ${item.start_date} → ${item.end_date} (${item.rental_days} ngày)`
+      : `Size: ${item.size || "—"}`;
 
-  const typeLabel = item.transaction_type === "buy" ? "Mua" : "Thuê";
+  const typeLabel = isBespoke ? "Đặt may" : isRental ? "Thuê" : "Mua";
+  const typeBadgeClass = isBespoke
+    ? "bg-purple-100 text-purple-800"
+    : isRental
+      ? "bg-amber-100 text-amber-800"
+      : "bg-emerald-100 text-emerald-800";
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-gray-100">
@@ -46,7 +53,7 @@ export function CartItemRow({ item, onRemove }: CartItemRowProps) {
         <p className="text-sm font-semibold text-[#1A2B4C] line-clamp-1">
           {item.garment_name}
         </p>
-        <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 mb-1">
+        <span className={`inline-block text-xs px-2 py-0.5 rounded-full mb-1 ${typeBadgeClass}`}>
           {typeLabel}
         </span>
         <p className="text-xs text-gray-500">{detailText}</p>

@@ -29,6 +29,57 @@ async function getAuthToken(): Promise<string | null> {
 }
 
 /**
+ * Submit the public website contact form (Story 15.4).
+ *
+ * PUBLIC / unauthenticated: calls the backend directly (no token), mirroring
+ * the guest-booking pattern in booking-actions.ts. It deliberately does NOT
+ * route through the Next proxy, which 401s any client-side /api/v1/* request
+ * without a session. `source`/`classification` are forced server-side.
+ */
+export async function submitContactLead(input: {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
+  company?: string | null; // honeypot — humans leave empty
+}): Promise<{ success: boolean; error?: string }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/v1/leads/public`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.status === 429) {
+      return {
+        success: false,
+        error: "Bạn gửi quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.",
+      };
+    }
+
+    if (!response.ok) {
+      console.error(`submitContactLead: HTTP ${response.status}`);
+      return { success: false, error: "Không gửi được. Vui lòng thử lại." };
+    }
+
+    return { success: true };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      return { success: false, error: "Yêu cầu hết thời gian. Vui lòng thử lại." };
+    }
+    console.error("submitContactLead error:", error);
+    return { success: false, error: "Không gửi được. Vui lòng thử lại." };
+  }
+}
+
+/**
  * Fetch leads list with optional filters (Owner only)
  */
 export async function fetchLeads(

@@ -42,6 +42,18 @@ const makeRentItem = (overrides: Partial<CartItem> = {}): CartItem => ({
   ...overrides,
 });
 
+const makeBespokeItem = (overrides: Partial<CartItem> = {}): CartItem => ({
+  id: "item-bespoke-1",
+  garment_id: "g-3",
+  garment_name: "Áo Dài Bespoke",
+  image_url: "/img/ao-dai-bespoke.jpg",
+  transaction_type: "bespoke",
+  size: "L",
+  unit_price: 2500000,
+  total_price: 2500000,
+  ...overrides,
+});
+
 const makeAvailableResult = (garment_id: string): VerifyResult => ({
   garment_id,
   is_available: true,
@@ -75,6 +87,11 @@ describe("CheckoutItemRow", () => {
       expect(screen.getByText("Thuê")).toBeInTheDocument();
     });
 
+    it("renders bespoke badge for bespoke items", () => {
+      render(<CheckoutItemRow item={makeBespokeItem()} onRemove={() => {}} />);
+      expect(screen.getByText("Đặt may")).toBeInTheDocument();
+    });
+
     it("renders size detail for buy items", () => {
       render(<CheckoutItemRow item={makeBuyItem()} onRemove={() => {}} />);
       expect(screen.getByText(/Size: M/)).toBeInTheDocument();
@@ -84,6 +101,11 @@ describe("CheckoutItemRow", () => {
       render(<CheckoutItemRow item={makeRentItem()} onRemove={() => {}} />);
       expect(screen.getByText(/2026-04-01 → 2026-04-03/)).toBeInTheDocument();
       expect(screen.getByText(/3 ngày/)).toBeInTheDocument();
+    });
+
+    it("renders size detail for bespoke items", () => {
+      render(<CheckoutItemRow item={makeBespokeItem()} onRemove={() => {}} />);
+      expect(screen.getByText(/Size: L/)).toBeInTheDocument();
     });
 
     it("renders thumbnail image", () => {

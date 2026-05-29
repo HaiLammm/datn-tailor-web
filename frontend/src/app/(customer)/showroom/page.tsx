@@ -1,6 +1,9 @@
 import { Metadata } from "next";
 import { fetchGarments } from "@/app/actions/garment-actions";
 import { ShowroomContent } from "@/components/client/showroom/ShowroomContent";
+import { ShowroomEditorial } from "@/components/client/showroom/ShowroomEditorial";
+import { ShowroomTrustStrip } from "@/components/client/showroom/ShowroomTrustStrip";
+import { HeroBanner } from "@/components/client/brand/HeroBanner";
 import { isValidEnum } from "@/utils/enum-utils";
 import {
   GarmentCategory,
@@ -61,18 +64,13 @@ export default async function ShowroomPage({ searchParams }: ShowroomPageProps) 
   const isAuthenticated = !!session?.user;
 
   return (
-    <div className="min-h-screen bg-[#F9F7F2]">
-      {/* Header */}
-      <header className="bg-[#1A2B4C] text-[#F9F7F2] py-8">
-        <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-serif font-bold text-center" style={{ fontFamily: "Cormorant Garamond, serif" }}>
-            Showroom Áo Dài
-          </h1>
-          <p className="text-center mt-2 text-lg">
-            Bộ sưu tập áo dài cho thuê
-          </p>
-        </div>
-      </header>
+    <div className="bg-[#F9F7F2]">
+      {/* Compact boutique hero (Story 15.2) */}
+      <HeroBanner
+        variant="showroom-compact"
+        title="Bộ sưu tập áo dài"
+        subline="Những tà áo cho mọi dịp vui — để bạn luôn rạng rỡ trong từng khoảnh khắc đáng nhớ."
+      />
 
       {/* Order success banner */}
       {orderSuccess && (
@@ -87,16 +85,15 @@ export default async function ShowroomPage({ searchParams }: ShowroomPageProps) 
       )}
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <ShowroomContent initialData={initialData} isAuthenticated={isAuthenticated} />
-      </main>
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        {/* Editorial storytelling (Story 15.2) */}
+        <ShowroomEditorial />
 
-      {/* Footer */}
-      <footer className="bg-[#1A2B4C] text-[#F9F7F2] py-6 mt-16">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm">© 2026 Showroom Áo Dài - Heritage Collection</p>
-        </div>
-      </footer>
+        <ShowroomContent initialData={initialData} isAuthenticated={isAuthenticated} />
+
+        {/* Trust signals — visible even when the grid is empty (Story 15.2) */}
+        <ShowroomTrustStrip />
+      </div>
     </div>
   );
 }

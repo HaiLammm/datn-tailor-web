@@ -129,27 +129,31 @@ export function OrderConfirmation({ order }: OrderConfirmationProps) {
           </h2>
           <div className="space-y-3" data-testid="order-items">
             {order.items.map((item, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between text-sm py-2 border-b border-gray-100 last:border-0"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[#1A1A2E] truncate">
-                    {item.garment_name}
-                  </p>
-                  <p className="text-xs text-[#6B7280]">
-                    {item.transaction_type === "buy" ? "Mua" : "Thuê"}
-                    {item.size && ` · Size ${item.size}`}
-                    {item.rental_days && ` · ${item.rental_days} ngày`}
-                  </p>
-                </div>
-                <span
-                  className="text-[#1A1A2E] font-medium flex-shrink-0 ml-4"
-                  style={{ fontFamily: "JetBrains Mono, monospace" }}
+                <div
+                  key={idx}
+                  className="flex items-center justify-between text-sm py-2 border-b border-gray-100 last:border-0"
                 >
-                  {formatPrice(Number(item.total_price))}
-                </span>
-              </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-[#1A1A2E] truncate">
+                      {item.garment_name}
+                    </p>
+                    <p className="text-xs text-[#6B7280]">
+                      {item.transaction_type === "bespoke"
+                        ? "Đặt may"
+                        : item.transaction_type === "buy"
+                          ? "Mua"
+                          : "Thuê"}
+                      {item.size && ` · Size ${item.size}`}
+                      {item.transaction_type === "rent" && item.rental_days && ` · ${item.rental_days} ngày`}
+                    </p>
+                  </div>
+                  <span
+                    className="text-[#1A1A2E] font-medium flex-shrink-0 ml-4"
+                    style={{ fontFamily: "JetBrains Mono, monospace" }}
+                  >
+                    {formatPrice(Number(item.total_price))}
+                  </span>
+                </div>
             ))}
           </div>
 

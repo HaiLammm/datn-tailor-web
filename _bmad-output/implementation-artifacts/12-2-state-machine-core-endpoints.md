@@ -1,6 +1,6 @@
 # Story 12.2: State Machine Core Endpoints — Full Transition Logic, Stage Lifecycle & Matching
 
-Status: review
+Status: done
 
 ## Story
 
@@ -392,12 +392,45 @@ Claude Opus 4.6 (1M context)
 
 ### Change Log
 - 2026-05-21: Story 12.2 implementation complete — full 11-state machine with all endpoints, notifications, and tests
+- 2026-05-24: Code review fixes (15 patch items) — commit b0ddbb7
+
+### Code Review Record
+- **Date:** 2026-05-24
+- **Reviewers:** Blind Hunter (adversarial), Edge Case Hunter, Acceptance Auditor — 3 parallel subagents
+- **Raw findings:** 25 total → 7 rejected as noise, 2 intent gaps, 1 defer, 15 patch items
+- **Patch items fixed:** 15/15 (1 Critical, 3 High, 5 Medium, 6 Low)
+- **Intent gaps (open):**
+  - IG-1: `reassign_task` missing `continue_from_current_stage` parameter (spec Task 5.1)
+  - IG-2: QC "fail" terminal vs `_VALID_TRANSITIONS` allowing exits from `failed_qc`
+- **Deferred:** `request_task_cancellation` bypasses state machine (by design — deferred to future story per spec)
+- **Tests after fixes:** 93 passed, 0 failures
+
+#### Patch Items Applied
+| # | Severity | Fix |
+|---|----------|-----|
+| P-1 | Critical | `_all_tailor_tasks_completed` returns False when no active tasks (was marking orders ready_to_ship incorrectly) |
+| P-2 | High | Added `assigned_to != actor_id` ownership check to `start_task`, `hold_task`, `resume_task`, `submit_for_qc` |
+| P-3 | High | Added `with_for_update()` to `_get_task_for_transition` — prevents mid-chain 409 stranding tasks |
+| P-4 | High | Fixed dead-end after QC reassign: added `unassigned` to reassignable list + excluded `unassigned`/`rejected` from duplicate check |
+| P-5 | Medium | Save `customer_id` before `db.commit()` in `process_qc_result` — prevents DetachedInstanceError |
+| P-6 | Medium | `on_time_rate` default `0.5` → `1.0` per spec AC#15 |
+| P-7 | Medium | Added `delivery_date` column to OrderDB (migration 036) + calculate `deadline_at = delivery_date - 3 days` |
+| P-8 | Medium | Insert `TaskHistoryDB` record on task creation in `approve_order()` (AC#14 compliance) |
+| P-9 | Medium | Normalize naive datetime to UTC in `accept_task` `expected_finish_at` |
+| P-10 | Medium | Delete stale stage logs before creating new ones in `start_task` |
+| P-11 | Low | Validate `order_id` belongs to tenant in `get_matching_scores` |
+| P-12 | Low | `TaskHistoryResponse.actor_id` returns `None` instead of `""` for null actors |
+| P-13 | Low | `complete_stage` finds next pending stage by `stage_order >` instead of `== stage_order + 1` |
+| P-14 | Low | Added Pydantic validator rejecting past `expected_finish_at` dates |
+| P-15 | Low | `update_task_status` uses `with_for_update()` and tenant-filtered query |
 
 ### File List
 - backend/src/services/tailor_task_service.py (MODIFIED — major rewrite: _VALID_TRANSITIONS, _transition_task(), 10 new service functions)
 - backend/src/api/v1/tailor_tasks.py (MODIFIED — 11 new endpoints)
 - backend/src/services/notification_creator.py (MODIFIED — 12 new notification templates)
-- backend/src/services/order_service.py (MODIFIED — approve_order creates unassigned tasks)
-- backend/src/models/tailor_task.py (MODIFIED — QCResultRequest updated with result/action_on_fail)
+- backend/src/services/order_service.py (MODIFIED — approve_order creates unassigned tasks + task_history + deadline_at)
+- backend/src/models/tailor_task.py (MODIFIED — QCResultRequest updated, TaskAcceptRequest validator)
+- backend/src/models/db_models.py (MODIFIED — OrderDB.delivery_date added)
+- backend/migrations/036_add_order_delivery_date.sql (NEW — adds delivery_date column)
 - backend/tests/test_state_machine.py (NEW — 31 tests for state machine)
 - backend/tests/conftest.py (NEW — JSONB→JSON SQLite compat)

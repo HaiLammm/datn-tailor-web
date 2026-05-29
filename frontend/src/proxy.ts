@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { getBackendAccessToken } from "@/lib/backend-access-token";
 
 /**
  * Next.js 16 Proxy function.
@@ -24,7 +25,7 @@ export const config = {
   ],
 };
 
-export default async function proxy(request: NextRequest): Promise<NextResponse | undefined> {
+export default async function proxy(request: NextRequest): Promise<Response | NextResponse | undefined> {
     const { pathname } = request.nextUrl;
 
     // 1. FAST PATH: Bỏ qua ngay lập tức các tệp tĩnh, hình ảnh và API xác thực nội bộ
@@ -48,6 +49,14 @@ export default async function proxy(request: NextRequest): Promise<NextResponse 
                 headers: { 'Content-Type': 'application/json' } 
             });
         }
+
+        const accessToken = await getBackendAccessToken(session);
+        if (!accessToken) {
+            return new NextResponse(JSON.stringify({ detail: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." }), {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
         
         const userRole = session.user?.role;
         // Example: Only Owner/Tailor can access customer API
@@ -64,9 +73,7 @@ export default async function proxy(request: NextRequest): Promise<NextResponse 
         const targetUrl = new URL(pathname + request.nextUrl.search, backendUrl);
         
         const headers = new Headers(request.headers);
-        if (session.accessToken) {
-            headers.set("Authorization", `Bearer ${session.accessToken}`);
-        }
+        headers.set("Authorization", `Bearer ${accessToken}`);
 
         return fetch(targetUrl.toString(), {
             method: request.method,

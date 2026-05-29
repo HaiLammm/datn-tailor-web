@@ -14,6 +14,33 @@ import type { PatternSessionCreate, PatternSessionResponse, AttachPatternRespons
 import type { MeasurementResponse } from "@/types/customer";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+const MEASUREMENT_NUMBER_FIELDS = [
+  "neck",
+  "shoulder_width",
+  "bust",
+  "waist",
+  "hip",
+  "top_length",
+  "ha_eo",
+  "vong_nach",
+  "sleeve_length",
+  "vong_bap_tay",
+  "wrist",
+  "height",
+  "weight",
+] as const;
+const PATTERN_MEASUREMENT_NUMBER_FIELDS = [
+  "do_dai_ao",
+  "ha_eo",
+  "vong_co",
+  "vong_nach",
+  "vong_nguc",
+  "vong_eo",
+  "vong_mong",
+  "do_dai_tay",
+  "vong_bap_tay",
+  "vong_co_tay",
+] as const;
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -29,6 +56,72 @@ async function getAuthToken(): Promise<string> {
     throw new Error("Không có quyền truy cập");
   }
   return session.accessToken;
+}
+
+function normalizeMeasurement(measurement: Record<string, unknown>): MeasurementResponse {
+  const normalizedMeasurement = {
+    ...measurement,
+  } as unknown as MeasurementResponse;
+
+  for (const field of MEASUREMENT_NUMBER_FIELDS) {
+    const value = measurement[field];
+    if (typeof value === "string") {
+      const parsedValue = Number(value);
+      normalizedMeasurement[field] = Number.isFinite(parsedValue) ? parsedValue : null;
+    }
+  }
+
+  return normalizedMeasurement;
+}
+
+function normalizePatternSession(session: Record<string, unknown>): PatternSessionResponse {
+  const normalizedSession = {
+    ...session,
+  } as unknown as PatternSessionResponse;
+
+  for (const field of PATTERN_MEASUREMENT_NUMBER_FIELDS) {
+    const value = session[field];
+    if (typeof value === "string") {
+      const parsedValue = Number(value);
+      if (Number.isFinite(parsedValue)) {
+        normalizedSession[field] = parsedValue;
+      }
+    }
+  }
+
+  return normalizedSession;
+}
+
+function pickDefaultMeasurement(payload: unknown): MeasurementResponse | null {
+  let measurements: Record<string, unknown>[] = [];
+
+  if (Array.isArray(payload)) {
+    measurements = payload.filter(
+      (measurement): measurement is Record<string, unknown> =>
+        typeof measurement === "object" && measurement !== null
+    );
+  } else if (payload && typeof payload === "object") {
+    const payloadData = (payload as { data?: unknown }).data;
+    if (Array.isArray(payloadData)) {
+      measurements = payloadData.filter(
+        (measurement): measurement is Record<string, unknown> =>
+          typeof measurement === "object" && measurement !== null
+      );
+    } else if (payloadData && typeof payloadData === "object") {
+      measurements = [payloadData as Record<string, unknown>];
+    } else if ("is_default" in payload) {
+      measurements = [payload as Record<string, unknown>];
+    }
+  }
+
+  if (measurements.length === 0) {
+    return null;
+  }
+
+  const defaultMeasurement =
+    measurements.find((measurement) => measurement.is_default === true) ?? measurements[0];
+
+  return normalizeMeasurement(defaultMeasurement);
 }
 
 /**
@@ -72,7 +165,13 @@ export async function createPatternSession(
     }
 
     const result = await response.json();
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data:
+        result?.data && typeof result.data === "object"
+          ? normalizePatternSession(result.data as Record<string, unknown>)
+          : result.data,
+    };
   } catch (error) {
     console.error("Error creating pattern session:", error);
     if (error instanceof Error && error.message === "Không có quyền truy cập") {
@@ -84,7 +183,7 @@ export async function createPatternSession(
 
 /**
  * Fetch customer's default measurement for auto-fill (AC #2, #3)
- * GET /api/v1/customers/{id}/measurements?default=true
+ * GET /api/v1/customers/{id}/measurements
  */
 export async function fetchCustomerMeasurement(
   customerId: string
@@ -93,15 +192,12 @@ export async function fetchCustomerMeasurement(
     assertUUID(customerId, "Customer ID");
     const token = await getAuthToken();
 
-    const response = await fetch(
-      `${BACKEND_URL}/api/v1/customers/${customerId}/measurements?default=true`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      }
-    );
+    const response = await fetch(`${BACKEND_URL}/api/v1/customers/${customerId}/measurements`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -120,7 +216,7 @@ export async function fetchCustomerMeasurement(
     }
 
     const result = await response.json();
-    return { success: true, data: result.data };
+    return { success: true, data: pickDefaultMeasurement(result) };
   } catch (error) {
     console.error("Error fetching customer measurement:", error);
     if (error instanceof Error && error.message === "Không có quyền truy cập") {
@@ -222,7 +318,13 @@ export async function attachPatternToOrder(
     }
 
     const result = await response.json();
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data:
+        result?.data && typeof result.data === "object"
+          ? normalizePatternSession(result.data as Record<string, unknown>)
+          : result.data,
+    };
   } catch (error) {
     if (error instanceof Error && error.message === "Không có quyền truy cập") {
       return { success: false, error: error.message };
@@ -336,7 +438,13 @@ export async function fetchPatternSession(
     }
 
     const result = await response.json();
-    return { success: true, data: result.data };
+    return {
+      success: true,
+      data:
+        result?.data && typeof result.data === "object"
+          ? normalizePatternSession(result.data as Record<string, unknown>)
+          : result.data,
+    };
   } catch (error) {
     if (error instanceof Error && error.message === "Không có quyền truy cập") {
       return { success: false, error: error.message };

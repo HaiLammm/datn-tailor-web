@@ -137,16 +137,15 @@ export interface PatternSessionResponse {
  */
 export const CUSTOMER_TO_PATTERN_MAPPING: Record<string, MeasurementKey | null> = {
   top_length: "do_dai_ao",
+  ha_eo: "ha_eo",
   neck: "vong_co",
+  vong_nach: "vong_nach",
   bust: "vong_nguc",
   waist: "vong_eo",
   hip: "vong_mong",
   sleeve_length: "do_dai_tay",
+  vong_bap_tay: "vong_bap_tay",
   wrist: "vong_co_tay",
-  // Fields that need manual input (no customer measurement equivalent)
-  // ha_eo: null (waist drop - specific to pattern)
-  // vong_nach: null (armhole - calculated or manual)
-  // vong_bap_tay: null (bicep - not in standard customer measurement)
 };
 
 /**
@@ -154,14 +153,14 @@ export const CUSTOMER_TO_PATTERN_MAPPING: Record<string, MeasurementKey | null> 
  */
 export const PATTERN_TO_CUSTOMER_MAPPING: Record<MeasurementKey, string | null> = {
   do_dai_ao: "top_length",
-  ha_eo: null, // Manual input required
+  ha_eo: "ha_eo",
   vong_co: "neck",
-  vong_nach: null, // Manual input required
+  vong_nach: "vong_nach",
   vong_nguc: "bust",
   vong_eo: "waist",
   vong_mong: "hip",
   do_dai_tay: "sleeve_length",
-  vong_bap_tay: null, // Manual input required
+  vong_bap_tay: "vong_bap_tay",
   vong_co_tay: "wrist",
 };
 

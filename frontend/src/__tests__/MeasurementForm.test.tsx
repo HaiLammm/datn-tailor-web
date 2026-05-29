@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 
 jest.mock("@/hooks/usePatternSession", () => ({
   useCreatePatternSession: jest.fn(),
@@ -147,18 +146,25 @@ describe("MeasurementForm", () => {
     const customerMeasurement = {
       id: "m1",
       customer_profile_id: "c1",
+      tenant_id: "t1",
       top_length: 65,
+      ha_eo: 38,
       neck: 36,
+      vong_nach: 40,
       bust: 88,
       waist: 68,
       hip: 92,
       sleeve_length: 55,
+      vong_bap_tay: 28,
       wrist: 16,
       shoulder_width: 36,
       height: 160,
       weight: 50,
       measured_date: "2026-04-15",
-      notes: null,
+      measured_by: null,
+      created_at: "2026-04-15T00:00:00Z",
+      updated_at: "2026-04-15T00:00:00Z",
+      measurement_notes: null,
       is_default: true,
     };
 
@@ -196,6 +202,9 @@ describe("MeasurementForm", () => {
     expect((screen.getByLabelText("Vòng ngực") as HTMLInputElement).value).toBe("88");
     expect((screen.getByLabelText("Vòng eo") as HTMLInputElement).value).toBe("68");
     expect((screen.getByLabelText("Độ dài áo") as HTMLInputElement).value).toBe("65");
+    expect((screen.getByLabelText("Hạ eo") as HTMLInputElement).value).toBe("38");
+    expect((screen.getByLabelText("Vòng nách") as HTMLInputElement).value).toBe("40");
+    expect((screen.getByLabelText("Vòng bắp tay") as HTMLInputElement).value).toBe("28");
   });
 
   // === AC #3: Handle Customer Without Measurements ===
@@ -233,18 +242,25 @@ describe("MeasurementForm", () => {
     const customerMeasurement = {
       id: "m1",
       customer_profile_id: "c1",
+      tenant_id: "t1",
       top_length: 65,
+      ha_eo: 38,
       neck: 36,
+      vong_nach: 40,
       bust: 88,
       waist: 68,
       hip: 92,
       sleeve_length: 55,
+      vong_bap_tay: 28,
       wrist: 16,
       shoulder_width: 36,
       height: 160,
       weight: 50,
       measured_date: "2026-04-15",
-      notes: null,
+      measured_by: null,
+      created_at: "2026-04-15T00:00:00Z",
+      updated_at: "2026-04-15T00:00:00Z",
+      measurement_notes: null,
       is_default: true,
     };
 

@@ -23,25 +23,27 @@ export function CheckoutItemRow({
   onRemove,
   onUpdateQuantity,
 }: CheckoutItemRowProps) {
+  const isRental = item.transaction_type === "rent";
+  const isBespoke = item.transaction_type === "bespoke";
   const isUnavailable = verifyResult && !verifyResult.is_available;
   const verifiedPrice =
     verifyResult &&
-    (item.transaction_type === "buy"
-      ? verifyResult.verified_sale_price
-      : verifyResult.verified_rental_price);
+    (isRental ? verifyResult.verified_rental_price : verifyResult.verified_sale_price);
   const priceChanged =
     verifiedPrice !== undefined && verifiedPrice !== item.unit_price;
 
   const detailText =
-    item.transaction_type === "buy"
-      ? `Size: ${item.size || "—"}`
-      : `Thuê: ${item.start_date} → ${item.end_date} (${item.rental_days} ngày)`;
+    isRental
+      ? `Thuê: ${item.start_date} → ${item.end_date} (${item.rental_days} ngày)`
+      : `Size: ${item.size || "—"}`;
 
-  const typeLabel = item.transaction_type === "buy" ? "Mua" : "Thuê";
+  const typeLabel = isBespoke ? "Đặt may" : isRental ? "Thuê" : "Mua";
   const typeBadgeClass =
-    item.transaction_type === "buy"
-      ? "bg-emerald-100 text-emerald-800"
-      : "bg-amber-100 text-amber-800";
+    isBespoke
+      ? "bg-purple-100 text-purple-800"
+      : isRental
+        ? "bg-amber-100 text-amber-800"
+        : "bg-emerald-100 text-emerald-800";
 
   return (
     <div
@@ -127,7 +129,7 @@ export function CheckoutItemRow({
               style={{ fontFamily: "JetBrains Mono, monospace" }}
             >
               {formatPrice(item.unit_price)}
-              {item.transaction_type === "buy" ? "" : "/ngày"}
+              {isRental ? "/ngày" : ""}
             </span>
           )}
         </div>

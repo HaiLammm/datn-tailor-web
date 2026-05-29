@@ -2,8 +2,55 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CustomerWithMeasurementsResponse, MeasurementResponse } from "@/types/customer";
+import {
+    CustomerWithMeasurementsResponse,
+    MeasurementCreateInput,
+    MeasurementResponse,
+    measurementCreateSchema,
+} from "@/types/customer";
+
+type MeasurementFormValues = {
+    neck?: number;
+    shoulder_width?: number;
+    bust?: number;
+    waist?: number;
+    hip?: number;
+    top_length?: number;
+    ha_eo?: number;
+    vong_nach?: number;
+    sleeve_length?: number;
+    vong_bap_tay?: number;
+    wrist?: number;
+    height?: number;
+    weight?: number;
+    measured_date?: string;
+    measurement_notes?: string;
+};
+
+type NumericMeasurementField = Exclude<keyof MeasurementFormValues, "measured_date" | "measurement_notes">;
+
+const measurementFields: Array<{
+    name: NumericMeasurementField;
+    label: string;
+    placeholder: string;
+}> = [
+    { name: "neck", label: "Vòng cổ (cm)", placeholder: "38.5" },
+    { name: "shoulder_width", label: "Rộng vai (cm)", placeholder: "42.0" },
+    { name: "bust", label: "Vòng ngực (cm)", placeholder: "90.0" },
+    { name: "waist", label: "Vòng eo (cm)", placeholder: "70.0" },
+    { name: "hip", label: "Vòng mông (cm)", placeholder: "95.0" },
+    { name: "top_length", label: "Dài áo (cm)", placeholder: "70.0" },
+    { name: "ha_eo", label: "Hạ eo (cm)", placeholder: "38.0" },
+    { name: "vong_nach", label: "Vòng nách (cm)", placeholder: "38.0" },
+    { name: "sleeve_length", label: "Dài tay áo (cm)", placeholder: "55.0" },
+    { name: "vong_bap_tay", label: "Vòng bắp tay (cm)", placeholder: "28.0" },
+    { name: "wrist", label: "Vòng cổ tay (cm)", placeholder: "15.0" },
+    { name: "height", label: "Chiều cao (cm)", placeholder: "165.0" },
+    { name: "weight", label: "Cân nặng (kg)", placeholder: "55.0" },
+];
 
 interface MeasurementHistoryProps {
     customerId: string;
@@ -24,6 +71,34 @@ export default function MeasurementHistory({ customerId }: MeasurementHistoryPro
     const router = useRouter();
     const queryClient = useQueryClient();
     const [showAddMeasurement, setShowAddMeasurement] = useState(false);
+    const [measurementError, setMeasurementError] = useState<string | null>(null);
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors: measurementErrors },
+    } = useForm<MeasurementFormValues, undefined, MeasurementCreateInput>({
+        resolver: zodResolver(measurementCreateSchema) as never,
+    });
+
+    const getErrorMessage = async (response: Response, fallback: string) => {
+        try {
+            const errorData = await response.json();
+            const detail = errorData?.detail;
+
+            if (Array.isArray(detail)) {
+                return detail.map((item: { msg?: string }) => item.msg).filter(Boolean).join("; ");
+            }
+
+            if (typeof detail === "string" && detail.trim()) {
+                return detail;
+            }
+        } catch {
+            return fallback;
+        }
+
+        return fallback;
+    };
 
     // Fetch customer with measurements
     const { data, isLoading, error } = useQuery<CustomerWithMeasurementsResponse>({
@@ -78,12 +153,66 @@ export default function MeasurementHistory({ customerId }: MeasurementHistoryPro
                 throw new Error("Lỗi khi xóa số đo");
             }
 
-            return response.json();
+            return null;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["customer", customerId] });
         },
     });
+
+    const createMeasurementMutation = useMutation({
+        mutationFn: async (data: MeasurementCreateInput) => {
+            const payload = Object.fromEntries(
+                Object.entries(data).filter(([, value]) => value !== undefined)
+            );
+
+            const response = await fetch(`/api/v1/customers/${customerId}/measurements`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error(await getErrorMessage(response, "Lỗi khi tạo số đo"));
+            }
+
+            return response.json();
+        },
+        onSuccess: () => {
+            reset();
+            setMeasurementError(null);
+            setShowAddMeasurement(false);
+            queryClient.invalidateQueries({ queryKey: ["customer", customerId] });
+        },
+    });
+
+    const handleToggleMeasurementForm = () => {
+        if (showAddMeasurement) {
+            reset();
+            setMeasurementError(null);
+        }
+
+        setShowAddMeasurement(!showAddMeasurement);
+    };
+
+    const handleCreateMeasurement = async (data: MeasurementCreateInput) => {
+        setMeasurementError(null);
+
+        const hasMeasurementValue = measurementFields.some((field) => data[field.name] !== undefined);
+        if (!hasMeasurementValue) {
+            setMeasurementError("Vui lòng nhập ít nhất một số đo trước khi lưu");
+            return;
+        }
+
+        try {
+            await createMeasurementMutation.mutateAsync(data);
+        } catch (error) {
+            setMeasurementError(error instanceof Error ? error.message : "Lỗi khi tạo số đo");
+        }
+    };
 
     const handleSetDefault = async (measurementId: string) => {
         if (confirm("Bạn có muốn đặt bộ số đo này làm mặc định không?")) {
@@ -226,12 +355,97 @@ export default function MeasurementHistory({ customerId }: MeasurementHistoryPro
                         Lịch sử số đo
                     </h2>
                     <button
-                        onClick={() => setShowAddMeasurement(!showAddMeasurement)}
+                        onClick={handleToggleMeasurementForm}
                         className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
                     >
                         {showAddMeasurement ? "Hủy" : "Thêm số đo mới"}
                     </button>
                 </div>
+
+                {showAddMeasurement && (
+                    <form
+                        onSubmit={handleSubmit(handleCreateMeasurement)}
+                        className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-5 space-y-5"
+                    >
+                        {measurementError && (
+                            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                                {measurementError}
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            {measurementFields.map((field) => (
+                                <div key={field.name}>
+                                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        {field.label}
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        {...register(field.name, { valueAsNumber: true })}
+                                        className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                                        placeholder={field.placeholder}
+                                    />
+                                    {measurementErrors[field.name] && (
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {measurementErrors[field.name]?.message}
+                                        </p>
+                                    )}
+                                </div>
+                            ))}
+
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-gray-700">
+                                    Ngày đo
+                                </label>
+                                <input
+                                    type="date"
+                                    {...register("measured_date")}
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                                />
+                                {measurementErrors.measured_date && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {measurementErrors.measured_date.message}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-sm font-medium text-gray-700">
+                                Ghi chú số đo
+                            </label>
+                            <textarea
+                                {...register("measurement_notes")}
+                                rows={3}
+                                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                                placeholder="Khách thích ôm vừa, cần lưu ý phần vai..."
+                            />
+                            {measurementErrors.measurement_notes && (
+                                <p className="mt-1 text-sm text-red-600">
+                                    {measurementErrors.measurement_notes.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={handleToggleMeasurementForm}
+                                className="rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={createMeasurementMutation.isPending}
+                                className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {createMeasurementMutation.isPending ? "Đang lưu..." : "Lưu số đo"}
+                            </button>
+                        </div>
+                    </form>
+                )}
 
                 {/* Default Measurement Card */}
                 {defaultMeasurement && (
@@ -288,10 +502,28 @@ export default function MeasurementHistory({ customerId }: MeasurementHistoryPro
                                     <p className="font-medium">{defaultMeasurement.top_length} cm</p>
                                 </div>
                             )}
+                            {defaultMeasurement.ha_eo && (
+                                <div>
+                                    <p className="text-xs text-gray-600">Hạ eo</p>
+                                    <p className="font-medium">{defaultMeasurement.ha_eo} cm</p>
+                                </div>
+                            )}
+                            {defaultMeasurement.vong_nach && (
+                                <div>
+                                    <p className="text-xs text-gray-600">Vòng nách</p>
+                                    <p className="font-medium">{defaultMeasurement.vong_nach} cm</p>
+                                </div>
+                            )}
                             {defaultMeasurement.sleeve_length && (
                                 <div>
                                     <p className="text-xs text-gray-600">Dài tay áo</p>
                                     <p className="font-medium">{defaultMeasurement.sleeve_length} cm</p>
+                                </div>
+                            )}
+                            {defaultMeasurement.vong_bap_tay && (
+                                <div>
+                                    <p className="text-xs text-gray-600">Vòng bắp tay</p>
+                                    <p className="font-medium">{defaultMeasurement.vong_bap_tay} cm</p>
                                 </div>
                             )}
                             {defaultMeasurement.wrist && (
@@ -341,7 +573,16 @@ export default function MeasurementHistory({ customerId }: MeasurementHistoryPro
                                         Dài áo
                                     </th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Hạ eo
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Nách
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                         Dài tay
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Bắp tay
                                     </th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                         Cổ tay
@@ -376,7 +617,16 @@ export default function MeasurementHistory({ customerId }: MeasurementHistoryPro
                                             {measurement.top_length || "—"}
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {measurement.ha_eo || "—"}
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {measurement.vong_nach || "—"}
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {measurement.sleeve_length || "—"}
+                                        </td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {measurement.vong_bap_tay || "—"}
                                         </td>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {measurement.wrist || "—"}
@@ -432,7 +682,7 @@ export default function MeasurementHistory({ customerId }: MeasurementHistoryPro
                         </svg>
                         <p className="text-gray-500 text-lg">Chưa có số đo nào</p>
                         <p className="text-gray-400 text-sm mt-1">
-                            Nhấn "Thêm số đo mới" để bắt đầu
+                            Nhấn &quot;Thêm số đo mới&quot; để bắt đầu
                         </p>
                     </div>
                 )}

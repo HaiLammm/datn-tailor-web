@@ -16,7 +16,13 @@ from sqlalchemy.orm import sessionmaker
 from src.core.database import get_db
 from src.core.security import create_access_token, hash_password
 from src.main import app
-from src.models.db_models import Base, CustomerProfileDB, MeasurementDB, TenantDB, UserDB
+from src.models.db_models import (
+    Base,
+    CustomerProfileDB,
+    MeasurementDB,
+    TenantDB,
+    UserDB,
+)
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 DEFAULT_TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -35,7 +41,9 @@ async def test_db_engine():
 
 @pytest_asyncio.fixture
 async def test_db_session(test_db_engine):
-    async_session = sessionmaker(test_db_engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = sessionmaker(
+        test_db_engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with async_session() as session:
         yield session
 
@@ -85,7 +93,10 @@ async def seed_data(test_db_session):
         hip=92,
         shoulder_width=38,
         top_length=60,
+        ha_eo=38,
+        vong_nach=40,
         sleeve_length=58,
+        vong_bap_tay=28,
         wrist=15,
         height=162,
         weight=55,
@@ -106,7 +117,10 @@ async def seed_data(test_db_session):
         hip=90,
         shoulder_width=37,
         top_length=59,
+        ha_eo=37,
+        vong_nach=39,
         sleeve_length=57,
+        vong_bap_tay=27,
         wrist=15,
         height=162,
         weight=54,
@@ -204,7 +218,9 @@ async def test_get_measurements_success(seed_data, override_db):
     user = seed_data["user"]
     token = make_token(user.email)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         resp = await ac.get(
             "/api/v1/customers/me/measurements",
             headers={"Authorization": f"Bearer {token}"},
@@ -228,7 +244,9 @@ async def test_get_measurements_default_highlight(seed_data, override_db):
     user = seed_data["user"]
     token = make_token(user.email)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         resp = await ac.get(
             "/api/v1/customers/me/measurements",
             headers={"Authorization": f"Bearer {token}"},
@@ -238,6 +256,9 @@ async def test_get_measurements_default_highlight(seed_data, override_db):
     default_m = data["default_measurement"]
     assert float(default_m["neck"]) == 34
     assert float(default_m["waist"]) == 68
+    assert float(default_m["ha_eo"]) == 38
+    assert float(default_m["vong_nach"]) == 40
+    assert float(default_m["vong_bap_tay"]) == 28
     assert float(default_m["height"]) == 162
     assert float(default_m["weight"]) == 55
 
@@ -253,7 +274,9 @@ async def test_get_measurements_no_profile(seed_data, override_db):
     user = seed_data["user_no_profile"]
     token = make_token(user.email)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         resp = await ac.get(
             "/api/v1/customers/me/measurements",
             headers={"Authorization": f"Bearer {token}"},
@@ -272,7 +295,9 @@ async def test_get_measurements_no_measurements(seed_data, override_db):
     user = seed_data["user_no_meas"]
     token = make_token(user.email)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         resp = await ac.get(
             "/api/v1/customers/me/measurements",
             headers={"Authorization": f"Bearer {token}"},
@@ -291,7 +316,9 @@ async def test_get_measurements_no_tenant(seed_data, override_db):
     user = seed_data["user_no_tenant"]
     token = make_token(user.email)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         resp = await ac.get(
             "/api/v1/customers/me/measurements",
             headers={"Authorization": f"Bearer {token}"},
@@ -312,7 +339,9 @@ async def test_get_measurements_no_tenant(seed_data, override_db):
 @pytest.mark.asyncio
 async def test_get_measurements_unauthorized():
     """No token → 401."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         resp = await ac.get("/api/v1/customers/me/measurements")
 
     assert resp.status_code == 401

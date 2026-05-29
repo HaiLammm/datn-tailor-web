@@ -29,6 +29,7 @@ const mockGarment: Garment = {
   size_options: ["S", "M", "L", "XL"],
   rental_price: "500000",
   sale_price: "2000000",
+  quantity: 1,
   image_url: "/img/ao-dai.jpg",
   image_urls: [],
   status: "available",
@@ -115,6 +116,26 @@ describe("SizeSelectModal", () => {
       expect(items[0].total_price).toBe(2000000);
       expect(onSuccess).toHaveBeenCalledTimes(1);
       expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("thêm item bespoke vào cart khi transactionType=bespoke", () => {
+      render(
+        <SizeSelectModal
+          garment={mockGarment}
+          isOpen={true}
+          onClose={() => {}}
+          onSuccess={() => {}}
+          transactionType="bespoke"
+        />
+      );
+
+      fireEvent.click(screen.getByText("M"));
+      fireEvent.click(screen.getByText("Tiếp tục đặt may"));
+
+      const items = useCartStore.getState().items;
+      expect(items).toHaveLength(1);
+      expect(items[0].transaction_type).toBe("bespoke");
+      expect(items[0].size).toBe("M");
     });
   });
 

@@ -16,9 +16,6 @@ jest.mock("@/app/actions/profile-actions", () => ({
   getMyMeasurements: (...args: unknown[]) => mockGetMyMeasurements(...args),
 }));
 
-// Import types only (the mock is via mockGetMyMeasurements)
-import type { MeasurementsData } from "@/app/actions/profile-actions";
-
 const DEFAULT_MEASUREMENT: MeasurementResponse = {
   id: "m1",
   customer_profile_id: "cp1",
@@ -29,7 +26,10 @@ const DEFAULT_MEASUREMENT: MeasurementResponse = {
   waist: 68,
   hip: 92,
   top_length: 60,
+  ha_eo: 38,
+  vong_nach: 40,
   sleeve_length: 58,
+  vong_bap_tay: 28,
   wrist: 15,
   height: 162,
   weight: 55,
@@ -134,6 +134,9 @@ describe("MeasurementDisplay", () => {
     expect(screen.getByText("Vòng ngực")).toBeInTheDocument();
     expect(screen.getByText("Vòng eo")).toBeInTheDocument();
     expect(screen.getByText("Vòng mông")).toBeInTheDocument();
+    expect(screen.getByText("Hạ eo")).toBeInTheDocument();
+    expect(screen.getByText("Vòng nách")).toBeInTheDocument();
+    expect(screen.getByText("Vòng bắp tay")).toBeInTheDocument();
     expect(screen.getByText("Chiều cao")).toBeInTheDocument();
     expect(screen.getByText("Cân nặng")).toBeInTheDocument();
   });

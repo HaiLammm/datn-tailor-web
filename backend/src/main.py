@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -54,6 +55,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     scheduler_task = None
     try:
         from src.services.scheduler_service import start_reminder_scheduler
+
         scheduler_task = await start_reminder_scheduler()
         logger.info("Reminder scheduler started successfully")
     except Exception as e:
@@ -101,9 +103,13 @@ _MEASUREMENT_INFO_VI: dict[str, tuple[str, int, int]] = {
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     if not request.url.path.startswith("/api/v1/patterns/"):
-        return JSONResponse(status_code=422, content={"detail": exc.errors()})
+        return JSONResponse(
+            status_code=422, content=jsonable_encoder({"detail": exc.errors()})
+        )
 
     errors_vi: list[str] = []
     other_errors: list[dict] = []
@@ -136,7 +142,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             },
         )
 
-    return JSONResponse(status_code=422, content={"detail": other_errors or exc.errors()})
+    return JSONResponse(
+        status_code=422,
+        content=jsonable_encoder({"detail": other_errors or exc.errors()}),
+    )
 
 
 # Register routers
@@ -175,6 +184,7 @@ app.include_router(patterns_router)
 
 # Mount static files for uploaded images (must be AFTER include_router calls)
 from pathlib import Path as _Path
+
 _UPLOADS_DIR = _Path(__file__).resolve().parent.parent / "uploads"
 _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=str(_UPLOADS_DIR)), name="uploads")

@@ -10,6 +10,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GarmentListResponse } from "@/types/garment";
 import { GarmentGrid } from "./GarmentGrid";
+import { GarmentGridSkeleton } from "./GarmentGridSkeleton";
 import { ShowroomFilter } from "./ShowroomFilter";
 import { Pagination } from "./Pagination";
 import { useGarments } from "./useGarments";
@@ -128,26 +129,33 @@ function ShowroomContentInner({ initialData, isAuthenticated }: ShowroomContentP
           </div>
         )}
 
+        {/* Loading skeleton — covers initial load AND re-fetches that have no
+            cached rows to overlay (e.g. empty→empty filter changes), so the
+            catalog never collapses to a blank area. */}
+        {!isError && (isLoading || isFetching) && garments.length === 0 && (
+          <GarmentGridSkeleton />
+        )}
+
         {/* Empty state */}
         {!isError && !isFetching && !isLoading && garments.length === 0 && (
           <div className="text-center py-16 px-4 bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-[#D4AF37]/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-[#D4AF37]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <h3 className="text-xl font-semibold text-[#1A2B4C] mb-2">Không tìm thấy sản phẩm</h3>
+            <h3 className="text-xl font-semibold text-[#1A2B4C] mb-2">Không tìm thấy áo dài phù hợp</h3>
             <p className="text-gray-500 mb-8 max-w-xs mx-auto">
-              Rất tiếc, chúng tôi không tìm thấy trang phục nào khớp với bộ lọc hiện tại của bạn.
+              Thử bỏ bớt bộ lọc để xem thêm nhiều mẫu hơn nhé.
             </p>
             <button
               onClick={handleClearFilters}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#D4AF37] text-[#1A2B4C] font-semibold rounded-lg hover:bg-[#C4A030] transition-colors shadow-md min-h-[44px]"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#D4AF37] text-[#1A2B4C] font-semibold rounded-lg hover:bg-[#C4A030] transition-colors shadow-md min-h-[44px] focus-visible:outline-2 focus-visible:outline-[#D4AF37] focus-visible:outline-offset-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              Xoá tất cả bộ lọc
+              Xóa bộ lọc
             </button>
           </div>
         )}
@@ -180,7 +188,7 @@ function ShowroomContentInner({ initialData, isAuthenticated }: ShowroomContentP
 
 export function ShowroomContent({ initialData, isAuthenticated }: ShowroomContentProps) {
   return (
-    <Suspense fallback={<div className="text-center py-8">Đang tải...</div>}>
+    <Suspense fallback={<GarmentGridSkeleton />}>
       <ShowroomContentInner initialData={initialData} isAuthenticated={isAuthenticated} />
     </Suspense>
   );

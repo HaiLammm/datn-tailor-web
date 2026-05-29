@@ -9,6 +9,33 @@ import {
     CustomerProfileCreateInput,
 } from "@/types/customer";
 
+type CustomerFormValues = {
+    full_name: string;
+    phone: string;
+    email?: string;
+    date_of_birth?: string;
+    gender?: "" | "Nam" | "Nữ" | "Khác";
+    address?: string;
+    notes?: string;
+    create_account?: boolean;
+    initial_measurements?: {
+        neck?: number;
+        shoulder_width?: number;
+        bust?: number;
+        waist?: number;
+        hip?: number;
+        top_length?: number;
+        ha_eo?: number;
+        vong_nach?: number;
+        sleeve_length?: number;
+        vong_bap_tay?: number;
+        wrist?: number;
+        height?: number;
+        weight?: number;
+        measurement_notes?: string;
+    };
+};
+
 /**
  * Customer Form - Client Component
  * Story 1.3: Quản lý Hồ sơ & Số đo
@@ -25,13 +52,32 @@ export default function CustomerForm() {
     const [error, setError] = useState<string | null>(null);
     const [showMeasurements, setShowMeasurements] = useState(false);
 
+    const getErrorMessage = async (response: Response, fallback: string) => {
+        try {
+            const errorData = await response.json();
+            const detail = errorData?.detail;
+
+            if (Array.isArray(detail)) {
+                return detail.map((item: { msg?: string }) => item.msg).filter(Boolean).join("; ");
+            }
+
+            if (typeof detail === "string" && detail.trim()) {
+                return detail;
+            }
+        } catch {
+            return fallback;
+        }
+
+        return fallback;
+    };
+
     const {
         register,
         handleSubmit,
         watch,
         formState: { errors },
-    } = useForm<CustomerProfileCreateInput>({
-        resolver: zodResolver(customerProfileCreateSchema),
+    } = useForm<CustomerFormValues, undefined, CustomerProfileCreateInput>({
+        resolver: zodResolver(customerProfileCreateSchema) as never,
         defaultValues: {
             create_account: false,
         },
@@ -45,18 +91,50 @@ export default function CustomerForm() {
         setError(null);
 
         try {
+            const measurementKeys = [
+                "neck",
+                "shoulder_width",
+                "bust",
+                "waist",
+                "hip",
+                "top_length",
+                "ha_eo",
+                "vong_nach",
+                "sleeve_length",
+                "vong_bap_tay",
+                "wrist",
+                "height",
+                "weight",
+            ] as const;
+
+            const initialMeasurements = data.initial_measurements
+                ? Object.fromEntries(
+                      Object.entries(data.initial_measurements).filter(([, value]) => value !== undefined)
+                  )
+                : undefined;
+            const hasMeasurementValue = measurementKeys.some(
+                (key) => data.initial_measurements?.[key] !== undefined
+            );
+
+            const payload: CustomerProfileCreateInput = {
+                ...data,
+                initial_measurements:
+                    hasMeasurementValue && initialMeasurements && Object.keys(initialMeasurements).length > 0
+                        ? initialMeasurements
+                        : undefined,
+            };
+
             const response = await fetch("/api/v1/customers", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 credentials: "include",
-                body: JSON.stringify(data),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || "Lỗi khi tạo khách hàng");
+                throw new Error(await getErrorMessage(response, "Lỗi khi tạo khách hàng"));
             }
 
             const customer = await response.json();
@@ -349,6 +427,48 @@ export default function CustomerForm() {
                             />
                         </div>
 
+                        {/* Ha Eo */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Hạ eo (cm)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.1"
+                                {...register("initial_measurements.ha_eo", {
+                                    valueAsNumber: true,
+                                })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="38.0"
+                            />
+                            {errors.initial_measurements?.ha_eo && (
+                                <p className="mt-1 text-sm text-red-600">
+                                    {errors.initial_measurements.ha_eo.message}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Vong Nach */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Vòng nách (cm)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.1"
+                                {...register("initial_measurements.vong_nach", {
+                                    valueAsNumber: true,
+                                })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="38.0"
+                            />
+                            {errors.initial_measurements?.vong_nach && (
+                                <p className="mt-1 text-sm text-red-600">
+                                    {errors.initial_measurements.vong_nach.message}
+                                </p>
+                            )}
+                        </div>
+
                         {/* Sleeve Length */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -363,6 +483,27 @@ export default function CustomerForm() {
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="55.0"
                             />
+                        </div>
+
+                        {/* Vong Bap Tay */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Vòng bắp tay (cm)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.1"
+                                {...register("initial_measurements.vong_bap_tay", {
+                                    valueAsNumber: true,
+                                })}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="28.0"
+                            />
+                            {errors.initial_measurements?.vong_bap_tay && (
+                                <p className="mt-1 text-sm text-red-600">
+                                    {errors.initial_measurements.vong_bap_tay.message}
+                                </p>
+                            )}
                         </div>
 
                         {/* Wrist */}

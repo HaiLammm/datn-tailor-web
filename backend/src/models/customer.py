@@ -11,14 +11,20 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 class CustomerProfileCreateRequest(BaseModel):
     """Schema for creating a new customer profile."""
 
-    full_name: str = Field(..., min_length=2, max_length=255, description="Full name of customer")
-    phone: str = Field(..., min_length=10, max_length=20, description="Phone number (VN format)")
+    full_name: str = Field(
+        ..., min_length=2, max_length=255, description="Full name of customer"
+    )
+    phone: str = Field(
+        ..., min_length=10, max_length=20, description="Phone number (VN format)"
+    )
     email: EmailStr | None = Field(None, description="Optional email address")
     date_of_birth: date | None = Field(None, description="Date of birth")
     gender: str | None = Field(None, description="Gender: Nam, Nữ, Khác")
     address: str | None = Field(None, description="Full address")
     notes: str | None = Field(None, description="Additional notes")
-    create_account: bool = Field(False, description="Create user account for customer if email provided")
+    create_account: bool = Field(
+        False, description="Create user account for customer if email provided"
+    )
     initial_measurements: "MeasurementCreateRequest | None" = Field(
         None, description="Optional initial measurements"
     )
@@ -118,12 +124,21 @@ class MeasurementCreateRequest(BaseModel):
     """Schema for creating a new measurement set."""
 
     neck: Decimal | None = Field(None, ge=20, le=60, description="Vòng cổ (cm)")
-    shoulder_width: Decimal | None = Field(None, ge=30, le=60, description="Rộng vai (cm)")
+    shoulder_width: Decimal | None = Field(
+        None, ge=30, le=60, description="Rộng vai (cm)"
+    )
     bust: Decimal | None = Field(None, ge=60, le=180, description="Vòng ngực (cm)")
     waist: Decimal | None = Field(None, ge=40, le=150, description="Vòng eo (cm)")
     hip: Decimal | None = Field(None, ge=60, le=180, description="Vòng mông (cm)")
     top_length: Decimal | None = Field(None, ge=40, le=120, description="Dài áo (cm)")
-    sleeve_length: Decimal | None = Field(None, ge=30, le=90, description="Dài tay (cm)")
+    ha_eo: Decimal | None = Field(None, ge=5, le=50, description="Hạ eo (cm)")
+    vong_nach: Decimal | None = Field(None, ge=25, le=70, description="Vòng nách (cm)")
+    sleeve_length: Decimal | None = Field(
+        None, ge=30, le=90, description="Dài tay (cm)"
+    )
+    vong_bap_tay: Decimal | None = Field(
+        None, ge=15, le=60, description="Vòng bắp tay (cm)"
+    )
     wrist: Decimal | None = Field(None, ge=10, le=30, description="Vòng cổ tay (cm)")
     height: Decimal | None = Field(None, ge=100, le=250, description="Chiều cao (cm)")
     weight: Decimal | None = Field(None, ge=30, le=200, description="Cân nặng (kg)")
@@ -137,7 +152,10 @@ class MeasurementCreateRequest(BaseModel):
         "waist",
         "hip",
         "top_length",
+        "ha_eo",
+        "vong_nach",
         "sleeve_length",
+        "vong_bap_tay",
         "wrist",
         "height",
         "weight",
@@ -159,7 +177,10 @@ class MeasurementUpdateRequest(BaseModel):
     waist: Decimal | None = Field(None, ge=40, le=150)
     hip: Decimal | None = Field(None, ge=60, le=180)
     top_length: Decimal | None = Field(None, ge=40, le=120)
+    ha_eo: Decimal | None = Field(None, ge=5, le=50)
+    vong_nach: Decimal | None = Field(None, ge=25, le=70)
     sleeve_length: Decimal | None = Field(None, ge=30, le=90)
+    vong_bap_tay: Decimal | None = Field(None, ge=15, le=60)
     wrist: Decimal | None = Field(None, ge=10, le=30)
     height: Decimal | None = Field(None, ge=100, le=250)
     weight: Decimal | None = Field(None, ge=30, le=200)
@@ -178,7 +199,10 @@ class MeasurementResponse(BaseModel):
     waist: Decimal | None = None
     hip: Decimal | None = None
     top_length: Decimal | None = None
+    ha_eo: Decimal | None = None
+    vong_nach: Decimal | None = None
     sleeve_length: Decimal | None = None
+    vong_bap_tay: Decimal | None = None
     wrist: Decimal | None = None
     height: Decimal | None = None
     weight: Decimal | None = None

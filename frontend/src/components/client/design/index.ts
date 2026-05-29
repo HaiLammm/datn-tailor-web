@@ -13,3 +13,4 @@ export { SanityCheckDashboard } from "./SanityCheckDashboard";
 export { OverrideHistoryPanel } from "./OverrideHistoryPanel";
 export { ExportBlueprintButton } from "./ExportBlueprintButton";
 export { PatternAttachDialog } from "./PatternAttachDialog";
+export { default as MeasurementForm } from "./MeasurementForm";

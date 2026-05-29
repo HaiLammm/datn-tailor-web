@@ -8,11 +8,11 @@
  * - Nút "Tiến hành thanh toán" (Heritage Gold) ≥44x44px
  *   -> mode=thue: mở RentalDateModal
  *   -> mode=mua: mở SizeSelectModal
- * - Nút "Đặt lịch Bespoke" (Indigo Depth) — link to /booking
+ * - Nút "Đặt may riêng" thêm bespoke item vào cart rồi sang Measurement Gate
  */
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Garment } from "@/types/garment";
 import { RentalDateModal } from "./RentalDateModal";
 import { SizeSelectModal } from "./SizeSelectModal";
@@ -47,11 +47,13 @@ export function BuyRentToggle({
   isAvailable,
   supportsBespoke = true,
 }: BuyRentToggleProps) {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("thue");
   const [rentFrom, setRentFrom] = useState("");
   const [rentTo, setRentTo] = useState("");
   const [isRentModalOpen, setIsRentModalOpen] = useState(false);
   const [isSizeModalOpen, setIsSizeModalOpen] = useState(false);
+  const [isBespokeModalOpen, setIsBespokeModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -198,19 +200,20 @@ export function BuyRentToggle({
           {isAvailable ? "Tiến hành thanh toán" : "Hết hàng"}
         </button>
 
-        {/* Đặt lịch Bespoke — link to /booking */}
+        {/* Bespoke flow: add item to cart, then confirm measurement */}
         {supportsBespoke && (
-          <Link
-            href="/booking"
-            aria-label={`Đặt lịch tư vấn Bespoke cho ${productName}`}
+          <button
+            type="button"
+            onClick={() => setIsBespokeModalOpen(true)}
+            aria-label={`Đặt may riêng cho ${productName}`}
             className="w-full min-h-[48px] px-6 py-3 rounded-lg text-[#F9F7F2] font-semibold text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-offset-2 hover:opacity-90 text-center inline-flex items-center justify-center"
             style={{
               backgroundColor: "#1A2B4C",
               fontFamily: "Inter, sans-serif",
             }}
           >
-            Đặt lịch Bespoke
-          </Link>
+            Đặt may riêng
+          </button>
         )}
       </div>
 
@@ -226,6 +229,13 @@ export function BuyRentToggle({
         isOpen={isSizeModalOpen}
         onClose={() => setIsSizeModalOpen(false)}
         onSuccess={handleSuccess}
+      />
+      <SizeSelectModal
+        garment={garment}
+        isOpen={isBespokeModalOpen}
+        onClose={() => setIsBespokeModalOpen(false)}
+        onSuccess={() => router.push("/measurement-gate")}
+        transactionType="bespoke"
       />
     </div>
   );

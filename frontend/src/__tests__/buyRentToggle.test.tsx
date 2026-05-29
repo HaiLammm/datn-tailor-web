@@ -8,7 +8,7 @@
  * - Date picker ẩn khi mode = Mua
  * - Nút "Mua" disabled nếu không có sale_price
  * - Hiển thị đúng giá theo mode
- * - CTA buttons: "Thêm vào giỏ hàng" và "Đặt lịch Bespoke"
+ * - CTA buttons: "Thêm vào giỏ hàng" và "Đặt may riêng"
  * - Nút disabled khi sản phẩm không available
  * - Accessibility: min touch targets ≥44px
  */
@@ -18,6 +18,12 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { BuyRentToggle } from "@/components/client/showroom/BuyRentToggle";
 import type { Garment } from "@/types/garment";
+
+const pushMock = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+}));
 
 const mockGarment: Garment = {
   id: "g-001",
@@ -31,6 +37,7 @@ const mockGarment: Garment = {
   size_options: ["S", "M", "L"],
   rental_price: "500000",
   sale_price: "2000000",
+  quantity: 1,
   image_url: null,
   image_urls: [],
   status: "available",
@@ -118,16 +125,22 @@ describe("BuyRentToggle (Story 2.2)", () => {
     expect(cartBtn).toBeDisabled();
   });
 
-  it("should render 'Đặt lịch Bespoke' button when supportsBespoke=true", () => {
+  it("should render 'Đặt may riêng' button when supportsBespoke=true", () => {
     render(<BuyRentToggle {...defaultProps} supportsBespoke={true} />);
     expect(
-      screen.getByLabelText(`Đặt lịch tư vấn Bespoke cho ${defaultProps.productName}`)
+      screen.getByLabelText(`Đặt may riêng cho ${defaultProps.productName}`)
     ).toBeInTheDocument();
   });
 
-  it("should hide 'Đặt lịch Bespoke' when supportsBespoke=false", () => {
+  it("should hide 'Đặt may riêng' when supportsBespoke=false", () => {
     render(<BuyRentToggle {...defaultProps} supportsBespoke={false} />);
-    expect(screen.queryByText("Đặt lịch Bespoke")).not.toBeInTheDocument();
+    expect(screen.queryByText("Đặt may riêng")).not.toBeInTheDocument();
+  });
+
+  it("should open bespoke size modal when bespoke button is clicked", () => {
+    render(<BuyRentToggle {...defaultProps} supportsBespoke={true} />);
+    fireEvent.click(screen.getByRole("button", { name: `Đặt may riêng cho ${defaultProps.productName}` }));
+    expect(screen.getByText("Chọn kích cỡ để đặt may")).toBeInTheDocument();
   });
 
   it("should have accessible role group for toggle", () => {

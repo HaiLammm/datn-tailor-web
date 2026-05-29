@@ -64,7 +64,7 @@ export interface OrderItemResponse {
   garment_id: string;
   garment_name: string;
   image_url: string | null;
-  transaction_type: "buy" | "rent";
+  transaction_type: "buy" | "rent" | "bespoke";
   size?: string | null;
   rental_days?: number | null;
   unit_price: number;

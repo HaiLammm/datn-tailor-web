@@ -601,9 +601,15 @@ export default function OrderDetailDrawer({
                           {item.garment_name}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {item.transaction_type === "buy" ? "Mua" : "Thuê"}
+                          {item.transaction_type === "bespoke"
+                            ? "Đặt may"
+                            : item.transaction_type === "buy"
+                              ? "Mua"
+                              : "Thuê"}
                           {item.size ? ` · Size ${item.size}` : ""}
-                          {item.rental_days ? ` · ${item.rental_days} ngày` : ""}
+                          {item.transaction_type === "rent" && item.rental_days
+                            ? ` · ${item.rental_days} ngày`
+                            : ""}
                         </p>
                       </div>
                       <div className="text-right">

@@ -1,0 +1,95 @@
+<h2 class="sr-only">Production board showing tailors and their assigned orders with deadline warnings</h2>
+
+<div style="display: flex; gap: 12px; margin-bottom: 1.5rem;">
+  <div style="flex: 1; background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 1rem;">
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 4px;">Đơn đang may</p>
+    <p style="font-size: 24px; font-weight: 500; margin: 0;">12</p>
+  </div>
+  <div style="flex: 1; background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 1rem;">
+    <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0 0 4px;">Thợ hoạt động</p>
+    <p style="font-size: 24px; font-weight: 500; margin: 0;">4 / 5</p>
+  </div>
+  <div style="flex: 1; background: #FAEEDA; border-radius: var(--border-radius-md); padding: 1rem;">
+    <p style="font-size: 13px; color: #854F0B; margin: 0 0 4px;">Sắp trễ</p>
+    <p style="font-size: 24px; font-weight: 500; margin: 0; color: #633806;">3</p>
+  </div>
+  <div style="flex: 1; background: #FCEBEB; border-radius: var(--border-radius-md); padding: 1rem;">
+    <p style="font-size: 13px; color: #A32D2D; margin: 0 0 4px;">Đã trễ</p>
+    <p style="font-size: 24px; font-weight: 500; margin: 0; color: #791F1F;">1</p>
+  </div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem;">
+  <h3 style="margin: 0; flex: 1;">Bảng phân công theo thợ</h3>
+  <button onclick="sendPrompt('Giao đơn mới cho thợ')" style="font-size: 13px;"><i class="ti ti-plus" aria-hidden="true" style="font-size:14px; vertical-align:-2px"></i> Giao việc mới ↗</button>
+</div>
+
+<div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 12px;">
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+    <div style="width: 40px; height: 40px; border-radius: 50%; background: #EEEDFE; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 14px; color: #3C3489;">CL</div>
+    <div style="flex: 1;">
+      <p style="font-weight: 500; font-size: 15px; margin: 0;">Chị Lan</p>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0;">Áo dài truyền thống · Hoạt động 4 năm</p>
+    </div>
+    <div style="text-align: right;">
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0;">Workload</p>
+      <p style="font-size: 14px; font-weight: 500; margin: 0;">3 / 4 đơn</p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+    <div style="border-left: 3px solid #A32D2D; background: #FCEBEB; padding: 10px 12px; border-radius: 0 6px 6px 0;">
+      <p style="font-size: 12px; color: #791F1F; font-weight: 500; margin: 0 0 2px;"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:13px; vertical-align:-1px"></i> Trễ 1 ngày</p>
+      <p style="font-size: 13px; font-weight: 500; margin: 0;">Đơn #1247</p>
+      <p style="font-size: 12px; color: #501313; margin: 2px 0 0;">Nguyễn Mai Anh · Cưới</p>
+    </div>
+    <div style="border-left: 3px solid #BA7517; background: #FAEEDA; padding: 10px 12px; border-radius: 0 6px 6px 0;">
+      <p style="font-size: 12px; color: #854F0B; font-weight: 500; margin: 0 0 2px;"><i class="ti ti-clock" aria-hidden="true" style="font-size:13px; vertical-align:-1px"></i> Còn 2 ngày · 92%</p>
+      <p style="font-size: 13px; font-weight: 500; margin: 0;">Đơn #1253</p>
+      <p style="font-size: 12px; color: #633806; margin: 2px 0 0;">Trần Thu Hà · Sự kiện</p>
+    </div>
+    <div style="border-left: 3px solid #1D9E75; background: #E1F5EE; padding: 10px 12px; border-radius: 0 6px 6px 0;">
+      <p style="font-size: 12px; color: #0F6E56; font-weight: 500; margin: 0 0 2px;"><i class="ti ti-check" aria-hidden="true" style="font-size:13px; vertical-align:-1px"></i> Còn 8 ngày · 35%</p>
+      <p style="font-size: 13px; font-weight: 500; margin: 0;">Đơn #1261</p>
+      <p style="font-size: 12px; color: #085041; margin: 2px 0 0;">Lê Phương · Tốt nghiệp</p>
+    </div>
+  </div>
+</div>
+
+<div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 12px;">
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+    <div style="width: 40px; height: 40px; border-radius: 50%; background: #E1F5EE; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 14px; color: #085041;">AH</div>
+    <div style="flex: 1;">
+      <p style="font-weight: 500; font-size: 15px; margin: 0;">Anh Hùng</p>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0;">Áo dài cách tân · Hoạt động 2 năm</p>
+    </div>
+    <div style="text-align: right;">
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0;">Workload</p>
+      <p style="font-size: 14px; font-weight: 500; margin: 0;">2 / 3 đơn</p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+    <div style="border-left: 3px solid #BA7517; background: #FAEEDA; padding: 10px 12px; border-radius: 0 6px 6px 0;">
+      <p style="font-size: 12px; color: #854F0B; font-weight: 500; margin: 0 0 2px;"><i class="ti ti-clock" aria-hidden="true" style="font-size:13px; vertical-align:-1px"></i> Còn 3 ngày · 88%</p>
+      <p style="font-size: 13px; font-weight: 500; margin: 0;">Đơn #1255</p>
+      <p style="font-size: 12px; color: #633806; margin: 2px 0 0;">Phạm Linh · Lễ hội</p>
+    </div>
+    <div style="border-left: 3px solid #1D9E75; background: #E1F5EE; padding: 10px 12px; border-radius: 0 6px 6px 0;">
+      <p style="font-size: 12px; color: #0F6E56; font-weight: 500; margin: 0 0 2px;"><i class="ti ti-check" aria-hidden="true" style="font-size:13px; vertical-align:-1px"></i> Còn 10 ngày · 22%</p>
+      <p style="font-size: 13px; font-weight: 500; margin: 0;">Đơn #1268</p>
+      <p style="font-size: 12px; color: #085041; margin: 2px 0 0;">Võ Quỳnh · Cách tân</p>
+    </div>
+  </div>
+</div>
+
+<div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem;">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div style="width: 40px; height: 40px; border-radius: 50%; background: #F1EFE8; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 14px; color: #5F5E5A;">CD</div>
+    <div style="flex: 1;">
+      <p style="font-weight: 500; font-size: 15px; margin: 0;">Chú Dũng</p>
+      <p style="font-size: 12px; color: var(--color-text-secondary); margin: 0;">Đang nghỉ phép đến 25/05</p>
+    </div>
+    <div style="background: #F1EFE8; color: #444441; font-size: 12px; padding: 4px 10px; border-radius: var(--border-radius-md); font-weight: 500;">Tạm nghỉ</div>
+  </div>
+</div>

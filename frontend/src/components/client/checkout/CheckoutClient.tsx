@@ -79,21 +79,21 @@ export function CheckoutClient() {
       setVerifyResults(resultsMap);
 
       // Update cart prices if backend prices changed
-      for (const r of results) {
-        const cartItem = items.find((i) => i.garment_id === r.garment_id);
-        if (!cartItem) continue;
-        const verifiedUnitPrice =
-          cartItem.transaction_type === "buy"
-            ? r.verified_sale_price
-            : r.verified_rental_price;
-        if (verifiedUnitPrice > 0 && verifiedUnitPrice !== cartItem.unit_price) {
-          const newTotal =
-            cartItem.transaction_type === "rent" && cartItem.rental_days
-              ? verifiedUnitPrice * cartItem.rental_days
-              : verifiedUnitPrice;
-          startTransition(() => {
-            updateItem(cartItem.id, {
-              unit_price: verifiedUnitPrice,
+        for (const r of results) {
+          const cartItem = items.find((i) => i.garment_id === r.garment_id);
+          if (!cartItem) continue;
+          const isSaleLike =
+            cartItem.transaction_type === "buy" || cartItem.transaction_type === "bespoke";
+          const verifiedUnitPrice =
+            isSaleLike ? r.verified_sale_price : r.verified_rental_price;
+          if (verifiedUnitPrice > 0 && verifiedUnitPrice !== cartItem.unit_price) {
+            const newTotal =
+              cartItem.transaction_type === "rent" && cartItem.rental_days
+                ? verifiedUnitPrice * cartItem.rental_days
+                : verifiedUnitPrice;
+            startTransition(() => {
+              updateItem(cartItem.id, {
+                unit_price: verifiedUnitPrice,
               total_price: newTotal,
             });
           });

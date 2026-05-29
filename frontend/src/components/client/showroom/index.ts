@@ -20,3 +20,7 @@ export { MATERIAL_LABEL, OCCASION_LABEL, SIZE_OPTIONS } from "./garmentConstants
 export { Pagination } from "./Pagination";
 export { ShowroomContent } from "./ShowroomContent";
 export { useGarments } from "./useGarments";
+// Story 15.2
+export { ShowroomEditorial } from "./ShowroomEditorial";
+export { ShowroomTrustStrip } from "./ShowroomTrustStrip";
+export { GarmentGridSkeleton } from "./GarmentGridSkeleton";

@@ -1,5 +1,5 @@
 ---
-stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics']
+stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories']
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd/index.md'
   - '_bmad-output/planning-artifacts/prd/executive-summary.md'
@@ -242,6 +242,10 @@ NFR20: E-commerce pages meet WCAG 2.1 Level A compliance, verified by automated 
 - Batch export: zip archive
 - 6 API endpoints defined for pattern CRUD/generate/export/attach
 
+**Customer Brand Presence (Epic 15 — UX Rev 4):**
+- Public lead-capture endpoint for ContactForm — `POST /api/v1/leads` (or `/api/v1/contact`) without auth, with rate-limit/anti-spam. Creates Lead with `source = website` (LeadSource.WEBSITE) and `classification = warm` by default. Requires confirming whether the route is public-scoped vs the existing Owner-only Leads route.
+- Content sourcing decision for About/testimonials: CMS-driven vs hardcoded (pending Architecture confirmation).
+
 ### UX Design Requirements
 
 UX-DR1: Implement Heritage Palette design tokens in Tailwind CSS v4 config — 10 color tokens (Primary Indigo #1A2B4C, Surface Silk Ivory #F9F7F2, Accent Heritage Gold #D4AF37, Background White #FFFFFF, Text Primary Deep Charcoal #1A1A2E, Text Secondary Warm Gray #6B7280, Success Jade Green #059669, Warning Amber #D97706, Error Ruby Red #DC2626, Info Slate Blue #3B82F6).
@@ -285,6 +289,28 @@ UX-DR19: Implement error handling UX — natural language error messages (no tec
 UX-DR20: Implement Adaptive Density spacing system — 8px base grid. Customer Mode: spacious (16-24px gaps). Dashboard Mode: dense (8-12px gaps). Border radius: 8px default, 12px cards, 24px buttons, full avatars. 3-level shadow system (sm/md/lg).
 
 UX-DR21: Implement i18n hook — useTranslate wrapper for all UI strings, supporting Vietnamese and English. JSON locale files with lazy-loading.
+
+**UX Rev 4 — Customer Brand Presence (Phase 5):**
+
+UX-DR22: Build HeroBanner custom component — full-bleed hero for Homepage/About/Showroom-compact. Variants: home, about, showroom-compact. Indigo gradient overlay, Cormorant Garamond headline, dual CTA (Gold primary + outline), subtle scroll cue, Framer Motion reveal. Image lazy-load with LQIP, `next/image` priority for above-the-fold hero. States: Loading (skeleton), Loaded.
+
+UX-DR23: Build FeatureTriad custom component — 3-pillar "Why-Choose-Us" block (icon + title + short description). Variants: home, about. Heritage Gold icons, equal-height cards, responsive 1→3 columns.
+
+UX-DR24: Build TestimonialCard / TestimonialStrip custom component — customer testimonial display. Variants: single card, carousel (mobile, auto-advance), grid (desktop). Cormorant italic quote, optional avatar. Carousel prev/next buttons with aria-labels (not color/animation dependent).
+
+UX-DR25: Build ContactForm custom component — contact form that creates a CRM Lead. Fields: Họ tên (required, 1–255), Số điện thoại (optional, ≤20, normalize empty→null), Email (optional, format validation), Lời nhắn/notes (optional). Submit maps to Lead with `source = website`, `classification = warm`. Zod schema matches backend `LeadBase`. Vietnamese natural-language error messages. States: Idle, Submitting (disabled + in-button spinner), Success (toast + "Cảm ơn bạn, chúng tôi sẽ liên hệ sớm" + reset), Error (Graceful Recovery: preserve entered data + "Thử lại").
+
+UX-DR26: Build SiteFooter custom component — shared Boutique Mode footer replacing hardcoded showroom footer. 3 columns (Về chúng tôi: About/Story · Liên hệ: address/phone/Zalo/hours · Khám phá: Showroom/Booking) + copyright line + social icons.
+
+UX-DR27: Build Homepage Landing page (`/`) — Boutique Mode CV landing replacing the current `redirect("/showroom")`. 6 scroll-driven sections (Framer Motion reveal): (1) Hero full-bleed signature image + Indigo gradient + Cormorant headline + dual CTA, (2) Why-Choose-Us 3 pillars (First-Fit Perfection >90% · Di sản thủ công · AI Bespoke), (3) Featured Collection (3–4 curated ProductCards, "Xem tất cả →" to /showroom), (4) Brand Story teaser editorial block → /about, (5) Testimonials strip, (6) Closing CTA band (Indigo bg, dual CTA). States: Loading (skeleton hero + card skeletons), Empty featured (fallback to newest products).
+
+UX-DR28: Build Showroom enhancement (`/showroom`) — wrap existing ShowroomContent (filter + grid + pagination) with: (1) compact Hero (Indigo→Ivory, Cormorant title + subline, preserves existing `order_success` banner logic), (2) editorial storytelling block above grid, (3) trust signals strip (exchange/return, fabric quality, custom-fit), (4) purposeful empty state (illustration + "Không tìm thấy áo dài phù hợp" + "Xóa bộ lọc" button), (5) skeleton grid loading instead of spinner. Replace hardcoded footer with shared SiteFooter.
+
+UX-DR29: Build About page (`/about`) — editorial Brand CV, Cormorant Garamond dominant, generous whitespace, large images. 4 storytelling pillars: (1) Brand story (About Hero + origin/heritage/mission), (2) Craft & process visual timeline/stepper (Tư vấn → Đo → Dựng rập AI-assisted → May thủ công → First-Fit), (3) Why-Choose-Us differentiators (First-Fit >90%, AI Bespoke, premium materials, dedicated service), (4) Customer testimonials grid/carousel. Closing CTA (Đặt lịch / Liên hệ). Static SSG, lazy-load images.
+
+UX-DR30: Build Contact page (`/contact`) — split layout (info left / form right on desktop, stacked on mobile). Info block: Google Maps embed (iframe with `title`) + address, opening hours, tap-to-call phone, Zalo, email, social links. Form block: ContactForm (UX-DR25) → CRM Lead via public endpoint. Touch targets ≥44px, `aria-describedby` for errors, Heritage Gold focus ring.
+
+UX-DR31: Implement Customer navigation + Footer refactor — replace looping "Trang chủ → /showroom" with real nav: Trang chủ (`/`) · Showroom (`/showroom`) · Giới thiệu (`/about`) · Liên hệ (`/contact`) · Đặt lịch (`/booking`) + Cart/Profile/Notification. Mobile: hamburger drawer or bottom tab (Home · Shop · Book · Profile). Implements "Discovery → Trust → Convert" marketing funnel journey with Contextual CTA on every page leading to Booking/Contact.
 
 ### FR Coverage Map
 
@@ -385,6 +411,20 @@ FR97: Epic 11 — Pattern-order attachment for tailor task
 FR98: Epic 11 — Tailor pattern view with zoom/pan
 FR99: Epic 11 — Measurement validation (min/max ranges)
 
+### UX-DR Coverage Map (Epic 15 — Customer Brand Presence)
+
+UX-DR22: Epic 15 (Stories 15.2, 15.3, 15.5) — HeroBanner component
+UX-DR23: Epic 15 (Stories 15.3, 15.5) — FeatureTriad component
+UX-DR24: Epic 15 (Stories 15.3, 15.5) — TestimonialStrip component
+UX-DR25: Epic 15 (Story 15.4) — ContactForm component
+UX-DR26: Epic 15 (Story 15.1) — SiteFooter component
+UX-DR27: Epic 15 (Story 15.5) — Homepage Landing page
+UX-DR28: Epic 15 (Story 15.2) — Showroom enhancement
+UX-DR29: Epic 15 (Story 15.3) — About page
+UX-DR30: Epic 15 (Story 15.4) — Contact page
+UX-DR31: Epic 15 (Story 15.1) — Customer navigation + Footer refactor
+(UX-DR1–UX-DR21 covered across Epics 1–11 feature stories tracked in implementation-artifacts/)
+
 ## Epic List
 
 ### Epic 1: Project Foundation & Authentication
@@ -431,6 +471,11 @@ Complete differentiated order processing across 3 service types. Bespoke measure
 Owner generates production-ready technical patterns from 10 customer measurements using deterministic formulas. System produces 3 pattern pieces (front bodice, back bodice, sleeve) with curve generation. Exports as SVG (1:1 scale) and G-code (laser cutting). Real-time split-pane preview. Patterns attached to orders for tailor task assignment. Tailor views patterns with zoom/pan.
 **FRs covered:** FR91, FR92, FR93, FR94, FR95, FR96, FR97, FR98, FR99
 
+### Epic 15: Customer Brand Presence
+Customer-facing experience operates as the boutique's "CV" — every touchpoint argues "choose us." Introduces a real Homepage Landing at `/` (replacing the redirect to /showroom), an upgraded Showroom (hero + editorial + trust + empty/loading states), an About page (4-pillar brand CV), and a Contact page whose form captures CRM leads via a public lead endpoint. Includes shared SiteFooter, customer navigation refactor, and 5 new Phase 5 Boutique-Mode components. All Boutique Mode, mobile-first (≥375px). Builds upon Epic 1, Epic 2, and Epic 9.
+**UX-DRs covered:** UX-DR22, UX-DR23, UX-DR24, UX-DR25, UX-DR26, UX-DR27, UX-DR28, UX-DR29, UX-DR30, UX-DR31
+**Additional:** Public lead-capture endpoint (`POST /api/v1/leads` or `/contact`), supports FR70 (lead creation) from the website channel.
+
 ### Epic 12: AI Style & Semantic Interpretation (Deferred — Post E-commerce Launch)
 Users can select Style Pillars, adjust style intensity via Sliders, system translates selections into Ease Delta parameters, and suggests compatible fabrics.
 **FRs covered:** FR1, FR2, FR3, FR4
@@ -442,3 +487,152 @@ System applies Ease Delta to Golden Base Pattern, calculates new coordinates fro
 ### Epic 14: AI Guardrails, Tailor Collaboration & Production (Deferred — Post E-commerce Launch)
 System enforces physical constraints and Golden Rules, issues warnings near limits, allows tailor manual override. Tailors use Overlay comparison, Sanity Check Dashboard, and receive adjustment parameter lists. System secures Golden Rules knowledge access.
 **FRs covered:** FR9, FR10, FR11, FR12, FR13, FR14, FR15, FR16
+
+## Epic 15: Customer Brand Presence
+
+Transform the customer-facing surface into the boutique's "CV" — a persuasive brand experience that turns visitors into leads. Replaces the bare `redirect("/showroom")` with a real Homepage Landing, upgrades the Showroom from a flat catalog into a boutique experience, and adds About and Contact pages. All Boutique Mode (Ivory background, Heritage Gold accents, Cormorant Garamond headings, spacious 16–24px), mobile-first (≥375px). Builds upon Epic 1 (scaffolding, Dual-Mode UI, Auth), Epic 2 (ProductCard, catalog), and Epic 9 (CRM Lead module). Delivered in build order so each story depends only on prior stories.
+
+**UX-DRs covered:** UX-DR22, UX-DR23, UX-DR24, UX-DR25, UX-DR26, UX-DR27, UX-DR28, UX-DR29, UX-DR30, UX-DR31
+
+### Story 15.1: Shared SiteFooter and Customer Navigation Refactor
+
+As a customer browsing the website,
+I want a consistent navigation bar and footer across every customer-facing page,
+So that I can move freely between Home, Showroom, About, Contact, and Booking instead of being trapped in a redirect loop.
+
+**Acceptance Criteria:**
+
+**Given** I am on any customer-facing page
+**When** the page renders
+**Then** the top navigation shows real links — Trang chủ (`/`), Showroom (`/showroom`), Giới thiệu (`/about`), Liên hệ (`/contact`), Đặt lịch (`/booking`) — plus Cart, Profile, and Notification entries
+**And** the navigation never links "Trang chủ" back to `/showroom` (the old loop is removed)
+
+**Given** I am on a mobile viewport (≥375px)
+**When** I open the navigation
+**Then** I see a hamburger drawer or bottom tab bar (Home · Shop · Book · Profile) following the Role-Based Navigation pattern
+**And** all touch targets are ≥44×44px
+
+**Given** any Boutique Mode page renders
+**When** I scroll to the bottom
+**Then** the shared SiteFooter displays 3 columns — Về chúng tôi (About, Story) · Liên hệ (address, phone, Zalo, opening hours) · Khám phá (Showroom, Booking) — plus copyright line and social icons
+**And** the previously hardcoded showroom footer is replaced by this shared SiteFooter
+
+**Given** I navigate with keyboard
+**When** I tab through nav and footer links
+**Then** each focusable element shows a Heritage Gold focus ring (2px solid) and links expose proper ARIA labels
+
+### Story 15.2: Showroom Enhancement
+
+As a customer visiting the showroom,
+I want a boutique-style showroom with a hero, storytelling, trust signals, and graceful empty/loading states,
+So that I feel I am in a heritage boutique rather than a generic marketplace.
+
+**Acceptance Criteria:**
+
+**Given** I open `/showroom`
+**When** the page renders
+**Then** a compact HeroBanner (showroom-compact variant, Indigo→Ivory, Cormorant title + subline) appears above the existing filter + grid + pagination
+**And** the existing `order_success` banner logic continues to display when present
+
+**Given** the showroom hero renders
+**When** I scroll to the catalog area
+**Then** an editorial storytelling block appears above the product grid
+**And** a trust-signals strip (exchange/return, fabric quality, custom-fit) is shown with icon + concise text
+
+**Given** I apply filters that match no products
+**When** results return empty
+**Then** a purposeful empty state shows an illustration, the message "Không tìm thấy áo dài phù hợp", and a "Xóa bộ lọc" button
+**And** the page never shows a blank/empty area
+
+**Given** the product grid is loading
+**When** data has not yet arrived
+**Then** a skeleton grid (card skeletons) is shown instead of a spinner, preserving spatial context
+
+**Given** the showroom renders
+**When** I reach the bottom
+**Then** the shared SiteFooter (from Story 15.1) is used instead of any hardcoded footer
+
+### Story 15.3: About Page
+
+As a prospective customer evaluating the boutique,
+I want an editorial About page that tells the brand story, craft process, differentiators, and customer testimonials,
+So that I trust this is a genuine artisan who understands the craft before I commit.
+
+**Acceptance Criteria:**
+
+**Given** I open `/about`
+**When** the page renders
+**Then** an editorial layout (Cormorant Garamond dominant, generous whitespace, large images) presents 4 pillars in order: (1) Brand story, (2) Craft & process timeline/stepper (Tư vấn → Đo → Dựng rập AI-assisted → May thủ công → First-Fit), (3) Why-Choose-Us differentiators via FeatureTriad, (4) Customer testimonials via TestimonialStrip
+**And** a closing CTA links to `/booking` (Đặt lịch) and `/contact` (Liên hệ)
+
+**Given** the Why-Choose-Us section renders
+**When** I view it on different breakpoints
+**Then** the FeatureTriad shows Heritage Gold icons, equal-height cards, responsive 1→3 columns
+
+**Given** the testimonials section renders
+**When** I view it on mobile vs desktop
+**Then** TestimonialStrip shows a carousel (mobile, auto-advance) or grid (desktop) with Cormorant italic quotes and optional avatars
+**And** carousel prev/next buttons expose `aria-label` and do not rely on color/animation alone
+
+**Given** the About page is served
+**When** it loads
+**Then** it is rendered as static SSG and below-the-fold images lazy-load
+
+### Story 15.4: Contact Page and Public Lead Capture
+
+As a visitor ready to reach out,
+I want a Contact page with store info and a simple form,
+So that I can send my details and have the boutique follow up with me.
+
+**Acceptance Criteria:**
+
+**Given** I open `/contact`
+**When** the page renders
+**Then** I see a split layout (info left / form right on desktop, stacked on mobile) with a Google Maps embed (iframe with `title`), address, opening hours, tap-to-call phone, Zalo, email, and social links
+
+**Given** I fill the ContactForm
+**When** I submit with a valid Họ tên (required, 1–255 chars) and optional Số điện thoại / Email / Lời nhắn
+**Then** a Lead is created via the public endpoint with `source = website` and `classification = warm`
+**And** I see a success toast "Cảm ơn bạn, chúng tôi sẽ liên hệ sớm" and the form resets
+
+**Given** I submit invalid data
+**When** validation runs (Zod schema matching backend `LeadBase`)
+**Then** Vietnamese natural-language errors appear ("Vui lòng nhập họ tên", "Email không hợp lệ") with `aria-describedby` wiring
+**And** an empty phone is normalized to null
+
+**Given** the submission fails (network/server error)
+**When** the error is returned
+**Then** the form preserves all entered data and offers a "Thử lại" action (Graceful Recovery)
+
+**Given** the public lead endpoint receives requests
+**When** it is called without authentication
+**Then** it accepts the lead at `POST /api/v1/leads` (or `/api/v1/contact`) without requiring auth, applies rate-limiting/anti-spam, and persists the Lead per backend `LeadBase` constraints
+
+### Story 15.5: Homepage Landing "CV"
+
+As a first-time visitor landing on the site,
+I want a persuasive homepage that introduces the boutique's value, featured pieces, story, and testimonials,
+So that I form a strong first impression and choose to explore, book, or buy.
+
+**Acceptance Criteria:**
+
+**Given** I open `/`
+**When** the page renders
+**Then** it shows a full-bleed Hero (signature image, Indigo gradient overlay, Cormorant headline, subline, dual CTA: [Khám phá Showroom] Gold primary + [Đặt lịch tư vấn] outline, subtle scroll cue) instead of redirecting to `/showroom`
+**And** the hero image uses `next/image` with `priority`
+
+**Given** I scroll down the homepage
+**When** each section enters the viewport
+**Then** sections reveal via Framer Motion in order: (2) Why-Choose-Us 3 pillars (First-Fit Perfection >90% · Di sản thủ công · AI Bespoke) via FeatureTriad, (3) Featured Collection (3–4 curated ProductCards reused from Epic 2, "Xem tất cả →" to `/showroom`), (4) Brand Story teaser editorial block → `/about`, (5) Testimonials strip, (6) Closing CTA band (Indigo background, dual CTA)
+
+**Given** the Featured Collection has no curated items
+**When** the section renders
+**Then** it falls back to the newest products rather than showing an empty area
+
+**Given** the homepage is loading
+**When** data has not yet arrived
+**Then** a skeleton hero and card skeletons are shown
+
+**Given** I reach the bottom of the homepage
+**When** the footer renders
+**Then** the shared SiteFooter (from Story 15.1) is displayed

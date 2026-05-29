@@ -3,6 +3,8 @@
  * Fields use snake_case for SSOT synchronization with backend Pydantic schemas.
  */
 
+import { z } from "zod";
+
 export type LeadSource =
   | "manual"
   | "website"
@@ -106,6 +108,36 @@ export interface LeadConvertResponse {
 export interface LeadConvertApiResponse {
   data: LeadConvertResponse;
 }
+
+// --- Story 15.4: Public website contact form ---
+
+const emptyStringToUndefined = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
+/**
+ * Zod schema for the public ContactForm. Mirrors backend `LeadBase` constraints
+ * (name 1–255 required; phone ≤20 optional; email format optional ≤255; notes
+ * optional). `company` is a honeypot — humans leave it empty.
+ */
+export const publicLeadSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Vui lòng nhập họ tên")
+    .max(255, "Họ tên không được quá 255 ký tự"),
+  phone: z.preprocess(
+    emptyStringToUndefined,
+    z.string().max(20, "Số điện thoại không được quá 20 ký tự").optional()
+  ),
+  email: z.preprocess(
+    emptyStringToUndefined,
+    z.string().email("Email không hợp lệ").max(255).optional()
+  ),
+  notes: z.preprocess(emptyStringToUndefined, z.string().optional()),
+  company: z.string().optional(),
+});
+
+export type PublicLeadFormInput = z.input<typeof publicLeadSchema>;
+export type PublicLeadInput = z.infer<typeof publicLeadSchema>;
 
 /** Tailwind color classes for classification badges */
 export const LEAD_CLASSIFICATION_COLORS: Record<

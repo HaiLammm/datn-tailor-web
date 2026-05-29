@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
-import { redirect, notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import MeasurementHistory from "@/components/client/MeasurementHistory";
-import { CustomerWithMeasurementsResponse } from "@/types/customer";
 
 /**
  * Customer Detail Page - Server Component
@@ -12,9 +11,10 @@ import { CustomerWithMeasurementsResponse } from "@/types/customer";
 export default async function CustomerDetailPage({
     params,
 }: {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }) {
     const session = await auth();
+    const { id } = await params;
 
     // Authentication check
     if (!session) {
@@ -26,21 +26,11 @@ export default async function CustomerDetailPage({
         redirect("/");
     }
 
-    // Fetch customer data from API
-    let customer: CustomerWithMeasurementsResponse | null = null;
-    try {
-        // In production, this would be an actual API call
-        // For now, we'll handle this in the client component via React Query
-        customer = null; // Will be fetched by client component
-    } catch (error) {
-        notFound();
-    }
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-amber-50">
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Customer Detail - Client Component will fetch data */}
-                <MeasurementHistory customerId={params.id} />
+                <MeasurementHistory customerId={id} />
             </div>
         </div>
     );

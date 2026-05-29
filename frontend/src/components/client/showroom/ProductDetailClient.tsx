@@ -75,7 +75,7 @@ export function ProductDetailClient({ garment }: ProductDetailClientProps) {
               rentalPrice={garment.rental_price}
               salePrice={garment.sale_price}
               isAvailable={isAvailable}
-              supportsBespoke={true}
+              supportsBespoke={garment.sale_price !== null}
             />
 
             {/* Mô tả */}

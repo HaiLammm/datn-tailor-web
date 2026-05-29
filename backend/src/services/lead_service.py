@@ -5,7 +5,7 @@ Owner-only access enforced at API layer.
 """
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import asc, desc, func, or_, select
@@ -116,6 +116,57 @@ async def get_lead(
     )
     result = await db.execute(query)
     return result.scalar_one_or_none()
+
+
+# --- Story 15.4: Public website lead capture anti-spam ---
+
+# Max website leads accepted within the window before returning 429.
+PUBLIC_LEAD_RATE_LIMIT = 5
+PUBLIC_LEAD_RATE_WINDOW_MINUTES = 10
+
+
+async def count_recent_website_leads(
+    db: AsyncSession,
+    tenant_id: uuid.UUID,
+    *,
+    window_minutes: int = PUBLIC_LEAD_RATE_WINDOW_MINUTES,
+    email: str | None = None,
+    phone: str | None = None,
+) -> int:
+    """Count recent website leads for rate-limiting the public contact form.
+
+    Counts LeadDB rows with source == "website" created within the window.
+    When an email or phone is supplied, the count is scoped to that contact so
+    a single spammer cannot lock out other visitors (no global lockout).
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID (the public default tenant)
+        window_minutes: Look-back window in minutes
+        email: Optional contact email to scope the count
+        phone: Optional contact phone to scope the count
+
+    Returns:
+        Number of matching website leads in the window
+    """
+    window_start = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
+
+    query = select(func.count(LeadDB.id)).where(
+        LeadDB.tenant_id == tenant_id,
+        LeadDB.source == "website",
+        LeadDB.created_at >= window_start,
+    )
+
+    contact_filters = []
+    if email:
+        contact_filters.append(LeadDB.email == email)
+    if phone:
+        contact_filters.append(LeadDB.phone == phone)
+    if contact_filters:
+        query = query.where(or_(*contact_filters))
+
+    result = await db.execute(query)
+    return result.scalar() or 0
 
 
 async def create_lead(

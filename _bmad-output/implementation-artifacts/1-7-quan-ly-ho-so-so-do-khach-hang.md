@@ -425,7 +425,7 @@ Dựa trên NFR11 ("100% thuật ngữ chuyên ngành may Việt Nam"):
    ↓
    [Info] Fill: Full name, Phone (required), Email, DOB, Gender, Address
    ↓
-   [Measurements] Fill: Neck, Shoulder, Bust, Waist, Hip, Top length, Sleeve length, Wrist, Height (optional), Weight (optional)
+   [Measurements] Fill: Neck, Shoulder, Bust, Waist, Hip, Top length, Ha eo, Vong nach, Sleeve length, Vong bap tay, Wrist, Height (optional), Weight (optional)
    ↓
    [Account] Optional: Tick "Tạo tài khoản" (nếu có email)
    ↓
@@ -717,6 +717,8 @@ No new environment variables needed (reuse existing DB connection, SMTP from Sto
 **Total:** 19 files created, 6 files modified
 
 **Note:** `email_service.py` was created in Story 1.2 and reused here for optional customer account creation invitations.
+
+**2026-05-26 Follow-up Expansion:** Customer measurement profiles were expanded to include `ha_eo`, `vong_nach`, and `vong_bap_tay` so the customer profile can fully match the measurement set used by `/design-session` pattern sessions. This update touched the database migration, backend measurement schemas/services, owner measurement forms, customer self-service display, and Story 11.4 auto-fill mapping.
 
 ## Phase 2 — Implementation
 > Phase 2 file khong ton tai — story hoan thanh truoc khi co workflow implementation-artifacts

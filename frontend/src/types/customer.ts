@@ -7,6 +7,28 @@ import { z } from "zod";
 
 // ===== Validation Schemas =====
 
+const emptyStringToUndefined = (value: unknown) => {
+  if (typeof value === "string" && value.trim() === "") {
+    return undefined;
+  }
+  return value;
+};
+
+const emptyNumberToUndefined = (value: unknown) => {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === "number" && Number.isNaN(value)) {
+    return undefined;
+  }
+
+  return value;
+};
+
+const optionalDateStringSchema = z.preprocess(emptyStringToUndefined, z.string().optional());
+const optionalTextSchema = z.preprocess(emptyStringToUndefined, z.string().optional());
+
 /**
  * Vietnamese phone number validation
  * Format: 0XXXXXXXXX (10-11 digits)
@@ -21,12 +43,15 @@ const phoneSchema = z
  * Measurement field validation with range
  */
 const measurementFieldSchema = (min: number, max: number, fieldName: string) =>
-  z
-    .number()
-    .min(min, `${fieldName} phải lớn hơn ${min}cm`)
-    .max(max, `${fieldName} phải nhỏ hơn ${max}cm`)
-    .positive(`${fieldName} phải là số dương`)
-    .optional();
+  z.preprocess(
+    emptyNumberToUndefined,
+    z
+      .number()
+      .min(min, `${fieldName} phải lớn hơn ${min}cm`)
+      .max(max, `${fieldName} phải nhỏ hơn ${max}cm`)
+      .positive(`${fieldName} phải là số dương`)
+      .optional()
+  );
 
 // ===== Measurement Schemas =====
 
@@ -40,19 +65,26 @@ export const measurementCreateSchema = z.object({
   waist: measurementFieldSchema(40, 150, "Vòng eo"),
   hip: measurementFieldSchema(60, 180, "Vòng mông"),
   top_length: measurementFieldSchema(40, 120, "Dài áo"),
+  ha_eo: measurementFieldSchema(5, 50, "Hạ eo"),
+  vong_nach: measurementFieldSchema(25, 70, "Vòng nách"),
   sleeve_length: measurementFieldSchema(30, 90, "Dài tay"),
+  vong_bap_tay: measurementFieldSchema(15, 60, "Vòng bắp tay"),
   wrist: measurementFieldSchema(10, 30, "Vòng cổ tay"),
   height: measurementFieldSchema(100, 250, "Chiều cao"),
-  weight: z
-    .number()
-    .min(30, "Cân nặng phải lớn hơn 30kg")
-    .max(200, "Cân nặng phải nhỏ hơn 200kg")
-    .positive("Cân nặng phải là số dương")
-    .optional(),
-  measurement_notes: z.string().optional(),
-  measured_date: z.string().optional(), // ISO date string
+  weight: z.preprocess(
+    emptyNumberToUndefined,
+    z
+      .number()
+      .min(30, "Cân nặng phải lớn hơn 30kg")
+      .max(200, "Cân nặng phải nhỏ hơn 200kg")
+      .positive("Cân nặng phải là số dương")
+      .optional()
+  ),
+  measurement_notes: optionalTextSchema,
+  measured_date: optionalDateStringSchema, // ISO date string
 });
 
+export type MeasurementCreateFormInput = z.input<typeof measurementCreateSchema>;
 export type MeasurementCreateInput = z.infer<typeof measurementCreateSchema>;
 
 /**
@@ -75,7 +107,10 @@ export interface MeasurementResponse {
   waist: number | null;
   hip: number | null;
   top_length: number | null;
+  ha_eo: number | null;
+  vong_nach: number | null;
   sleeve_length: number | null;
+  vong_bap_tay: number | null;
   wrist: number | null;
   height: number | null;
   weight: number | null;
@@ -98,15 +133,22 @@ export const customerProfileCreateSchema = z.object({
     .min(2, "Họ tên phải có ít nhất 2 ký tự")
     .max(255, "Họ tên không được quá 255 ký tự"),
   phone: phoneSchema,
-  email: z.string().email("Email không đúng định dạng").optional().or(z.literal("")),
-  date_of_birth: z.string().optional(), // ISO date string
-  gender: z.enum(["Nam", "Nữ", "Khác"]).optional(),
-  address: z.string().optional(),
-  notes: z.string().optional(),
+  email: z.preprocess(
+    emptyStringToUndefined,
+    z.string().email("Email không đúng định dạng").optional()
+  ),
+  date_of_birth: optionalDateStringSchema, // ISO date string
+  gender: z.preprocess(
+    emptyStringToUndefined,
+    z.enum(["Nam", "Nữ", "Khác"]).optional()
+  ),
+  address: optionalTextSchema,
+  notes: optionalTextSchema,
   initial_measurements: measurementCreateSchema.optional(),
   create_account: z.boolean().optional(), // Checkbox: Tạo tài khoản cho khách hàng
 });
 
+export type CustomerProfileCreateFormInput = z.input<typeof customerProfileCreateSchema>;
 export type CustomerProfileCreateInput = z.infer<typeof customerProfileCreateSchema>;
 
 /**

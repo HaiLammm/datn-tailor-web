@@ -403,6 +403,7 @@ openai/gpt-5.4
 
 - `npm run lint -- "src/app/(workplace)/design-session/[sessionId]/page.tsx" "src/app/(workplace)/design-session/[sessionId]/SessionDetailClient.tsx" "src/app/(workplace)/design-session/[sessionId]/loading.tsx" "src/components/client/design/MeasurementSummary.tsx" "src/components/client/design/PatternPreview.tsx" "src/components/client/design/PatternExportBar.tsx" "src/app/actions/pattern-actions.ts" "src/hooks/usePatternSession.ts" "src/types/pattern.ts" "src/__tests__/PatternPreview.test.tsx" "src/__tests__/PatternExportBar.test.tsx" "src/__tests__/SessionDetailClient.test.tsx"`
 - `npm test -- --runTestsByPath "src/__tests__/PatternPreview.test.tsx" "src/__tests__/PatternExportBar.test.tsx" "src/__tests__/SessionDetailClient.test.tsx"`
+- 2026-05-26: Bug found on `/design-session/{sessionId}` after creating or reopening a pattern session. Backend `PatternSessionResponse` serializes Decimal measurement fields as strings (e.g. `"120.0"`), while Story 11.5 UI assumed numbers and called `toFixed()` in `MeasurementSummary`, causing the detail page to fail rendering.
 
 ### Completion Notes List
 
@@ -410,6 +411,8 @@ openai/gpt-5.4
 - Implemented `MeasurementSummary`, `PatternPreview`, and `PatternExportBar` with Vietnamese measurement labels, generate trigger, zoom/pan interactions, piece toggles, and authenticated file downloads.
 - Extended pattern types, server actions, and TanStack hooks for session fetch, generate, export, and linked customer metadata lookup.
 - Added targeted Jest coverage for preview interactions, export controls, and session detail rendering states.
+- 2026-05-26 follow-up fix: normalized Decimal-string measurement fields in `createPatternSession`, `fetchPatternSession`, and `generatePatternPieces` action results before they reach Story 11.5 UI components. This prevents `toFixed()` crashes on the session detail page and keeps SSR/client query data consistent.
+- Added regression coverage for `fetchPatternSession()` to verify decimal-string measurements are converted to numbers.
 
 ### File List
 
@@ -417,6 +420,8 @@ openai/gpt-5.4
 - `frontend/src/app/(workplace)/design-session/[sessionId]/SessionDetailClient.tsx`
 - `frontend/src/app/(workplace)/design-session/[sessionId]/loading.tsx`
 - `frontend/src/components/client/design/MeasurementSummary.tsx`
+- `frontend/src/app/actions/pattern-actions.ts` — MODIFIED: normalize Decimal-string measurement fields for session detail responses
+- `frontend/src/__tests__/patternActions.test.ts` — MODIFIED: add Story 11.5 regression test for session detail normalization
 - `frontend/src/components/client/design/PatternPreview.tsx`
 - `frontend/src/components/client/design/PatternExportBar.tsx`
 - `frontend/src/components/client/design/index.ts`

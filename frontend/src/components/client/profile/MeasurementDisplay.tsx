@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import type { MeasurementResponse } from "@/types/customer";
 import type { MeasurementsData } from "@/app/actions/profile-actions";
 import { getMyMeasurements } from "@/app/actions/profile-actions";
@@ -18,7 +18,10 @@ const MEASUREMENT_FIELDS: Array<{
   { key: "waist", label: "Vòng eo", unit: "cm" },
   { key: "hip", label: "Vòng mông", unit: "cm" },
   { key: "top_length", label: "Dài áo", unit: "cm" },
+  { key: "ha_eo", label: "Hạ eo", unit: "cm" },
+  { key: "vong_nach", label: "Vòng nách", unit: "cm" },
   { key: "sleeve_length", label: "Dài tay áo", unit: "cm" },
+  { key: "vong_bap_tay", label: "Vòng bắp tay", unit: "cm" },
   { key: "wrist", label: "Vòng cổ tay", unit: "cm" },
   { key: "height", label: "Chiều cao", unit: "cm" },
   { key: "weight", label: "Cân nặng", unit: "kg" },
@@ -208,7 +211,6 @@ export default function MeasurementDisplay({
   const [data, setData] = useState<MeasurementsData | null>(initialData);
   const [error, setError] = useState<string | undefined>(initialError);
   const [loading, setLoading] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleRetry = useCallback(async () => {
     setLoading(true);
@@ -224,18 +226,6 @@ export default function MeasurementDisplay({
       setLoading(false);
     }
   }, []);
-
-  // Cleanup timer on unmount
-  const cleanup = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  // Note: cleanup called if component ever unmounts during retry
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  void cleanup;
 
   if (loading) return <MeasurementSkeleton />;
   if (error) return <MeasurementError message={error} onRetry={handleRetry} />;

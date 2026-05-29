@@ -106,12 +106,19 @@ export default function ProductionBoardClient() {
 
   const summary = data?.summary ?? {
     total: 0,
+    unassigned: 0,
     assigned: 0,
+    accepted: 0,
+    rejected: 0,
     in_progress: 0,
+    on_hold: 0,
+    reassigning: 0,
+    submitted_for_qc: 0,
     completed: 0,
-    overdue: 0,
     cancelled: 0,
+    failed_qc: 0,
     cancellation_requested: 0,
+    overdue: 0,
   };
 
   return (

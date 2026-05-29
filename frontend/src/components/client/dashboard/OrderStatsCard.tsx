@@ -29,13 +29,17 @@ export default function OrderStatsCard({ stats, onClick }: OrderStatsCardProps) 
       </div>
 
       {/* Buy/Rent breakdown */}
-      <div className="flex gap-3 mb-3">
-        {stats.by_type.map((t) => (
-          <span key={t.transaction_type} className="text-xs text-gray-500">
-            {t.transaction_type === "buy" ? "Mua" : "Thuê"}: <strong className="text-gray-700">{t.count}</strong>
-          </span>
-        ))}
-      </div>
+        <div className="flex gap-3 mb-3">
+          {stats.by_type.map((t) => (
+            <span key={t.transaction_type} className="text-xs text-gray-500">
+              {t.transaction_type === "bespoke"
+                ? "Đặt may"
+                : t.transaction_type === "buy"
+                  ? "Mua"
+                  : "Thuê"}: <strong className="text-gray-700">{t.count}</strong>
+            </span>
+          ))}
+        </div>
 
       {/* Status badges */}
       <div className="flex flex-wrap gap-1.5">

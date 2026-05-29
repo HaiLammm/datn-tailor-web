@@ -4,7 +4,18 @@ import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    JSON,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -25,7 +36,9 @@ class TenantDB(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    slug: Mapped[str] = mapped_column(
+        String(100), unique=True, nullable=False, index=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -44,19 +57,17 @@ class UserDB(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(50), nullable=False, default="Customer")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    
+
     # Multi-tenant support (Story 1.6)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    
+
     # Profile fields (Story 1.2)
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -69,7 +80,9 @@ class UserDB(Base):
     shipping_district: Mapped[str | None] = mapped_column(String(100), nullable=True)
     shipping_ward: Mapped[str | None] = mapped_column(String(100), nullable=True)
     shipping_address_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
-    auto_fill_infor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    auto_fill_infor: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
 
     # Tailor Assignment Tracking
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -87,9 +100,7 @@ class StaffWhitelistDB(Base):
 
     __tablename__ = "staff_whitelist"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     role: Mapped[str] = mapped_column(String(50), nullable=False)
     created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -111,8 +122,12 @@ class OTPCodeDB(Base):
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True
     )
-    purpose: Mapped[str] = mapped_column(String(50), nullable=False, default="register", index=True)
-    is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    purpose: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="register", index=True
+    )
+    is_used: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -139,16 +154,22 @@ class CustomerProfileDB(Base):
     gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    
+
     # Local-first sync fields (Story 1.6 AC3)
-    is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, index=True
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    
+
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -164,7 +185,9 @@ class MeasurementDB(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     customer_profile_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("customer_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("customer_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
@@ -175,25 +198,36 @@ class MeasurementDB(Base):
     waist: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     hip: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     top_length: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    ha_eo: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    vong_nach: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     sleeve_length: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    vong_bap_tay: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     wrist: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     height: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     weight: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     measurement_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
-    measured_date: Mapped[date] = mapped_column(Date, nullable=False, default=date.today, index=True)
+    is_default: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, index=True
+    )
+    measured_date: Mapped[date] = mapped_column(
+        Date, nullable=False, default=date.today, index=True
+    )
     measured_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
-    
+
     # Local-first sync fields (Story 1.6 AC3)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    
+
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -219,11 +253,11 @@ class DesignDB(Base):
     )
     master_geometry: Mapped[dict] = mapped_column(JSON, nullable=False)
     geometry_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="locked"
-    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="locked")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -256,10 +290,14 @@ class DesignOverrideDB(Base):
     delta_unit: Mapped[str] = mapped_column(String(20), nullable=False, default="cm")
     label_vi: Mapped[str] = mapped_column(String(255), nullable=False)
     reason_vi: Mapped[str | None] = mapped_column(Text, nullable=True)
-    flagged_for_learning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    flagged_for_learning: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     sequence_id: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -288,7 +326,9 @@ class OrderDB(Base):
     is_internal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     shipping_address: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     shipping_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    payment_method: Mapped[str] = mapped_column(String(20), nullable=False, default="cod")
+    payment_method: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="cod"
+    )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending", index=True
     )
@@ -296,31 +336,53 @@ class OrderDB(Base):
         String(20), nullable=False, default="pending", index=True
     )
     subtotal_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    discount_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0"))
+    discount_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, default=Decimal("0")
+    )
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    applied_voucher_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    applied_voucher_ids: Mapped[list] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     # Epic 10: Unified Order Workflow (Migration 025)
     service_type: Mapped[str] = mapped_column(String(10), nullable=False, default="buy")
     security_type: Mapped[str | None] = mapped_column(String(15), nullable=True)
     security_value: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    pickup_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    return_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    deposit_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    remaining_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    pickup_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    return_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deposit_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
+    remaining_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
     # Story 10.5: Preparation sub-step tracking (NULL when not in preparing status)
     preparation_step: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Story 10.7: Rental lifecycle tracking (only for service_type='rent')
-    rental_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rental_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    returned_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     rental_condition: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Delivery & cancellation tracking
-    delivery_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivery_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Story 11.1: Pattern Engine integration
@@ -338,7 +400,9 @@ class OrderDB(Base):
     order_payments: Mapped[list["OrderPaymentDB"]] = relationship(
         "OrderPaymentDB", back_populates="order", cascade="all, delete-orphan"
     )
-    pattern_session: Mapped["PatternSessionDB | None"] = relationship("PatternSessionDB")
+    pattern_session: Mapped["PatternSessionDB | None"] = relationship(
+        "PatternSessionDB"
+    )
 
 
 class OrderItemDB(Base):
@@ -356,18 +420,26 @@ class OrderItemDB(Base):
     garment_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("garments.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    transaction_type: Mapped[str] = mapped_column(String(10), nullable=False, default="buy", index=True)
+    transaction_type: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="buy", index=True
+    )
     size: Mapped[str | None] = mapped_column(String(10), nullable=True)
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     rental_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    rental_status: Mapped[str | None] = mapped_column(String(20), nullable=True)  # 'active', 'overdue', 'returned'
-    deposit_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    rental_status: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )  # 'active', 'overdue', 'returned'
+    deposit_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True
+    )
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     total_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -394,16 +466,24 @@ class OrderPaymentDB(Base):
     order_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    payment_type: Mapped[str] = mapped_column(String(20), nullable=False)  # full|deposit|remaining|security_deposit
+    payment_type: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # full|deposit|remaining|security_deposit
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    method: Mapped[str] = mapped_column(String(20), nullable=False)         # cod|vnpay|momo|cash|internal
+    method: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # cod|vnpay|momo|cash|internal
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     gateway_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc),
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
@@ -420,7 +500,9 @@ class PaymentTransactionDB(Base):
 
     __tablename__ = "payment_transactions"
     __table_args__ = (
-        UniqueConstraint("provider", "transaction_id", name="uq_payment_tx_provider_txid"),
+        UniqueConstraint(
+            "provider", "transaction_id", name="uq_payment_tx_provider_txid"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -435,11 +517,15 @@ class PaymentTransactionDB(Base):
     # Story 10.7: Payment method — 'payment' (customer→system) or 'refund' (system→customer)
     method: Mapped[str] = mapped_column(String(20), nullable=False, default="payment")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
-    order: Mapped["OrderDB"] = relationship("OrderDB", back_populates="payment_transactions")
+    order: Mapped["OrderDB"] = relationship(
+        "OrderDB", back_populates="payment_transactions"
+    )
 
 
 class AppointmentDB(Base):
@@ -462,19 +548,25 @@ class AppointmentDB(Base):
     appointment_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     slot: Mapped[str] = mapped_column(String(20), nullable=False, default="morning")
     special_requests: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending", index=True
+    )
     reminder_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
 
 class GarmentDB(Base):
     """ORM model for the `garments` table (Story 5.1).
-    
+
     Digital Showroom - stores ao dai garments available for rental.
     Multi-tenant isolated by tenant_id.
     """
@@ -497,19 +589,27 @@ class GarmentDB(Base):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     image_urls: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="available", index=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="available", index=True
+    )
     expected_return_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     renter_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("customer_profiles.id", ondelete="SET NULL"), nullable=True
     )
     renter_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     renter_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
 
@@ -595,15 +695,21 @@ class TailorTaskDB(Base):
     reassignment_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     priority: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
     order: Mapped["OrderDB"] = relationship("OrderDB")
-    assignee: Mapped["UserDB | None"] = relationship("UserDB", foreign_keys=[assigned_to])
+    assignee: Mapped["UserDB | None"] = relationship(
+        "UserDB", foreign_keys=[assigned_to]
+    )
     assigner: Mapped["UserDB"] = relationship("UserDB", foreign_keys=[assigned_by])
     design: Mapped["DesignDB | None"] = relationship("DesignDB")
     stage_logs: Mapped[list["TaskStageLogDB"]] = relationship(
@@ -638,7 +744,9 @@ class TaskStageLogDB(Base):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -647,7 +755,9 @@ class TaskStageLogDB(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    task: Mapped["TailorTaskDB"] = relationship("TailorTaskDB", back_populates="stage_logs")
+    task: Mapped["TailorTaskDB"] = relationship(
+        "TailorTaskDB", back_populates="stage_logs"
+    )
 
 
 class TaskHistoryDB(Base):
@@ -668,12 +778,18 @@ class TaskHistoryDB(Base):
     from_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     to_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    extra_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
+    extra_metadata: Mapped[dict | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
-    task: Mapped["TailorTaskDB"] = relationship("TailorTaskDB", back_populates="history")
+    task: Mapped["TailorTaskDB"] = relationship(
+        "TailorTaskDB", back_populates="history"
+    )
 
 
 class RentalReturnDB(Base):
@@ -695,24 +811,31 @@ class RentalReturnDB(Base):
     garment_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("garments.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    return_condition: Mapped[str] = mapped_column(String(20), nullable=False)  # 'good', 'damaged', 'lost'
+    return_condition: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # 'good', 'damaged', 'lost'
     damage_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    deposit_deduction: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    deposit_deduction: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=0
+    )
     processed_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     returned_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
     order_item: Mapped["OrderItemDB"] = relationship("OrderItemDB")
     garment: Mapped["GarmentDB"] = relationship("GarmentDB")
     processor: Mapped["UserDB | None"] = relationship("UserDB")
-
 
 
 class NotificationDB(Base):
@@ -738,10 +861,16 @@ class NotificationDB(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
     data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
 
@@ -765,21 +894,31 @@ class VoucherDB(Base):
         ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
     )
     code: Mapped[str] = mapped_column(String(50), nullable=False)
-    type: Mapped[str] = mapped_column(String(20), nullable=False)        # 'percent' | 'fixed'
+    type: Mapped[str] = mapped_column(String(20), nullable=False)  # 'percent' | 'fixed'
     value: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    min_order_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0"))
-    max_discount_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    min_order_value: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, default=Decimal("0")
+    )
+    max_discount_value: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     expiry_date: Mapped[date] = mapped_column(Date, nullable=False)
     total_uses: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     used_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    visibility: Mapped[str] = mapped_column(String(10), nullable=False, default="private")  # 'public' | 'private'
+    visibility: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="private"
+    )  # 'public' | 'private'
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -813,16 +952,22 @@ class UserVoucherDB(Base):
         ForeignKey("vouchers.id", ondelete="CASCADE"), nullable=False, index=True
     )
     is_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     used_in_order_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
     )
     assigned_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
-    voucher: Mapped["VoucherDB"] = relationship("VoucherDB", back_populates="assignments")
+    voucher: Mapped["VoucherDB"] = relationship(
+        "VoucherDB", back_populates="assignments"
+    )
 
 
 class LeadDB(Base):
@@ -844,14 +989,20 @@ class LeadDB(Base):
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
     # source enum: manual | website | booking_abandoned | cart_abandoned | signup
-    classification: Mapped[str] = mapped_column(String(10), nullable=False, default="warm", index=True)
+    classification: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="warm", index=True
+    )
     # classification enum: hot | warm | cold
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
 
@@ -874,13 +1025,17 @@ class LeadConversionDB(Base):
     lead_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     lead_source: Mapped[str | None] = mapped_column(String(50), nullable=True)
     customer_profile_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("customer_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("customer_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     converted_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
 
@@ -908,14 +1063,20 @@ class MessageTemplateDB(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
-    campaigns: Mapped[list["CampaignDB"]] = relationship("CampaignDB", back_populates="template")
+    campaigns: Mapped[list["CampaignDB"]] = relationship(
+        "CampaignDB", back_populates="template"
+    )
 
 
 class CampaignDB(Base):
@@ -946,20 +1107,30 @@ class CampaignDB(Base):
         ForeignKey("vouchers.id"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
-    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     total_recipients: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     sent_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
-    template: Mapped["MessageTemplateDB"] = relationship("MessageTemplateDB", back_populates="campaigns")
+    template: Mapped["MessageTemplateDB"] = relationship(
+        "MessageTemplateDB", back_populates="campaigns"
+    )
     recipients: Mapped[list["CampaignRecipientDB"]] = relationship(
         "CampaignRecipientDB", back_populates="campaign", cascade="all, delete-orphan"
     )
@@ -985,14 +1156,20 @@ class CampaignRecipientDB(Base):
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     recipient_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
-    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
-    campaign: Mapped["CampaignDB"] = relationship("CampaignDB", back_populates="recipients")
+    campaign: Mapped["CampaignDB"] = relationship(
+        "CampaignDB", back_populates="recipients"
+    )
 
 
 class PatternSessionDB(Base):
@@ -1026,14 +1203,20 @@ class PatternSessionDB(Base):
     vong_bap_tay: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
     vong_co_tay: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
 
-    garment_type: Mapped[str] = mapped_column(String(50), nullable=False, default="ao_dai")
+    garment_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="ao_dai"
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -1055,13 +1238,17 @@ class PatternPieceDB(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("pattern_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("pattern_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     piece_type: Mapped[str] = mapped_column(String(20), nullable=False)
     svg_data: Mapped[str] = mapped_column(Text, nullable=False)
     geometry_params: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships

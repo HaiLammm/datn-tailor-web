@@ -6,17 +6,21 @@ interface ProductionSummaryCardsProps {
   summary: TailorTaskSummary;
 }
 
-const cards = [
-  { key: "total" as const, label: "Tổng", color: "bg-gray-100 text-gray-800" },
-  { key: "assigned" as const, label: "Chờ nhận", color: "bg-amber-100 text-amber-800" },
-  { key: "in_progress" as const, label: "Đang làm", color: "bg-indigo-100 text-indigo-800" },
-  { key: "completed" as const, label: "Hoàn thành", color: "bg-emerald-100 text-emerald-800" },
-  { key: "overdue" as const, label: "Quá hạn", color: "bg-red-100 text-red-800" },
+const cards: Array<{ key: keyof TailorTaskSummary; label: string; color: string; pulse?: boolean }> = [
+  { key: "total", label: "Tổng", color: "bg-gray-100 text-gray-800" },
+  { key: "unassigned", label: "Chờ giao việc", color: "bg-orange-100 text-orange-800" },
+  { key: "assigned", label: "Chờ nhận", color: "bg-amber-100 text-amber-800" },
+  { key: "in_progress", label: "Đang may", color: "bg-indigo-100 text-indigo-800" },
+  { key: "on_hold", label: "Tạm dừng", color: "bg-yellow-100 text-yellow-800" },
+  { key: "submitted_for_qc", label: "Chờ kiểm tra", color: "bg-purple-100 text-purple-800" },
+  { key: "completed", label: "Hoàn thành", color: "bg-emerald-100 text-emerald-800" },
+  { key: "failed_qc", label: "Không đạt QC", color: "bg-red-100 text-red-800" },
+  { key: "overdue", label: "Quá hạn", color: "bg-red-100 text-red-800", pulse: true },
 ];
 
 export default function ProductionSummaryCards({ summary }: ProductionSummaryCardsProps) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3" data-testid="production-summary-cards">
+    <div className="grid grid-cols-3 lg:grid-cols-5 gap-3" data-testid="production-summary-cards">
       {cards.map((card) => (
         <div
           key={card.key}
@@ -28,7 +32,7 @@ export default function ProductionSummaryCards({ summary }: ProductionSummaryCar
             <span className="text-2xl font-semibold text-[#1A1A2E]">
               {summary[card.key]}
             </span>
-            {card.key === "overdue" && summary.overdue > 0 && (
+            {card.pulse && summary[card.key] > 0 && (
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             )}
           </div>

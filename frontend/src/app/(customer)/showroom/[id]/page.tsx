@@ -58,7 +58,7 @@ export default async function GarmentDetailPage({
   ];
 
   return (
-    <div className="min-h-screen bg-[#F9F7F2]">
+    <div className="bg-[#F9F7F2]">
       {/* Header với Breadcrumb */}
       <header className="bg-[#1A2B4C] text-[#F9F7F2] py-6">
         <div className="container mx-auto px-4">
@@ -74,15 +74,6 @@ export default async function GarmentDetailPage({
 
       {/* Client Component xử lý toàn bộ tương tác */}
       <ProductDetailClient garment={garment} />
-
-      {/* Footer */}
-      <footer className="bg-[#1A2B4C] text-[#F9F7F2] py-6 mt-16">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm" style={{ fontFamily: "Inter, sans-serif" }}>
-            © 2026 Showroom Áo Dài - Heritage Collection
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

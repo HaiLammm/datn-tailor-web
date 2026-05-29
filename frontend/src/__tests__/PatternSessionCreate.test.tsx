@@ -104,7 +104,7 @@ describe("PatternSessionCreate Integration", () => {
       expect(mockMutate).toHaveBeenCalledTimes(1);
     });
 
-    const callArgs = mockMutate.mock.calls[0][0];
+    const callArgs = mockMutate.mock.calls[0][0] as Record<string, unknown>;
     expect(callArgs.customer_id).toBeNull();
     expect(callArgs.garment_type).toBe("ao_dai");
     expect(callArgs.vong_co).toBe(36);
@@ -117,18 +117,25 @@ describe("PatternSessionCreate Integration", () => {
     const customerMeasurement = {
       id: "m1",
       customer_profile_id: "c1",
+      tenant_id: "t1",
       top_length: 65,
+      ha_eo: 18,
       neck: 36,
+      vong_nach: 38,
       bust: 88,
       waist: 68,
       hip: 92,
       sleeve_length: 55,
+      vong_bap_tay: 28,
       wrist: 16,
       shoulder_width: 36,
       height: 160,
       weight: 50,
       measured_date: "2026-04-15",
-      notes: null,
+      measured_by: null,
+      created_at: "2026-04-15T00:00:00Z",
+      updated_at: "2026-04-15T00:00:00Z",
+      measurement_notes: null,
       is_default: true,
     };
 
@@ -164,10 +171,10 @@ describe("PatternSessionCreate Integration", () => {
     // Step 3: Verify auto-fill indicator
     expect(screen.getByText(/Số đo từ/)).toBeTruthy();
 
-    // Step 4: Fill remaining fields not mapped from customer (ha_eo, vong_nach, vong_bap_tay)
-    fireEvent.change(screen.getByLabelText("Hạ eo"), { target: { value: "18" } });
-    fireEvent.change(screen.getByLabelText("Vòng nách"), { target: { value: "38" } });
-    fireEvent.change(screen.getByLabelText("Vòng bắp tay"), { target: { value: "28" } });
+    // Step 4: Newly expanded customer measurements should auto-fill pattern-only fields too
+    expect((screen.getByLabelText("Hạ eo") as HTMLInputElement).value).toBe("18");
+    expect((screen.getByLabelText("Vòng nách") as HTMLInputElement).value).toBe("38");
+    expect((screen.getByLabelText("Vòng bắp tay") as HTMLInputElement).value).toBe("28");
 
     // Step 5: Submit
     const submitBtn = screen.getByRole("button", { name: "Tạo rập" });
@@ -177,9 +184,12 @@ describe("PatternSessionCreate Integration", () => {
       expect(mockMutate).toHaveBeenCalledTimes(1);
     });
 
-    const callArgs = mockMutate.mock.calls[0][0];
+    const callArgs = mockMutate.mock.calls[0][0] as Record<string, unknown>;
     expect(callArgs.customer_id).toBe("c1");
     expect(callArgs.garment_type).toBe("ao_dai");
+    expect(callArgs.ha_eo).toBe(18);
+    expect(callArgs.vong_nach).toBe(38);
+    expect(callArgs.vong_bap_tay).toBe(28);
   });
 
   // === Error Handling: Form State Preserved ===
@@ -276,18 +286,25 @@ describe("PatternSessionCreate Integration", () => {
     const customerMeasurement = {
       id: "m1",
       customer_profile_id: "c1",
+      tenant_id: "t1",
       top_length: 65,
+      ha_eo: 18,
       neck: 36,
+      vong_nach: 38,
       bust: 88,
       waist: 68,
       hip: 92,
       sleeve_length: 55,
+      vong_bap_tay: 28,
       wrist: 16,
       shoulder_width: 36,
       height: 160,
       weight: 50,
       measured_date: "2026-04-15",
-      notes: null,
+      measured_by: null,
+      created_at: "2026-04-15T00:00:00Z",
+      updated_at: "2026-04-15T00:00:00Z",
+      measurement_notes: null,
       is_default: true,
     };
 

@@ -1,6 +1,6 @@
 # Story 11.4: Profile-Driven Measurement Form UI
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -83,51 +83,51 @@ so that I can quickly start pattern generation without re-entering known data.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create MeasurementForm component (AC: #1, #2, #3, #4, #5, #6)
-  - [ ] 1.1 Create `frontend/src/components/client/design/MeasurementForm.tsx`
+- [x] Task 1: Create MeasurementForm component (AC: #1, #2, #3, #4, #5, #6)
+  - [x] 1.1 Create `frontend/src/components/client/design/MeasurementForm.tsx`
     - 10 input fields with Vietnamese labels
     - Customer combobox at top (using existing CustomerListTable search pattern)
     - Manual edit indicator state
     - Zod schema for validation with min/max ranges
-  - [ ] 1.2 Create `frontend/src/types/pattern.ts` — Pattern session types + Zod schemas
+  - [x] 1.2 Create `frontend/src/types/pattern.ts` — Pattern session types + Zod schemas
     - `PatternMeasurementInput` (10 fields)
     - `PatternSessionCreate` request schema
     - `PatternSessionResponse` schema
     - Validation ranges as constants
-  - [ ] 1.3 Implement customer search + auto-fill logic
+  - [x] 1.3 Implement customer search + auto-fill logic
     - Debounced search (300ms)
     - Load customer's default measurement via API
     - Map customer measurement fields to pattern measurement fields
 
-- [ ] Task 2: Create server actions for pattern session (AC: #7, #8)
-  - [ ] 2.1 Create `frontend/src/app/actions/pattern-actions.ts`
+- [x] Task 2: Create server actions for pattern session (AC: #7, #8)
+  - [x] 2.1 Create `frontend/src/app/actions/pattern-actions.ts`
     - `createPatternSession(data: PatternSessionCreate)` — POST to backend
     - `fetchCustomerMeasurement(customerId: string)` — GET default measurement
-  - [ ] 2.2 Add TanStack Query hooks in `frontend/src/hooks/usePatternSession.ts`
+  - [x] 2.2 Add TanStack Query hooks in `frontend/src/hooks/usePatternSession.ts`
     - `useCreatePatternSession()` mutation
     - `useCustomerMeasurement(customerId)` query
 
-- [ ] Task 3: Integrate into Design Session page (AC: #1-8)
-  - [ ] 3.1 Update `frontend/src/app/(workplace)/design-session/page.tsx`
+- [x] Task 3: Integrate into Design Session page (AC: #1-8)
+  - [x] 3.1 Update `frontend/src/app/(workplace)/design-session/page.tsx`
     - Import MeasurementForm
     - Handle session creation + navigation to session detail
-  - [ ] 3.2 Update `frontend/src/app/(workplace)/design-session/DesignSessionClient.tsx`
-    - Replace placeholder measurement input with MeasurementForm
-    - Wire up pattern session creation flow
-  - [ ] 3.3 Update `frontend/src/store/designStore.ts` — Add pattern session state
+  - [x] 3.2 Update `frontend/src/app/(workplace)/design-session/DesignSessionClient.tsx`
+    - Added MeasurementForm as collapsible "Tạo rập mới" section
+    - Wire up pattern session creation flow with error display
+  - [x] 3.3 Update `frontend/src/store/designStore.ts` — Add pattern session state
     - `selected_customer_id`, `measurements`, `session_id`
     - Actions: `setCustomer`, `setMeasurements`, `setSessionId`
 
-- [ ] Task 4: Unit tests (AC: #1-6)
-  - [ ] 4.1 Create `frontend/__tests__/components/MeasurementForm.test.tsx`
+- [x] Task 4: Unit tests (AC: #1-6)
+  - [x] 4.1 Create `frontend/src/__tests__/MeasurementForm.test.tsx`
     - Test customer search triggers on 2+ chars
     - Test auto-fill populates all 10 fields
     - Test manual edit shows indicator
     - Test validation blocks invalid ranges
     - Test error messages in Vietnamese
 
-- [ ] Task 5: Integration tests (AC: #7, #8)
-  - [ ] 5.1 Create `frontend/__tests__/integration/pattern-session-create.test.tsx`
+- [x] Task 5: Integration tests (AC: #7, #8)
+  - [x] 5.1 Create `frontend/src/__tests__/PatternSessionCreate.test.tsx`
     - Test full flow: search → select → auto-fill → submit → navigate
     - Test API error handling preserves form state
     - Test loading states display correctly
@@ -160,17 +160,17 @@ Backend `pattern_sessions` table uses specific Vietnamese field names. Map from 
 | Customer Measurement | Pattern Session Field | Vietnamese Label |
 |---------------------|----------------------|------------------|
 | `top_length` | `do_dai_ao` | Độ dài áo |
-| (new) | `ha_eo` | Hạ eo |
+| `ha_eo` | `ha_eo` | Hạ eo |
 | `neck` | `vong_co` | Vòng cổ |
-| (calculated) | `vong_nach` | Vòng nách |
+| `vong_nach` | `vong_nach` | Vòng nách |
 | `bust` | `vong_nguc` | Vòng ngực |
 | `waist` | `vong_eo` | Vòng eo |
 | `hip` | `vong_mong` | Vòng mông |
 | `sleeve_length` | `do_dai_tay` | Độ dài tay |
-| (new) | `vong_bap_tay` | Vòng bắp tay |
+| `vong_bap_tay` | `vong_bap_tay` | Vòng bắp tay |
 | `wrist` | `vong_co_tay` | Vòng cổ tay |
 
-**Note:** Some pattern fields (ha_eo, vong_nach, vong_bap_tay) don't exist in customer measurement. These require manual input or future measurement profile expansion.
+**Update 2026-05-26:** Customer measurement profile has been expanded to store `ha_eo`, `vong_nach`, and `vong_bap_tay`, so Story 11.4 can now auto-fill all 10 fields when the selected customer has a complete measurement profile.
 
 ### UI Component Structure
 
@@ -417,10 +417,46 @@ From Story 11.3 Dev Notes:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6 (1M context)
 
 ### Debug Log References
 
+- 2026-05-26: Bug found on `/design-session` — customer with existing measurements incorrectly triggered warning state "Khách hàng chưa có số đo".
+- Root cause: `fetchCustomerMeasurement()` expected `result.data` from `GET /api/v1/customers/{id}/measurements?default=true`, but backend actually returns a raw `list[MeasurementResponse]` from `GET /api/v1/customers/{id}/measurements`.
+- Secondary issue: measurement numeric fields may arrive as Decimal strings, so auto-fill must normalize them to numbers before writing into React Hook Form.
+
 ### Completion Notes List
 
+- All 5 tasks completed successfully (Tasks 1-5).
+- MeasurementForm component: 10-field form with Vietnamese labels, customer combobox search, auto-fill from customer profile, manual edit indicator, Zod validation with min/max ranges, pattern session creation via POST /api/v1/patterns/sessions.
+- Server actions: createPatternSession, fetchCustomerMeasurement, searchCustomers — all with proper auth token forwarding and error handling.
+- TanStack Query hooks: useCreatePatternSession (mutation with navigation), useCustomerMeasurement (query), useCustomerSearch (debounced 300ms).
+- Zustand store: Extended designStore with pattern_session_id, selected_customer_id, pattern_measurements state.
+- Page integration: MeasurementForm added as collapsible "Tạo rập mới" section in DesignSessionClient.tsx with error toast display.
+- Unit tests: 15 test cases covering AC #1-6 (search, auto-fill, no-measurement warning, manual edit indicator, Vietnamese validation errors, loading states).
+- Integration tests: 8 test cases covering AC #7-8 (full flow submit, customer auto-fill flow, error handling, validation blocking, loading state, empty submission).
+- Regression: 87 suites, 914 tests — all passed, zero failures.
+- 2026-05-26 follow-up fix: aligned Story 11.4 frontend with actual backend customer-measurement contract by selecting the `is_default` measurement from the returned list and normalizing Decimal string fields (`"36.00"`) into numbers before auto-fill.
+- Added regression tests for `fetchCustomerMeasurement()` to cover default-measurement selection and empty-measurement responses.
+- 2026-05-26 profile expansion: Story 1.3 customer measurements now include `ha_eo`, `vong_nach`, and `vong_bap_tay`, allowing Story 11.4 to auto-fill all pattern-session fields from customer data instead of requiring manual entry for those 3 measurements.
+
 ### File List
+
+- `frontend/src/types/pattern.ts` — Pattern session types, Zod schemas, measurement ranges, field mappings
+- `frontend/src/app/actions/pattern-actions.ts` — Server actions for pattern session CRUD
+- `frontend/src/hooks/usePatternSession.ts` — TanStack Query hooks for pattern operations
+- `frontend/src/components/client/design/MeasurementForm.tsx` — Main MeasurementForm component
+- `frontend/src/components/client/design/index.ts` — MODIFIED: Added MeasurementForm export
+- `frontend/src/app/(workplace)/design-session/DesignSessionClient.tsx` — MODIFIED: Added MeasurementForm section
+- `frontend/src/store/designStore.ts` — MODIFIED: Added pattern session state (pre-existing)
+- `frontend/src/__tests__/MeasurementForm.test.tsx` — Unit tests (15 cases)
+- `frontend/src/__tests__/PatternSessionCreate.test.tsx` — Integration tests (8 cases)
+- `frontend/src/__tests__/patternActions.test.ts` — Regression tests for customer default-measurement fetching
+- `backend/src/models/customer.py` — Expanded measurement schema with `ha_eo`, `vong_nach`, `vong_bap_tay`
+- `backend/src/models/db_models.py` — Expanded `MeasurementDB` ORM fields
+- `backend/src/services/measurement_service.py` — Persist and update the expanded measurement set
+
+### Change Log
+
+- 2026-05-25: Story 11.4 implementation completed. Integrated MeasurementForm into DesignSessionClient as collapsible section. All 23 tests pass. Full regression 914/914 pass.
+- 2026-05-26: Fixed Story 11.4 regression where customers with existing measurements were incorrectly treated as having no measurements in `/design-session`. Updated `fetchCustomerMeasurement()` to consume backend list response, pick `is_default`, normalize Decimal strings to numbers, and added regression coverage.
