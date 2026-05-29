@@ -16,19 +16,21 @@ inputDocuments:
   - "_bmad-output/brainstorming/brainstorming-session-2026-04-02-001.md"
 workflowType: "ux-design"
 lastStep: 14
-lastEdited: "Thursday, April 3, 2026"
-revision: 3
-previousVersion: "ux-design-specification-v2 (March 10, 2026)"
+lastEdited: "Friday, May 29, 2026"
+revision: 4
+previousVersion: "ux-design-specification (Revision 3, April 3, 2026)"
 updateHistory:
   - date: '2026-04-03'
     changes: 'Sprint Change Proposal Epic 11 (Technical Pattern Generation): Added Platform Strategy rows (Pattern Generation, Pattern Viewing), Owner Pattern Generation Flow, Tailor Pattern Viewing Flow, Pattern Generation journey diagram, 3 new custom components (MeasurementForm, PatternPreview, PatternExportBar), Phase 4 component planning.'
+  - date: '2026-05-29'
+    changes: 'Revision 4 — Customer Brand Presence: thiết kế trang chủ Landing "CV" tại /, trang About (4 trụ cột), trang Contact (info + form → CRM Lead source=website), nâng cấp Showroom (hero, editorial, trust signals, empty/loading states). Cập nhật Information Architecture, navigation/footer, journey "Discovery → Trust → Convert", 5 custom components mới, Phase 5 component planning.'
 ---
 
-# UX Design Specification tailor_project (Revision 3)
+# UX Design Specification tailor_project (Revision 4)
 
 **Author:** Lem
-**Date:** Thursday, April 3, 2026
-**Revision Note:** Epic 11 update — added Technical Pattern Generation UX (Owner Design Session, Tailor Pattern Viewing, 3 new custom components). Previous: Revision 2 (March 10, 2026) — E-commerce + Booking + AI Bespoke Platform expansion.
+**Date:** Friday, May 29, 2026
+**Revision Note:** Revision 4 — Customer Brand Presence: trang chủ Landing "CV", About, Contact (form → CRM Lead), nâng cấp Showroom. Previous: Revision 3 (April 3, 2026) — Technical Pattern Generation UX. Revision 2 (March 10, 2026) — E-commerce + Booking + AI Bespoke Platform expansion.
 
 ---
 
@@ -832,3 +834,170 @@ graph TD
 
 ### Trạng thái
 ✅ UX Design Specification Rev 3 — **HOÀN THÀNH**
+
+---
+
+## Revision 4 — Customer Brand Presence (2026-05-29)
+
+### Bối cảnh & Mục tiêu
+
+Toàn bộ trải nghiệm hướng khách hàng (Customer-facing) phải vận hành như **một bản CV của cửa tiệm**: mỗi điểm chạm là một luận điểm thuyết phục *"chúng tôi là cửa tiệm phù hợp với bạn — hãy chọn chúng tôi."* Rev 4 lấp ba khoảng trống đang làm suy yếu thông điệp này:
+
+1. **Chưa có trang chủ thực sự.** Route `/` hiện chỉ `redirect("/showroom")` — khách hàng bị ném thẳng vào catalog, mất hoàn toàn cơ hội kể chuyện thương hiệu và tạo ấn tượng đầu tiên ("Discovery Delight").
+2. **Showroom quá sơ sài.** Chỉ gồm header phẳng + filter + grid + footer — thiếu hero, thiếu storytelling, thiếu trust signals; cảm giác "marketplace" thay vì "boutique" (vi phạm Experience Principle "Heritage-Tech Harmony" và Anti-Pattern "Shopee Syndrome").
+3. **Thiếu trang About và Contact** — hai trang nền tảng để xây dựng lòng tin (Trust vs Skepticism) và chuyển traffic thành lead.
+
+**Nguyên tắc chủ đạo của Rev 4:** mọi trang mới đều ở **Boutique Mode** (Ivory background, Heritage Gold accents, Cormorant Garamond headings, spacious 16–24px) và mobile-first (≥375px) — kế thừa nguyên vẹn Design Direction "Balanced Masterpiece".
+
+### Quyết định phạm vi (đã chốt với stakeholder)
+
+| Quyết định | Lựa chọn | Hệ quả thiết kế |
+|:---|:---|:---|
+| **Trang chủ** | Landing riêng tại `/` (CV) | `/` trở thành landing thuyết phục; `/showroom` trở thành **catalog thuần** (filter + grid) |
+| **Contact** | Thông tin + form → CRM Lead | Form tạo Lead với `source = website`, `classification = warm` (mặc định) |
+| **About** | 4 trụ cột | Câu chuyện thương hiệu · Nghề thủ công & quy trình · Vì sao chọn chúng tôi · Cảm nhận khách hàng |
+| **Showroom** | Hero + Editorial + Trust/Empty states | Giữ filter+grid hiện có; bọc thêm hero, editorial blocks, trust signals, empty/loading states đẹp hơn |
+
+### Information Architecture cập nhật (Customer-facing)
+
+```
+/                 → Landing "CV" (Boutique Mode) — MỚI
+  ├─ Hero: brand statement + ảnh signature + CTA kép
+  ├─ Featured Collection (3–4 sản phẩm curated)
+  ├─ Why-Choose-Us (3 trụ cột: First-Fit · Heritage · AI Bespoke)
+  ├─ Brand Story teaser → link /about
+  ├─ Testimonials strip
+  └─ CTA cuối: "Đặt lịch tư vấn" / "Khám phá Showroom"
+
+/showroom         → Catalog thuần (nâng cấp) — Hero gọn + filter + grid + trust + empty states
+/showroom/[id]    → Product Detail (giữ nguyên)
+/about            → Brand CV editorial (4 trụ cột) — MỚI
+/contact          → Info + bản đồ + form → CRM Lead — MỚI
+/booking          → (giữ nguyên)
+```
+
+**Navigation (`(customer)/layout.tsx`) cập nhật:** thay link "Trang chủ → / (vòng lặp về showroom)" bằng nav thực: **Trang chủ (`/`) · Showroom (`/showroom`) · Giới thiệu (`/about`) · Liên hệ (`/contact`) · Đặt lịch (`/booking`)** + Cart/Profile/Notification. Mobile: hamburger drawer hoặc bottom tab (Home · Shop · Book · Profile) theo pattern Role-Based Navigation đã định.
+
+**Footer chuẩn hóa** (dùng chung mọi trang Boutique, thay footer hardcoded rời rạc trong showroom): 3 cột — *Về chúng tôi* (link About, Story) · *Liên hệ* (địa chỉ, SĐT, Zalo, giờ mở cửa) · *Khám phá* (Showroom, Booking) + dòng copyright + social icons.
+
+### Trang 1 — Homepage Landing "CV" (`/`)
+
+**Vai trò:** trang thuyết phục đầu tiên. Mục tiêu cảm xúc: **Discovery Delight** ("Đẹp quá, đây là nơi mình muốn mua Áo dài"). Heritage Luxury (Hermès-inspired), không banner flash-sale.
+
+**Cấu trúc section (mobile-first, scroll-driven với Framer Motion reveal):**
+
+1. **Hero** — ảnh signature full-bleed (Áo dài đẹp nhất), overlay Indigo gradient, headline Cormorant Garamond ("Di sản Áo dài, vừa vặn từ lần đầu"), subline ngắn, **CTA kép**: `[Khám phá Showroom]` (Gold, primary) + `[Đặt lịch tư vấn]` (outline). Scroll cue tinh tế.
+2. **Why-Choose-Us** — 3 trụ cột icon + tiêu đề + mô tả ngắn: **First-Fit Perfection** (>90% vừa ngay lần đầu) · **Di sản thủ công** · **AI Bespoke** (công nghệ dịch cảm xúc → hình học). Đây là "luận điểm CV" cốt lõi.
+3. **Featured Collection** — 3–4 `ProductCard` curated (reuse component sẵn có), CTA "Xem tất cả →" dẫn `/showroom`.
+4. **Brand Story teaser** — editorial block (ảnh + đoạn văn), CTA "Câu chuyện của chúng tôi →" dẫn `/about`.
+5. **Testimonials strip** — 2–3 trích dẫn khách hàng (carousel mobile / grid desktop).
+6. **Closing CTA band** — nền Indigo, lời mời mạnh + 2 nút (Đặt lịch / Khám phá).
+
+**States:** Loading (skeleton hero + card skeletons) · Empty featured (fallback: hiển thị sản phẩm mới nhất thay vì khoảng trống).
+
+### Trang 2 — Showroom nâng cấp (`/showroom`)
+
+Giữ nguyên `ShowroomContent` (filter + grid + pagination). Bọc thêm 3 lớp:
+
+1. **Hero gọn (thay header phẳng hiện tại)** — banner Indigo→Ivory với ảnh nền tinh tế, tiêu đề Cormorant + subline; chừa chỗ cho order-success banner (giữ logic `order_success` hiện có).
+2. **Editorial storytelling block** — 1 dải nội dung ngắn phía trên grid ("Mỗi tà áo là một câu chuyện…") để tạo cảm giác boutique, tránh "grid khô khan".
+3. **Trust signals + Empty/Loading states:**
+   - Trust strip: cam kết (đổi/trả, chất lượng vải, may đo chuẩn) — icon + text gọn.
+   - **Empty state có chủ đích:** khi filter không ra kết quả → illustration + "Không tìm thấy áo dài phù hợp" + nút "Xóa bộ lọc" (không để trống trơn).
+   - **Loading:** skeleton grid (đã có `ProductDetailSkeleton`; bổ sung skeleton cho grid card) thay vì spinner — giữ spatial context.
+
+**Footer:** thay footer hardcoded bằng Footer dùng chung mới.
+
+### Trang 3 — About (`/about`)
+
+**Vai trò:** bản CV editorial — đọc xong khách phải tin "đây là nghệ nhân thật, hiểu nghề". Layout editorial, nhiều khoảng trắng, ảnh lớn, Cormorant Garamond dominant. 4 trụ cột theo thứ tự kể chuyện:
+
+1. **Câu chuyện thương hiệu** — Hero About + đoạn mở: nguồn gốc, di sản, sứ mệnh ("giữ chất nghệ thuật thủ công trong kỷ nguyên số").
+2. **Nghề thủ công & quy trình** — timeline/stepper trực quan: Tư vấn → Đo → Dựng rập (AI-assisted) → May thủ công → First-Fit. Nhấn mạnh hòa quyện thủ công + AI bespoke (minh bạch, không black-box).
+3. **Vì sao chọn chúng tôi** — 3–4 differentiators (First-Fit >90%, AI Bespoke, chất liệu cao cấp, dịch vụ tận tâm) — phần thuyết phục cao trào của CV.
+4. **Cảm nhận khách hàng** — testimonials grid/carousel (tên, ảnh nếu có, trích dẫn) — social proof khép lại.
+5. **CTA cuối** — "Đặt lịch tư vấn" / "Liên hệ với chúng tôi" dẫn `/booking` và `/contact`.
+
+**States:** static SSG (nội dung ít đổi) — tối ưu tốc độ; ảnh lazy-load.
+
+### Trang 4 — Contact (`/contact`)
+
+**Vai trò:** biến traffic thành lead + cung cấp thông tin O2O (online-to-offline). Layout split: thông tin trái / form phải (desktop), stack trên mobile.
+
+**Khối thông tin:**
+- Bản đồ nhúng (Google Maps embed) + địa chỉ cửa tiệm.
+- Giờ mở cửa, số điện thoại (tap-to-call), Zalo, email, social links.
+
+**Khối form → CRM Lead (tích hợp module Leads sẵn có):**
+- Fields: **Họ tên** (required) · **Số điện thoại** · **Email** · **Nội dung/lời nhắn** (notes).
+- Submit → tạo `Lead` qua API với mapping:
+
+| Form field | Lead field | Ghi chú |
+|:---|:---|:---|
+| Họ tên | `name` | required, 1–255 ký tự |
+| Số điện thoại | `phone` | optional, ≤20, normalize empty→null |
+| Email | `email` | optional, validate format |
+| Lời nhắn | `notes` | optional |
+| *(cố định)* | `source = website` | enum `LeadSource.WEBSITE` đã tồn tại |
+| *(mặc định)* | `classification = warm` | Owner phân loại lại trong CRM |
+
+- **Validation:** Zod schema khớp ràng buộc backend (`LeadBase`); thông báo lỗi tiếng Việt tự nhiên ("Vui lòng nhập họ tên", "Email không hợp lệ").
+- **States:** Idle · Submitting (disable + spinner trong nút) · Success (toast + thông điệp "Cảm ơn bạn, chúng tôi sẽ liên hệ sớm" + reset form) · Error (Graceful Recovery: giữ nguyên dữ liệu đã nhập, nút "Thử lại").
+- **Endpoint mới cần backend:** một public endpoint nhận lead từ website (không yêu cầu auth, có rate-limit/anti-spam) — `POST /api/v1/leads` public-scoped hoặc `/api/v1/contact`. *(Lưu cho Architecture/Epic: cần xác nhận route public vs Owner-only hiện tại.)*
+
+### Custom Components mới (Phase 5)
+
+| # | Component | Purpose | States / Variants | Unique |
+|:--|:---|:---|:---|:---|
+| 11 | **HeroBanner** | Hero full-bleed cho Homepage & About | Loading (skeleton), Loaded; variant: home / about / showroom-compact | Overlay gradient Indigo, CTA kép, Framer Motion reveal, ảnh lazy + LQIP |
+| 12 | **FeatureTriad** | 3 trụ cột "Why-Choose-Us" (icon + title + desc) | Default; variant: home / about | Icon Heritage Gold, equal-height, responsive 1→3 col |
+| 13 | **TestimonialCard / TestimonialStrip** | Hiển thị cảm nhận khách hàng | Single card · Carousel (mobile) · Grid (desktop) | Trích dẫn Cormorant italic, optional avatar, auto-advance carousel |
+| 14 | **ContactForm** | Form liên hệ → tạo CRM Lead | Idle · Submitting · Success · Error | Zod validation khớp `LeadBase`, map `source=website`, toast feedback, giữ data khi lỗi |
+| 15 | **SiteFooter** | Footer dùng chung Boutique Mode | Default | 3 cột (Về chúng tôi · Liên hệ · Khám phá) + social + copyright |
+
+> Reuse tối đa component sẵn có: `ProductCard` (featured collection), `StatusBadge`, skeleton patterns, Radix Toast (feedback form), Headless UI cho mobile nav drawer.
+
+### Journey Flow mới — "Discovery → Trust → Convert" (Marketing Funnel)
+
+```mermaid
+graph TD
+    A["Landing / (CV Homepage)"] --> B{Khách quan tâm gì?}
+    B -- Tin tưởng thương hiệu --> C["/about: Story + Quy trình + Why-Us + Testimonials"]
+    B -- Muốn xem sản phẩm --> D["/showroom: Hero + Editorial + Catalog"]
+    B -- Sẵn sàng tư vấn --> E["/booking"]
+    C --> F{Thuyết phục?}
+    F -- Có --> G["CTA: Đặt lịch / Liên hệ"]
+    D --> H["Product Detail"]
+    H --> I["Commerce Flow / Book Bespoke"]
+    G --> J["/contact: Form liên hệ"]
+    E --> K["Booking Flow"]
+    J --> L["Tạo Lead source=website (warm)"]
+    L --> M["CRM: Owner phân loại Hot/Warm/Cold → Convert"]
+    K --> M
+    I --> M
+```
+
+**Patterns tái sử dụng:** Contextual CTA (mọi trang đều có lối dẫn tới Booking/Contact), Progressive Forward Navigation, Instant Feedback (form submit toast), Graceful Error Recovery (form giữ data).
+
+### Responsive & Accessibility (trang mới)
+
+- **Mobile-first ≥375px**, breakpoint theo chuẩn đã định (Mobile 320–767 single-col · Tablet 768–1023 2-col · Desktop 1024+ multi-col editorial).
+- Homepage/About: hero text scale `clamp()`, ảnh `next/image` với `priority` cho hero, lazy phần dưới.
+- Contact: form touch target ≥44px, label rõ ràng, `aria-describedby` cho lỗi, focus ring Heritage Gold; bản đồ có `title` cho iframe.
+- Tương phản: giữ chuẩn AA/AAA của Heritage Palette (Indigo/Ivory 11.2:1).
+- Testimonial carousel: nút prev/next có `aria-label`, không chỉ dựa vào màu/animation.
+
+### Component Implementation Strategy — bổ sung Phase 5
+
+- **Phase 5 (Customer Brand Presence):** HeroBanner, FeatureTriad, TestimonialStrip, ContactForm, SiteFooter.
+- Tất cả ở Boutique Mode variant; reuse `ProductCard` cho featured collection.
+- Thứ tự build đề xuất: SiteFooter + nav update (nền tảng dùng chung) → Showroom upgrade (rủi ro thấp, reuse nhiều) → About (static) → Contact (cần endpoint backend) → Homepage Landing (tổng hợp mọi component).
+
+### Hành động tiếp theo (Rev 4)
+
+1. **Epics & Stories** — tạo Epic "Customer Brand Presence" với stories: Homepage Landing, Showroom enhancement, About page, Contact page + public lead endpoint, Navigation/Footer refactor.
+2. **Architecture** — xác nhận public lead-capture endpoint (auth/rate-limit) cho ContactForm; quyết định CMS-driven vs hardcoded content cho About/testimonials.
+3. **Asset** — chuẩn bị ảnh signature hero, ảnh quy trình, nội dung testimonials thật.
+
+### Trạng thái
+✅ UX Design Specification Rev 4 — **HOÀN THÀNH** (Customer Brand Presence: Homepage Landing, Showroom upgrade, About, Contact → CRM Lead)

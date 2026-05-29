@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UX Preview — Rev 4 · Customer Brand Presence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --indigo:#1A2B4C; --ivory:#F9F7F2; --gold:#D4AF37; --white:#FFFFFF;
+    --charcoal:#1A1A2E; --gray:#6B7280; --jade:#059669; --amber:#D97706; --ruby:#DC2626;
+    --serif:'Cormorant Garamond',serif; --sans:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono',monospace;
+    --shadow-sm:0 1px 3px rgba(26,43,76,.08); --shadow-md:0 6px 24px rgba(26,43,76,.10); --shadow-lg:0 20px 60px rgba(26,43,76,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);color:var(--charcoal);background:var(--ivory);line-height:1.6;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;color:var(--indigo);line-height:1.15}
+  .mono{font-family:var(--mono)}
+  img{max-width:100%;display:block}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--sans);font-weight:600;font-size:15px;padding:14px 28px;border-radius:24px;border:2px solid transparent;cursor:pointer;transition:.2s ease;white-space:nowrap}
+  .btn-gold{background:var(--gold);color:var(--indigo)}
+  .btn-gold:hover{background:#c39f2c;transform:translateY(-2px);box-shadow:var(--shadow-md)}
+  .btn-outline{background:transparent;border-color:var(--ivory);color:var(--ivory)}
+  .btn-outline:hover{background:rgba(249,247,242,.12)}
+  .btn-outline-dark{background:transparent;border-color:var(--indigo);color:var(--indigo)}
+  .btn-outline-dark:hover{background:var(--indigo);color:var(--ivory)}
+  .eyebrow{font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+  section.block{padding:88px 0}
+  .center{text-align:center}
+  /* image placeholders mimicking áo dài photography */
+  .ph{position:relative;border-radius:12px;overflow:hidden;background:
+      radial-gradient(120% 90% at 70% 10%, rgba(212,175,55,.30), transparent 55%),
+      linear-gradient(140deg,#22335a 0%,#1A2B4C 45%,#101b33 100%)}
+  .ph::after{content:attr(data-label);position:absolute;left:14px;bottom:12px;font-family:var(--sans);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(249,247,242,.55)}
+  .ph.light{background:radial-gradient(120% 90% at 30% 0%, rgba(212,175,55,.22), transparent 55%),linear-gradient(140deg,#efe9dc,#f9f7f2)}
+  .ph.light::after{color:rgba(26,43,76,.45)}
+
+  /* ===== Preview chrome ===== */
+  .toolbar{position:sticky;top:0;z-index:200;background:var(--indigo);color:var(--ivory);border-bottom:1px solid rgba(212,175,55,.35)}
+  .toolbar .wrap{display:flex;align-items:center;gap:18px;height:60px}
+  .toolbar .brandmark{font-family:var(--serif);font-weight:700;font-size:18px;color:var(--gold)}
+  .toolbar .tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+  .toolbar .tab{font-size:13px;font-weight:600;padding:8px 16px;border-radius:18px;color:rgba(249,247,242,.7);cursor:pointer;transition:.15s}
+  .toolbar .tab:hover{color:var(--ivory)}
+  .toolbar .tab.active{background:var(--gold);color:var(--indigo)}
+  .page{display:none;animation:fade .35s ease}
+  .page.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* ===== Customer app nav (mock of (customer)/layout.tsx) ===== */
+  .appnav{background:var(--white);border-bottom:1px solid #ece7da}
+  .appnav .wrap{display:flex;align-items:center;height:68px;gap:8px}
+  .appnav .logo{font-family:var(--serif);font-weight:700;font-size:22px;color:var(--indigo)}
+  .appnav nav{margin-left:38px;display:flex;gap:26px}
+  .appnav nav a{font-size:14px;font-weight:500;color:var(--charcoal);padding:6px 0;border-bottom:2px solid transparent;transition:.15s}
+  .appnav nav a:hover{color:var(--indigo);border-color:var(--gold)}
+  .appnav nav a.cur{color:var(--indigo);border-color:var(--gold)}
+  .appnav .acts{margin-left:auto;display:flex;align-items:center;gap:18px;color:var(--gray)}
+  .appnav .acts .ic{width:22px;height:22px;display:inline-flex}
+  .badge{position:relative}
+  .badge::after{content:'2';position:absolute;top:-6px;right:-8px;background:var(--gold);color:var(--indigo);font-size:10px;font-weight:700;width:16px;height:16px;border-radius:50%;display:grid;place-items:center}
+
+  /* ===== HERO ===== */
+  .hero{position:relative;min-height:560px;display:flex;align-items:center;color:var(--ivory);overflow:hidden;
+    background:linear-gradient(115deg,rgba(16,27,51,.92) 0%,rgba(26,43,76,.72) 48%,rgba(26,43,76,.25) 100%),
+      radial-gradient(80% 120% at 85% 20%,rgba(212,175,55,.35),transparent 60%),
+      linear-gradient(160deg,#1a2b4c,#0f1b33)}
+  .hero .wrap{position:relative;z-index:2;max-width:680px;padding-top:40px;padding-bottom:40px}
+  .hero h1{color:var(--ivory);font-size:clamp(40px,6vw,68px);font-weight:600;letter-spacing:-.01em}
+  .hero p.sub{font-size:18px;color:rgba(249,247,242,.85);margin:22px 0 34px;max-width:520px}
+  .hero .cta{display:flex;gap:14px;flex-wrap:wrap}
+  .scrollcue{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:2;color:rgba(249,247,242,.6);font-size:12px;letter-spacing:.2em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .scrollcue .dot{width:1px;height:34px;background:linear-gradient(var(--gold),transparent)}
+
+  /* triad */
+  .triad{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:48px}
+  .feat{background:var(--white);border:1px solid #ece7da;border-radius:16px;padding:34px 28px;box-shadow:var(--shadow-sm);transition:.2s}
+  .feat:hover{transform:translateY(-4px);box-shadow:var(--shadow-md)}
+  .feat .ico{width:54px;height:54px;border-radius:14px;background:rgba(212,175,55,.14);color:var(--gold);display:grid;place-items:center;margin-bottom:18px}
+  .feat h3{font-size:24px;margin-bottom:8px}
+  .feat p{color:var(--gray);font-size:15px}
+  .feat .stat{font-family:var(--mono);color:var(--gold);font-weight:500;font-size:13px;margin-top:14px;display:block}
+
+  /* product grid */
+  .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:44px}
+  .pcard{background:var(--white);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-sm);transition:.2s;cursor:pointer}
+  .pcard:hover{transform:translateY(-5px);box-shadow:var(--shadow-md)}
+  .pcard .ph{border-radius:0;aspect-ratio:3/4}
+  .pcard .body{padding:16px 18px 20px}
+  .pcard .cat{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gray)}
+  .pcard h3{font-size:21px;margin:4px 0 6px}
+  .pcard .price{font-family:var(--mono);font-weight:500;color:var(--indigo);font-size:15px}
+  .pcard .toggle{margin-top:12px;display:inline-flex;background:var(--ivory);border-radius:20px;padding:3px;font-size:12px;font-weight:600}
+  .pcard .toggle span{padding:5px 14px;border-radius:18px;color:var(--gray)}
+  .pcard .toggle span.on{background:var(--gold);color:var(--indigo)}
+  .pcard .tag{position:absolute;top:12px;left:12px;background:var(--gold);color:var(--indigo);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:14px;z-index:3}
+
+  /* story teaser */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+  .split .ph{aspect-ratio:4/5}
+  .split h2{font-size:clamp(32px,4vw,46px);margin-bottom:18px}
+  .split p{color:var(--gray);font-size:16px;margin-bottom:14px}
+
+  /* testimonials */
+  .tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:44px}
+  .tcard{background:var(--white);border-radius:16px;padding:30px;box-shadow:var(--shadow-sm);border:1px solid #ece7da}
+  .tcard .quote{font-family:var(--serif);font-style:italic;font-size:21px;color:var(--indigo);line-height:1.4;margin-bottom:18px}
+  .tcard .who{display:flex;align-items:center;gap:12px}
+  .tcard .av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#b8941f);display:grid;place-items:center;color:var(--indigo);font-weight:700}
+  .tcard .who b{display:block;font-size:14px;color:var(--charcoal)}
+  .tcard .who small{color:var(--gray);font-size:12px}
+
+  /* closing band */
+  .band{background:linear-gradient(120deg,#1a2b4c,#0f1b33);color:var(--ivory);text-align:center;padding:84px 0;position:relative;overflow:hidden}
+  .band::before{content:'';position:absolute;inset:0;background:radial-gradient(60% 100% at 50% 0%,rgba(212,175,55,.22),transparent 60%)}
+  .band .wrap{position:relative}
+  .band h2{color:var(--ivory);font-size:clamp(30px,4vw,44px)}
+  .band p{color:rgba(249,247,242,.8);margin:16px 0 30px;font-size:17px}
+  .band .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+  /* trust strip */
+  .trust{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;background:var(--white);border:1px solid #ece7da;border-radius:16px;padding:26px 20px;box-shadow:var(--shadow-sm)}
+  .trust .t{display:flex;gap:12px;align-items:flex-start}
+  .trust .t .ico{color:var(--jade);flex:0 0 auto;margin-top:2px}
+  .trust .t b{display:block;font-size:14px}
+  .trust .t small{color:var(--gray);font-size:12.5px}
+
+  /* showroom filter + editorial */
+  .editorial{background:var(--white);border-left:3px solid var(--gold);padding:26px 30px;border-radius:0 12px 12px 0;margin-top:40px}
+  .editorial .eyebrow{margin-bottom:8px;display:block}
+  .editorial p{font-family:var(--serif);font-size:22px;font-style:italic;color:var(--indigo)}
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:36px}
+  .chip{font-size:13px;font-weight:600;padding:9px 18px;border-radius:20px;background:var(--white);border:1px solid #ddd5c4;color:var(--charcoal);cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--gold)}
+  .chip.on{background:var(--indigo);color:var(--ivory);border-color:var(--indigo)}
+  .empty{text-align:center;padding:70px 20px;background:var(--white);border:1px dashed #d8d0bf;border-radius:16px;margin-top:30px}
+  .empty .ico{width:72px;height:72px;border-radius:50%;background:rgba(212,175,55,.12);color:var(--gold);display:grid;place-items:center;margin:0 auto 18px}
+  .empty h3{font-size:24px;margin-bottom:8px}
+  .empty p{color:var(--gray);margin-bottom:20px}
+  .skel{background:linear-gradient(90deg,#ece7da 25%,#f4f0e6 37%,#ece7da 63%);background-size:400% 100%;animation:sh 1.4s infinite;border-radius:8px}
+  @keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+  /* about process timeline */
+  .steps{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:48px;position:relative}
+  .step{text-align:center;padding:0 12px;position:relative}
+  .step .num{width:52px;height:52px;border-radius:50%;background:var(--indigo);color:var(--gold);font-family:var(--mono);font-weight:500;display:grid;place-items:center;margin:0 auto 16px;position:relative;z-index:2}
+  .step:not(:last-child)::after{content:'';position:absolute;top:26px;left:60%;width:80%;height:2px;background:repeating-linear-gradient(90deg,var(--gold) 0 6px,transparent 6px 12px)}
+  .step h3{font-size:20px;margin-bottom:6px}
+  .step p{font-size:13.5px;color:var(--gray)}
+
+  /* contact */
+  .contact{display:grid;grid-template-columns:1fr 1.1fr;gap:48px;align-items:start}
+  .info-card{background:var(--white);border:1px solid #ece7da;border-radius:16px;padding:30px;box-shadow:var(--shadow-sm);margin-bottom:22px}
+  .info-row{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid #f0ece1}
+  .info-row:last-child{border:0}
+  .info-row .ico{color:var(--gold);flex:0 0 auto}
+  .info-row b{display:block;font-size:14px}
+  .info-row span{color:var(--gray);font-size:14px}
+  .map{height:220px;border-radius:14px;display:grid;place-items:center;color:rgba(249,247,242,.6);font-size:13px;letter-spacing:.1em}
+  .form{background:var(--white);border:1px solid #ece7da;border-radius:18px;padding:34px;box-shadow:var(--shadow-md)}
+  .form h3{font-size:28px;margin-bottom:6px}
+  .form .lead{color:var(--gray);margin-bottom:24px;font-size:14.5px}
+  .field{margin-bottom:18px}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:7px}
+  .field label .req{color:var(--ruby)}
+  .field input,.field textarea{width:100%;font-family:var(--sans);font-size:15px;padding:12px 14px;border:1px solid #ddd5c4;border-radius:10px;background:var(--ivory);transition:.15s}
+  .field input:focus,.field textarea:focus{outline:2px solid var(--gold);outline-offset:0;border-color:transparent;background:var(--white)}
+  .field textarea{resize:vertical;min-height:110px}
+  .field .err{color:var(--ruby);font-size:12.5px;margin-top:6px;display:none}
+  .field.invalid input{border-color:var(--ruby);background:#fef5f5}
+  .field.invalid .err{display:block}
+  .form .map-note{font-size:12px;color:var(--gray);margin-top:6px;font-family:var(--mono)}
+  .toast{display:none;align-items:center;gap:10px;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;padding:14px 16px;border-radius:12px;font-size:14px;font-weight:500;margin-bottom:18px}
+  .toast.show{display:flex}
+  .state-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .sb{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:12px;background:var(--ivory);color:var(--gray);border:1px solid #e3dccb;cursor:pointer}
+  .sb:hover{border-color:var(--gold)}
+
+  /* footer */
+  footer.site{background:var(--indigo);color:rgba(249,247,242,.78);padding:64px 0 28px}
+  footer.site .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:48px}
+  footer.site h4{font-family:var(--serif);color:var(--ivory);font-size:22px;margin-bottom:14px}
+  footer.site .brandmark{font-family:var(--serif);font-weight:700;font-size:26px;color:var(--gold);margin-bottom:12px}
+  footer.site a{display:block;padding:5px 0;font-size:14px;transition:.15s}
+  footer.site a:hover{color:var(--gold)}
+  footer.site .social{display:flex;gap:12px;margin-top:14px}
+  footer.site .social a{width:38px;height:38px;border-radius:50%;border:1px solid rgba(249,247,242,.25);display:grid;place-items:center;padding:0}
+  footer.site .copy{margin-top:44px;padding-top:22px;border-top:1px solid rgba(249,247,242,.15);font-size:13px;text-align:center;color:rgba(249,247,242,.5)}
+
+  .sectlead{max-width:560px}
+  .sectlead.center{margin:0 auto}
+  .sectlead h2{font-size:clamp(30px,4vw,44px);margin:10px 0 14px}
+  .sectlead p{color:var(--gray);font-size:16px}
+  .mt{margin-top:14px}
+
+  /* annotation chips for the preview */
+  .anno{display:inline-block;background:rgba(212,175,55,.16);color:#8a6d11;font-size:11px;font-weight:600;font-family:var(--mono);padding:3px 9px;border-radius:6px;border:1px solid rgba(212,175,55,.4);margin-bottom:14px}
+
+  @media(max-width:960px){
+    .triad,.tgrid,.steps{grid-template-columns:1fr;gap:20px}
+    .step:not(:last-child)::after{display:none}
+    .pgrid{grid-template-columns:repeat(2,1fr)}
+    .split,.contact{grid-template-columns:1fr;gap:28px}
+    .trust{grid-template-columns:repeat(2,1fr)}
+    .appnav nav{display:none}
+    section.block{padding:56px 0}
+  }
+  @media(max-width:560px){
+    .pgrid,.trust{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== PREVIEW TOOLBAR ===================== -->
+<div class="toolbar">
+  <div class="wrap">
+    <span class="brandmark">Tailor · UX Rev 4</span>
+    <div class="tabs">
+      <span class="tab active" data-page="home">Trang chủ /</span>
+      <span class="tab" data-page="showroom">Showroom</span>
+      <span class="tab" data-page="about">Giới thiệu</span>
+      <span class="tab" data-page="contact">Liên hệ</span>
+    </div>
+  </div>
+</div>
+
+<!-- shared app nav rendered per page via template; here we inline for each -->
+
+<!-- ===================== HOME ===================== -->
+<div class="page active" id="page-home">
+  <div class="appnav"><div class="wrap">
+    <span class="logo">Tailor Design</span>
+    <nav><a class="cur" href="#">Trang chủ</a><a href="#" data-go="showroom">Showroom</a><a href="#" data-go="about">Giới thiệu</a><a href="#" data-go="contact">Liên hệ</a><a href="#">Đặt lịch</a></nav>
+    <div class="acts"><span class="badge">🛍</span><span>🔔</span><span>👤</span></div>
+  </div></div>
+
+  <header class="hero">
+    <div class="wrap">
+      <span class="eyebrow">Áo dài may riêng · Giữ trọn nét Việt</span>
+      <h1>Một tà áo,<br/>vẹn cả dáng hình.</h1>
+      <p class="sub">Nơi mỗi đường kim kể một câu chuyện riêng — để tà áo không chỉ ôm trọn dáng người, mà còn chạm khẽ vào lòng bạn ngay từ cái nhìn đầu tiên.</p>
+      <div class="cta">
+        <a class="btn btn-gold" data-go="showroom">Dạo xem bộ sưu tập</a>
+        <a class="btn btn-outline" href="#">Hẹn một buổi trò chuyện</a>
+      </div>
+    </div>
+    <div class="scrollcue"><span>Cuộn xuống</span><span class="dot"></span></div>
+  </header>
+
+  <section class="block">
+    <div class="wrap center">
+      <span class="anno">Phần · Vì sao chọn chúng tôi</span>
+      <div class="sectlead center"><span class="eyebrow">Lời chúng tôi gửi bạn</span><h2>Cam kết</h2></div>
+      <div class="triad">
+        <div class="feat"><div class="ico">✦</div><h3>Yêu ngay lần thử đầu</h3><p>Vừa vặn cả dáng hình lẫn nét duyên ngay lần đầu khoác lên — chẳng phải sửa tới sửa lui, chẳng phải chờ mong.</p><span class="stat">Hơn 9 trên 10 người vừa ngay lần đầu</span></div>
+        <div class="feat"><div class="ico">❖</div><h3>Đường kim có hồn</h3><p>Mỗi mũi chỉ là một chút tâm tình người thợ gửi vào — để hồn áo dài Việt sống mãi trong từng tà áo.</p><span class="stat">May tay, tỉ mỉ từng li</span></div>
+        <div class="feat"><div class="ico">◈</div><h3>Riêng một mình bạn</h3><p>Đồng điệu từ dáng hình đến tâm hồn — để bạn yêu tà áo ngay từ cái nhìn đầu tiên.</p><span class="stat">Không một tà áo nào giống nhau</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" style="background:var(--white)">
+    <div class="wrap">
+      <span class="anno">Phần · Bộ sưu tập nổi bật</span>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+        <div class="sectlead"><span class="eyebrow">Tuyển chọn</span><h2>Bộ sưu tập nổi bật</h2></div>
+        <a class="btn btn-outline-dark" data-go="showroom">Xem tất cả →</a>
+      </div>
+      <div class="pgrid">
+        <div class="pcard"><div class="ph" data-label="Áo dài Tết" style="aspect-ratio:3/4"><span class="tag">Bán chạy</span></div><div class="body"><span class="cat">Lễ Tết</span><h3>Hồng Hạc</h3><div class="price">1.850.000₫</div><div class="toggle"><span class="on">Mua</span><span>Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài cưới" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Cưới hỏi</span><h3>Liên Hoa</h3><div class="price">2.400.000₫</div><div class="toggle"><span class="on">Mua</span><span>Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài cách tân" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Cách tân</span><h3>Thanh Vân</h3><div class="price">1.200.000₫</div><div class="toggle"><span>Mua</span><span class="on">Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài dự tiệc" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Dự tiệc</span><h3>Nguyệt Cầm</h3><div class="price">1.650.000₫</div><div class="toggle"><span class="on">Mua</span><span>Thuê</span></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <span class="anno">Phần · Giới thiệu câu chuyện (dẫn sang trang Giới thiệu)</span>
+      <div class="split">
+        <div class="ph" data-label="Nghệ nhân may Áo dài"></div>
+        <div>
+          <span class="eyebrow">Câu chuyện của chúng tôi</span>
+          <h2>Hơn một tà áo —<br/>là cả một tấm lòng.</h2>
+          <p>Từ một tiệm may nhỏ, chúng tôi lớn lên cùng tình yêu dành cho áo dài Việt — mong giữ lại nét duyên ấy cho mọi người, qua bao mùa.</p>
+          <p>Không vội vàng, không đại trà. Chỉ có những tà áo được may bằng cả sự nâng niu, cho riêng một người.</p>
+          <a class="btn btn-outline-dark mt" data-go="about">Nghe trọn câu chuyện →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" style="background:var(--white)">
+    <div class="wrap center">
+      <span class="anno">Phần · Lời khen khách hàng</span>
+      <div class="sectlead center"><span class="eyebrow">Lời thương từ khách</span><h2>Niềm tin được dệt nên</h2></div>
+      <div class="tgrid">
+        <div class="tcard"><p class="quote">"Lần đầu đặt áo dài trên mạng mà vừa in như may sẵn cho mình, chẳng phải sửa một chỗ nào."</p><div class="who"><span class="av">L</span><div><b>Chị Linh</b><small>Quận 1, TP.HCM</small></div></div></div>
+        <div class="tcard"><p class="quote">"Đẹp và sang, bước vào như lạc giữa một tiệm may riêng, ấm áp chứ không lạnh lùng kiểu mua bán."</p><div class="who"><span class="av">H</span><div><b>Chị Hương</b><small>Hà Nội</small></div></div></div>
+        <div class="tcard"><p class="quote">"Hẹn xong ghé tiệm, mọi thứ đã chờ sẵn. Cảm giác được nâng niu, chu đáo đến từng chút."</p><div class="who"><span class="av">M</span><div><b>Chị Mai</b><small>Đà Nẵng</small></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <span class="anno" style="background:rgba(212,175,55,.25);color:#f3e2a8;border-color:rgba(212,175,55,.5)">Phần · Lời mời cuối trang</span>
+      <h2>Tà áo của riêng bạn đang chờ được may.</h2>
+      <p>Hẹn một buổi trò chuyện cùng chúng tôi, hoặc thong thả dạo xem bộ sưu tập ngay hôm nay.</p>
+      <div class="cta"><a class="btn btn-gold" href="#">Hẹn một buổi trò chuyện</a><a class="btn btn-outline" data-go="showroom">Dạo xem bộ sưu tập</a></div>
+    </div>
+  </section>
+
+  <div class="footer-mount"></div>
+</div>
+
+<!-- ===================== SHOWROOM ===================== -->
+<div class="page" id="page-showroom">
+  <div class="appnav"><div class="wrap">
+    <span class="logo">Tailor Design</span>
+    <nav><a href="#" data-go="home">Trang chủ</a><a class="cur" href="#">Showroom</a><a href="#" data-go="about">Giới thiệu</a><a href="#" data-go="contact">Liên hệ</a><a href="#">Đặt lịch</a></nav>
+    <div class="acts"><span class="badge">🛍</span><span>🔔</span><span>👤</span></div>
+  </div></div>
+
+  <header class="hero" style="min-height:340px">
+    <div class="wrap" style="max-width:680px">
+      <span class="anno" style="background:rgba(212,175,55,.25);color:#f3e2a8;border-color:rgba(212,175,55,.5)">Phần đầu trang (thay tiêu đề phẳng)</span>
+      <h1 style="font-size:clamp(34px,5vw,52px)">Bộ sưu tập áo dài</h1>
+      <p class="sub" style="margin-bottom:0">Những tà áo cho mọi dịp vui — để bạn luôn rạng rỡ trong từng khoảnh khắc đáng nhớ của đời mình.</p>
+    </div>
+  </header>
+
+  <main class="block" style="padding-top:48px">
+    <div class="wrap">
+      <span class="anno">Phần · Lời dẫn truyền cảm</span>
+      <div class="editorial"><span class="eyebrow">Giữ nếp Việt</span><p>"Mỗi tà áo là một câu chuyện — chọn câu chuyện của riêng bạn."</p></div>
+
+      <span class="anno" style="margin-top:34px">Bộ lọc + lưới sản phẩm</span>
+      <div class="chips">
+        <span class="chip on">Tất cả</span><span class="chip">Lễ Tết</span><span class="chip">Cưới hỏi</span><span class="chip">Dự tiệc</span><span class="chip">Cách tân</span><span class="chip">Đỏ</span><span class="chip">Vàng</span><span class="chip">Lụa</span>
+      </div>
+
+      <div class="pgrid" id="sr-grid">
+        <div class="pcard"><div class="ph" data-label="Áo dài" style="aspect-ratio:3/4"><span class="tag">Mới</span></div><div class="body"><span class="cat">Lễ Tết</span><h3>Hồng Hạc</h3><div class="price">1.850.000₫</div><div class="toggle"><span class="on">Mua</span><span>Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Cưới hỏi</span><h3>Liên Hoa</h3><div class="price">2.400.000₫</div><div class="toggle"><span class="on">Mua</span><span>Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Cách tân</span><h3>Thanh Vân</h3><div class="price">1.200.000₫</div><div class="toggle"><span>Mua</span><span class="on">Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Dự tiệc</span><h3>Nguyệt Cầm</h3><div class="price">1.650.000₫</div><div class="toggle"><span class="on">Mua</span><span>Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Lễ Tết</span><h3>Mộc Lan</h3><div class="price">1.950.000₫</div><div class="toggle"><span class="on">Mua</span><span>Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Cưới hỏi</span><h3>Bạch Trà</h3><div class="price">2.150.000₫</div><div class="toggle"><span class="on">Mua</span><span>Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Dự tiệc</span><h3>Tố Như</h3><div class="price">1.450.000₫</div><div class="toggle"><span>Mua</span><span class="on">Thuê</span></div></div></div>
+        <div class="pcard"><div class="ph" data-label="Áo dài" style="aspect-ratio:3/4"></div><div class="body"><span class="cat">Cách tân</span><h3>Vũ Khúc</h3><div class="price">1.300.000₫</div><div class="toggle"><span class="on">Mua</span><span>Thuê</span></div></div></div>
+      </div>
+
+      <!-- demo: empty + loading states -->
+      <div style="display:flex;gap:10px;margin-top:30px;flex-wrap:wrap">
+        <span class="anno" style="margin:0">Demo states →</span>
+        <button class="sb" onclick="srState('grid')">Grid</button>
+        <button class="sb" onclick="srState('loading')">Loading (skeleton)</button>
+        <button class="sb" onclick="srState('empty')">Empty (filter rỗng)</button>
+      </div>
+
+      <div class="pgrid" id="sr-skel" style="display:none">
+        <div class="pcard"><div class="skel" style="aspect-ratio:3/4"></div><div class="body"><div class="skel" style="height:12px;width:50%;margin-bottom:10px"></div><div class="skel" style="height:22px;width:80%;margin-bottom:10px"></div><div class="skel" style="height:14px;width:40%"></div></div></div>
+        <div class="pcard"><div class="skel" style="aspect-ratio:3/4"></div><div class="body"><div class="skel" style="height:12px;width:50%;margin-bottom:10px"></div><div class="skel" style="height:22px;width:80%;margin-bottom:10px"></div><div class="skel" style="height:14px;width:40%"></div></div></div>
+        <div class="pcard"><div class="skel" style="aspect-ratio:3/4"></div><div class="body"><div class="skel" style="height:12px;width:50%;margin-bottom:10px"></div><div class="skel" style="height:22px;width:80%;margin-bottom:10px"></div><div class="skel" style="height:14px;width:40%"></div></div></div>
+        <div class="pcard"><div class="skel" style="aspect-ratio:3/4"></div><div class="body"><div class="skel" style="height:12px;width:50%;margin-bottom:10px"></div><div class="skel" style="height:22px;width:80%;margin-bottom:10px"></div><div class="skel" style="height:14px;width:40%"></div></div></div>
+      </div>
+
+      <div class="empty" id="sr-empty" style="display:none">
+        <div class="ico">🔍</div>
+        <h3>Không tìm thấy áo dài phù hợp</h3>
+        <p>Thử bỏ bớt bộ lọc để xem thêm nhiều mẫu hơn nhé.</p>
+        <button class="btn btn-gold" onclick="srState('grid')">Xóa bộ lọc</button>
+      </div>
+
+      <span class="anno" style="margin-top:40px">Phần · Cam kết với khách</span>
+      <div class="trust">
+        <div class="t"><span class="ico">✓</span><div><b>May vừa in dáng bạn</b><small>Theo số đo của riêng bạn</small></div></div>
+        <div class="t"><span class="ico">✓</span><div><b>Yên tâm đổi trả</b><small>Trong vòng 7 ngày</small></div></div>
+        <div class="t"><span class="ico">✓</span><div><b>Vải đẹp tuyển chọn</b><small>Lụa &amp; gấm thượng hạng</small></div></div>
+        <div class="t"><span class="ico">✓</span><div><b>Luôn bên cạnh bạn</b><small>Trò chuyện qua Zalo bất cứ lúc nào</small></div></div>
+      </div>
+    </div>
+  </main>
+  <div class="footer-mount"></div>
+</div>
+
+<!-- ===================== ABOUT ===================== -->
+<div class="page" id="page-about">
+  <div class="appnav"><div class="wrap">
+    <span class="logo">Tailor Design</span>
+    <nav><a href="#" data-go="home">Trang chủ</a><a href="#" data-go="showroom">Showroom</a><a class="cur" href="#">Giới thiệu</a><a href="#" data-go="contact">Liên hệ</a><a href="#">Đặt lịch</a></nav>
+    <div class="acts"><span class="badge">🛍</span><span>🔔</span><span>👤</span></div>
+  </div></div>
+
+  <header class="hero" style="min-height:420px">
+    <div class="wrap">
+      <span class="anno" style="background:rgba(212,175,55,.25);color:#f3e2a8;border-color:rgba(212,175,55,.5)">Trụ cột 1 · Câu chuyện thương hiệu</span>
+      <span class="eyebrow">Về chúng tôi</span>
+      <h1>Giữ hồn áo dài,<br/>qua bao mùa thương.</h1>
+      <p class="sub" style="margin-bottom:0">Một tiệm may nặng lòng với áo dài — nơi mỗi tà áo lớn lên từ đôi tay người thợ và sự nâng niu trong từng số đo.</p>
+    </div>
+  </header>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <span class="eyebrow">Điều chúng tôi tin</span>
+          <h2>Khởi đầu từ một điều giản dị.</h2>
+          <p>Chúng tôi tin mỗi người phụ nữ Việt xứng đáng có một tà áo của riêng mình — vừa vóc dáng, vừa nết duyên, chứ không phải một chiếc áo may sẵn giống hệt trăm người.</p>
+          <p>Vì lẽ đó, chúng tôi vừa giữ lấy nghề may thủ công của cha ông, vừa đo may thật tỉ mỉ — để cái hồn xưa vẫn còn, mà tà áo thì vừa in từng đường nét.</p>
+        </div>
+        <div class="ph" data-label="Tiệm may di sản"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" style="background:var(--white)">
+    <div class="wrap center">
+      <span class="anno">Trụ cột 2 · Nghề thủ công &amp; quy trình</span>
+      <div class="sectlead center"><span class="eyebrow">Quy trình</span><h2>Từ cảm hứng đến tà áo hoàn thiện</h2></div>
+      <div class="steps">
+        <div class="step"><div class="num">01</div><h3>Tư vấn</h3><p>Lắng nghe phong cách &amp; mong muốn của bạn.</p></div>
+        <div class="step"><div class="num">02</div><h3>Đo</h3><p>10 số đo cá nhân hoá, lưu vào hồ sơ.</p></div>
+        <div class="step"><div class="num">03</div><h3>Lên mẫu</h3><p>Tạo mẫu áo chính xác theo số đo của bạn.</p></div>
+        <div class="step"><div class="num">04</div><h3>May tay</h3><p>Thợ may lành nghề chăm chút từng đường kim.</p></div>
+        <div class="step"><div class="num">05</div><h3>Vừa lần đầu</h3><p>Vừa vặn ngay lần thử đầu tiên.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap center">
+      <span class="anno">Trụ cột 3 · Vì sao chọn chúng tôi</span>
+      <div class="sectlead center"><span class="eyebrow">Vì sao khách thương</span><h2>Điều khiến bạn muốn quay lại</h2></div>
+      <div class="triad">
+        <div class="feat"><div class="ico">✦</div><h3>Yêu ngay lần thử đầu</h3><p>Hơn 9 trên 10 người vừa in ngay lần đầu — đỡ mất công đi lại, chỉ còn lại niềm vui trọn vẹn.</p></div>
+        <div class="feat"><div class="ico">◈</div><h3>Riêng một mình bạn</h3><p>Từ dáng hình đến sở thích, bạn được cùng chúng tôi chọn từng chi tiết — để tà áo thật sự là của bạn.</p></div>
+        <div class="feat"><div class="ico">❖</div><h3>Nâng niu đến từng chút</h3><p>Lụa, gấm tuyển chọn cùng lời tư vấn dành riêng cho bạn — chu đáo, ấm áp từ đầu đến cuối.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" style="background:var(--white)">
+    <div class="wrap center">
+      <span class="anno">Trụ cột 4 · Cảm nhận khách hàng</span>
+      <div class="sectlead center"><span class="eyebrow">Khách thương</span><h2>Được hàng trăm khách thương gửi trọn niềm tin</h2></div>
+      <div class="tgrid">
+        <div class="tcard"><p class="quote">"Tà áo như được sinh ra cho riêng mình vậy."</p><div class="who"><span class="av">P</span><div><b>Chị Phương</b><small>Khách may áo riêng</small></div></div></div>
+        <div class="tcard"><p class="quote">"Người thợ tận tâm, từng bước đều chỉn chu, tà áo nhận về còn đẹp hơn mình mơ."</p><div class="who"><span class="av">T</span><div><b>Chị Trang</b><small>Áo dài cưới</small></div></div></div>
+        <div class="tcard"><p class="quote">"Hiện đại mà vẫn ấm cái tình xưa — tà áo có hồn, có cả câu chuyện."</p><div class="who"><span class="av">N</span><div><b>Chị Ngọc</b><small>Áo dài Tết</small></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <h2>Hãy để chúng tôi kể câu chuyện của bạn,<br/>bằng một tà áo.</h2>
+      <p>Hẹn một buổi trò chuyện, hay chỉ đơn giản là nhắn cho chúng tôi đôi dòng.</p>
+      <div class="cta"><a class="btn btn-gold" href="#">Hẹn một buổi trò chuyện</a><a class="btn btn-outline" data-go="contact">Nhắn cho chúng tôi</a></div>
+    </div>
+  </section>
+  <div class="footer-mount"></div>
+</div>
+
+<!-- ===================== CONTACT ===================== -->
+<div class="page" id="page-contact">
+  <div class="appnav"><div class="wrap">
+    <span class="logo">Tailor Design</span>
+    <nav><a href="#" data-go="home">Trang chủ</a><a href="#" data-go="showroom">Showroom</a><a href="#" data-go="about">Giới thiệu</a><a class="cur" href="#">Liên hệ</a><a href="#">Đặt lịch</a></nav>
+    <div class="acts"><span class="badge">🛍</span><span>🔔</span><span>👤</span></div>
+  </div></div>
+
+  <section class="block" style="padding-top:64px">
+    <div class="wrap">
+      <div class="sectlead"><span class="eyebrow">Liên hệ</span><h2>Ghé thăm, hay nhắn cho chúng tôi đôi dòng</h2><p>Để lại lời nhắn, chúng tôi sẽ hồi âm bạn thật sớm. Mỗi dòng bạn gửi đều được lắng nghe và trân trọng.</p></div>
+
+      <div class="contact" style="margin-top:44px">
+        <!-- info -->
+        <div>
+          <span class="anno">Phần · Thông tin Khối thông tin + bản đồ bản đồ</span>
+          <div class="info-card">
+            <div class="info-row"><span class="ico">📍</span><div><b>Địa chỉ</b><span>123 Lê Lợi, Quận 1, TP. Hồ Chí Minh</span></div></div>
+            <div class="info-row"><span class="ico">🕐</span><div><b>Giờ mở cửa</b><span>Thứ 2 – Chủ nhật · 9:00 – 20:00</span></div></div>
+            <div class="info-row"><span class="ico">📞</span><div><b>Điện thoại</b><span>0901 234 567 (tap để gọi)</span></div></div>
+            <div class="info-row"><span class="ico">💬</span><div><b>Zalo / Email</b><span>zalo.me/tailordesign · hello@tailor.vn</span></div></div>
+          </div>
+          <div class="ph map" data-label="">🗺 Google Maps embed</div>
+        </div>
+
+        <!-- form -->
+        <div>
+          <span class="anno">Phần · Biểu mẫu liên hệ (lưu vào danh sách khách quan tâm)</span>
+          <form class="form" id="contactForm" novalidate>
+            <h3>Gửi lời nhắn</h3>
+            <p class="lead">Để lại đôi dòng, chúng tôi sẽ hồi âm bạn trong vòng 24 giờ.</p>
+
+            <div class="toast" id="toast">✓ Cảm ơn bạn đã nhắn cho chúng tôi! Chúng tôi sẽ hồi âm thật sớm.</div>
+
+            <div class="field" id="f-name">
+              <label>Họ tên <span class="req">*</span></label>
+              <input type="text" name="name" placeholder="Nguyễn Thị Linh" />
+              <div class="err">Vui lòng nhập họ tên</div>
+            </div>
+            <div class="field" id="f-phone">
+              <label>Số điện thoại</label>
+              <input type="tel" name="phone" placeholder="0901 234 567" />
+              <div class="err">Số điện thoại không hợp lệ</div>
+            </div>
+            <div class="field" id="f-email">
+              <label>Email</label>
+              <input type="email" name="email" placeholder="ban@email.com" />
+              <div class="err">Email không hợp lệ</div>
+            </div>
+            <div class="field" id="f-notes">
+              <label>Lời nhắn</label>
+              <textarea name="notes" placeholder="Tôi muốn tư vấn may áo dài cưới..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center" id="submitBtn">Gửi lời nhắn</button>
+            <p class="map-note">Ghi chú nội bộ: lời nhắn được lưu vào danh sách khách quan tâm để cửa tiệm chủ động liên hệ lại.</p>
+
+            <div class="state-badges">
+              <span class="anno" style="margin:0">Demo state →</span>
+              <button type="button" class="sb" onclick="cState('idle')">Idle</button>
+              <button type="button" class="sb" onclick="cState('submitting')">Submitting</button>
+              <button type="button" class="sb" onclick="cState('success')">Success</button>
+              <button type="button" class="sb" onclick="cState('error')">Error (validation)</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div class="footer-mount"></div>
+</div>
+
+<!-- ===================== SHARED FOOTER TEMPLATE ===================== -->
+<template id="footer-tpl">
+  <footer class="site">
+    <div class="wrap">
+      <div class="cols">
+        <div>
+          <div class="brandmark">Tailor Design</div>
+          <p style="font-size:14px;max-width:300px">Tiệm may áo dài lâu năm — nơi tay nghề thủ công may nên những tà áo riêng cho từng người.</p>
+          <div class="social"><a href="#">f</a><a href="#">◎</a><a href="#">✦</a></div>
+        </div>
+        <div><h4>Về chúng tôi</h4><a href="#" data-go="about">Câu chuyện thương hiệu</a><a href="#" data-go="about">Quy trình thủ công</a><a href="#" data-go="about">Vì sao chọn chúng tôi</a></div>
+        <div><h4>Khám phá</h4><a href="#" data-go="showroom">Showroom</a><a href="#">Đặt lịch tư vấn</a><a href="#" data-go="contact">Liên hệ</a></div>
+      </div>
+      <div class="copy">© 2026 Tailor Design — Bộ sưu tập áo dài Việt. Làm bằng cả tấm lòng tại Việt Nam.</div>
+    </div>
+  </footer>
+</template>
+
+<script>
+  // mount shared footer into every page
+  const ftpl = document.getElementById('footer-tpl').content;
+  document.querySelectorAll('.footer-mount').forEach(m=>m.appendChild(ftpl.cloneNode(true)));
+
+  // page switching
+  function go(page){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.toolbar .tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('page-'+page).classList.add('active');
+    document.querySelector('.toolbar .tab[data-page="'+page+'"]').classList.add('active');
+    window.scrollTo({top:0,behavior:'instant'});
+  }
+  document.querySelectorAll('.toolbar .tab').forEach(t=>t.addEventListener('click',()=>go(t.dataset.page)));
+  document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){e.preventDefault();go(g.dataset.go);}});
+
+  // showroom state demo
+  function srState(s){
+    document.getElementById('sr-grid').style.display = s==='grid'?'grid':'none';
+    document.getElementById('sr-skel').style.display = s==='loading'?'grid':'none';
+    document.getElementById('sr-empty').style.display = s==='empty'?'block':'none';
+  }
+
+  // contact form state demo + simple validation
+  const form=document.getElementById('contactForm'), toast=document.getElementById('toast'), btn=document.getElementById('submitBtn');
+  function clearErr(){['f-name','f-phone','f-email'].forEach(id=>document.getElementById(id).classList.remove('invalid'));}
+  function cState(s){
+    clearErr(); toast.classList.remove('show'); btn.disabled=false; btn.textContent='Gửi lời nhắn';
+    if(s==='submitting'){btn.disabled=true;btn.textContent='Đang gửi…';}
+    if(s==='success'){toast.classList.add('show');form.querySelectorAll('input,textarea').forEach(i=>i.value='');}
+    if(s==='error'){document.getElementById('f-name').classList.add('invalid');document.getElementById('f-email').classList.add('invalid');}
+  }
+  form.addEventListener('submit',e=>{
+    e.preventDefault(); clearErr();
+    const name=form.name.value.trim(), email=form.email.value.trim();
+    let ok=true;
+    if(!name){document.getElementById('f-name').classList.add('invalid');ok=false;}
+    if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){document.getElementById('f-email').classList.add('invalid');ok=false;}
+    if(!ok)return;
+    cState('submitting');
+    setTimeout(()=>cState('success'),900);
+  });
+</script>
+</body>
+</html>
