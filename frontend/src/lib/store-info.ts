@@ -16,7 +16,7 @@ export const STORE = {
 
 /** Google Maps embed URL for the store address (no API key needed). */
 export const STORE_MAP_EMBED_URL =
-  "https://www.google.com/maps?q=" +
+  "https://maps.google.com/maps?q=" +
   encodeURIComponent(STORE.address) +
   "&output=embed";
 

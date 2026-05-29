@@ -90,8 +90,8 @@ class PublicLeadCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Ho ten")
     phone: str | None = Field(None, max_length=20, description="So dien thoai")
     email: str | None = Field(None, max_length=255, description="Email")
-    notes: str | None = Field(None, description="Loi nhan")
-    company: str | None = Field(None, description="Honeypot - phai de trong")
+    notes: str | None = Field(None, max_length=2000, description="Loi nhan")
+    company: str | None = Field(None, max_length=255, description="Honeypot - phai de trong")
 
     @field_validator("email")
     @classmethod

@@ -130,7 +130,7 @@ export const publicLeadSchema = z.object({
   ),
   email: z.preprocess(
     emptyStringToUndefined,
-    z.string().email("Email không hợp lệ").max(255).optional()
+    z.string().email("Email không hợp lệ").max(255, "Email quá dài").optional()
   ),
   notes: z.preprocess(emptyStringToUndefined, z.string().optional()),
   company: z.string().optional(),
