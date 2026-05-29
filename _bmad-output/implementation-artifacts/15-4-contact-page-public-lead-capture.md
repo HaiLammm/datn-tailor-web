@@ -1,6 +1,6 @@
 # Story 15.4: Contact Page and Public Lead Capture
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-05-29  # Epic 15: Story 15-4 implemented → review (contact page + public lead capture)
+last_updated: 2026-05-30  # Epic 15: Story 15-5 implemented → review (homepage landing CV)
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -146,6 +146,6 @@ development_status:
   15-1-shared-sitefooter-and-customer-navigation-refactor: done  # Code Review 2026-05-29: 4/4 items fixed (1 intent-gap + 3 patch)
   15-2-showroom-enhancement: done  # Code Review 2026-05-29: all 7 ACs pass, 3 patches applied (1H/1M/1L), 1 Med deferred
   15-3-about-page: done  # Code Review 2026-05-29: all 7 ACs pass, 3 patches applied (1H/2M reuse-hardening)
-  15-4-contact-page-public-lead-capture: review
-  15-5-homepage-landing-cv: backlog
+  15-4-contact-page-public-lead-capture: done  # Code Review 2026-05-30: all 6 ACs pass, 3 patches applied (2M/1L), 4 deferred (spec-accepted anti-spam limits)
+  15-5-homepage-landing-cv: review
   epic-15-retrospective: optional
