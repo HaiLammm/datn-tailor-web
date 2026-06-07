@@ -45,20 +45,19 @@ def parse_svg_path(svg_data: str) -> list[tuple[float, float]]:
     current_x, current_y = 0.0, 0.0
     start_x, start_y = 0.0, 0.0  # For Z (close path) command
 
-    # Tokenize path commands
-    # Pattern matches: command letter followed by numbers (with optional decimals/signs)
-    tokens = re.findall(r'([MLAZ])\s*([\d\s.\-,]*)', d_attr, re.IGNORECASE)
+    # Tokenize path commands. Supported: M (moveto), L (lineto), A (elliptical arc),
+    # C (cubic bézier), Z (close). Corrected SCP 2026-06-08 to honour real arc/curve
+    # geometry instead of the prior fake-quadratic approximation (audit G-code defect).
+    tokens = re.findall(r'([MLACZ])\s*([\d\s.\-,]*)', d_attr, re.IGNORECASE)
 
     for cmd, params_str in tokens:
         cmd = cmd.upper()
-        # Parse numeric parameters
-        params = [float(p) for p in re.findall(r'[\d.\-]+', params_str)]
+        params = [float(p) for p in re.findall(r'-?\d+\.?\d*', params_str)]
 
         if cmd == 'M':  # Move to
             if len(params) >= 2:
                 current_x, current_y = params[0], params[1]
                 start_x, start_y = current_x, current_y
-                # Convert cm to mm
                 coordinates.append((current_x * 10, current_y * 10))
 
         elif cmd == 'L':  # Line to
@@ -66,25 +65,26 @@ def parse_svg_path(svg_data: str) -> list[tuple[float, float]]:
                 current_x, current_y = params[0], params[1]
                 coordinates.append((current_x * 10, current_y * 10))
 
-        elif cmd == 'A':  # Arc - convert to polyline
-            # A rx ry x-rotation large-arc-flag sweep-flag x y
+        elif cmd == 'A':  # Elliptical arc → polyline (true W3C parametrization)
+            # A rx ry x-axis-rotation large-arc-flag sweep-flag x y
             if len(params) >= 7:
-                rx, ry = params[0], params[1]
-                # x_rotation = params[2]  # Not used for ellipse approximation
-                # large_arc = params[3]
-                # sweep = params[4]
+                rx, ry, phi, large_arc, sweep = params[0:5]
                 end_x, end_y = params[5], params[6]
-
-                # Convert arc to polyline approximation
-                arc_points = _arc_to_polyline(
-                    current_x, current_y,
-                    end_x, end_y,
-                    rx, ry,
-                    num_segments=20
-                )
-                for px, py in arc_points:
+                for px, py in _arc_to_polyline(
+                    current_x, current_y, end_x, end_y,
+                    rx, ry, phi, int(large_arc), int(sweep),
+                ):
                     coordinates.append((px * 10, py * 10))
+                current_x, current_y = end_x, end_y
 
+        elif cmd == 'C':  # Cubic bézier → polyline
+            # C x1 y1 x2 y2 x y
+            if len(params) >= 6:
+                c1x, c1y, c2x, c2y, end_x, end_y = params[0:6]
+                for px, py in _cubic_to_polyline(
+                    current_x, current_y, c1x, c1y, c2x, c2y, end_x, end_y,
+                ):
+                    coordinates.append((px * 10, py * 10))
                 current_x, current_y = end_x, end_y
 
         elif cmd == 'Z':  # Close path - return to start
@@ -95,64 +95,82 @@ def parse_svg_path(svg_data: str) -> list[tuple[float, float]]:
     return coordinates
 
 
-def _arc_to_polyline(
-    x_start: float, y_start: float,
-    x_end: float, y_end: float,
-    rx: float, ry: float,
-    num_segments: int = 20
+def _cubic_to_polyline(
+    x0: float, y0: float, x1: float, y1: float,
+    x2: float, y2: float, x3: float, y3: float,
+    num_segments: int = 24,
 ) -> list[tuple[float, float]]:
-    """Convert elliptical arc to line segments for G-code compatibility.
-
-    Uses parametric interpolation for simplified arc approximation.
-    Most laser cutters don't support G2/G3 arc commands reliably,
-    so we approximate with straight line segments.
-
-    Args:
-        x_start, y_start: Start point (cm)
-        x_end, y_end: End point (cm)
-        rx, ry: Ellipse radii (cm)
-        num_segments: Number of line segments to approximate arc
-
-    Returns:
-        List of (x, y) coordinates representing the arc as line segments.
-    """
+    """Flatten a cubic bézier (P0,P1,P2,P3) into line segments."""
     points: list[tuple[float, float]] = []
-
-    # Use parametric interpolation along the arc
-    # This is a simplified approximation that works well for quarter/half ellipses
     for i in range(1, num_segments + 1):
         t = i / num_segments
-
-        # Bezier-like interpolation for smoother arcs
-        # Mid-point control for elliptical shape
-        mid_x = (x_start + x_end) / 2
-        mid_y = (y_start + y_end) / 2
-
-        # Calculate arc deviation based on radii
-        # The arc bulges perpendicular to the chord
-        chord_len = math.sqrt((x_end - x_start) ** 2 + (y_end - y_start) ** 2)
-        if chord_len > 0:
-            # Direction perpendicular to chord
-            perp_x = -(y_end - y_start) / chord_len
-            perp_y = (x_end - x_start) / chord_len
-
-            # Arc height at midpoint (approximation using average radius)
-            avg_radius = (rx + ry) / 2
-            arc_height = avg_radius * 0.5  # Simplified arc height factor
-
-            # Quadratic bezier interpolation
-            # P = (1-t)^2 * P0 + 2(1-t)t * Pmid + t^2 * P1
-            ctrl_x = mid_x + perp_x * arc_height
-            ctrl_y = mid_y + perp_y * arc_height
-
-            x = (1 - t) ** 2 * x_start + 2 * (1 - t) * t * ctrl_x + t ** 2 * x_end
-            y = (1 - t) ** 2 * y_start + 2 * (1 - t) * t * ctrl_y + t ** 2 * y_end
-        else:
-            x = x_end
-            y = y_end
-
+        mt = 1 - t
+        x = mt**3 * x0 + 3 * mt**2 * t * x1 + 3 * mt * t**2 * x2 + t**3 * x3
+        y = mt**3 * y0 + 3 * mt**2 * t * y1 + 3 * mt * t**2 * y2 + t**3 * y3
         points.append((x, y))
+    return points
 
+
+def _arc_to_polyline(
+    x1: float, y1: float, x2: float, y2: float,
+    rx: float, ry: float, phi_deg: float,
+    large_arc: int, sweep: int,
+    num_segments: int = 24,
+) -> list[tuple[float, float]]:
+    """Flatten an SVG elliptical arc into line segments.
+
+    Implements the W3C SVG 1.1 endpoint-to-centre parametrization (F.6.5), so rx/ry,
+    rotation, large-arc and sweep flags are all honoured — unlike the prior fake
+    quadratic approximation that ignored the flags and produced wrong curvature.
+    """
+    if rx == 0 or ry == 0 or (x1 == x2 and y1 == y2):
+        return [(x2, y2)]
+    rx, ry = abs(rx), abs(ry)
+    phi = math.radians(phi_deg)
+    cos_p, sin_p = math.cos(phi), math.sin(phi)
+
+    dx, dy = (x1 - x2) / 2, (y1 - y2) / 2
+    x1p = cos_p * dx + sin_p * dy
+    y1p = -sin_p * dx + cos_p * dy
+
+    lam = (x1p**2) / (rx**2) + (y1p**2) / (ry**2)
+    if lam > 1:
+        s = math.sqrt(lam)
+        rx *= s
+        ry *= s
+
+    num = rx**2 * ry**2 - rx**2 * y1p**2 - ry**2 * x1p**2
+    den = rx**2 * y1p**2 + ry**2 * x1p**2
+    coef = math.sqrt(max(0.0, num / den)) if den else 0.0
+    if large_arc == sweep:
+        coef = -coef
+    cxp = coef * (rx * y1p / ry)
+    cyp = coef * (-ry * x1p / rx)
+
+    cx = cos_p * cxp - sin_p * cyp + (x1 + x2) / 2
+    cy = sin_p * cxp + cos_p * cyp + (y1 + y2) / 2
+
+    def _angle(ux: float, uy: float, vx: float, vy: float) -> float:
+        dot = ux * vx + uy * vy
+        mag = math.hypot(ux, uy) * math.hypot(vx, vy)
+        ang = math.acos(max(-1.0, min(1.0, dot / mag))) if mag else 0.0
+        return -ang if (ux * vy - uy * vx) < 0 else ang
+
+    ux, uy = (x1p - cxp) / rx, (y1p - cyp) / ry
+    vx, vy = (-x1p - cxp) / rx, (-y1p - cyp) / ry
+    theta1 = _angle(1.0, 0.0, ux, uy)
+    dtheta = _angle(ux, uy, vx, vy)
+    if not sweep and dtheta > 0:
+        dtheta -= 2 * math.pi
+    elif sweep and dtheta < 0:
+        dtheta += 2 * math.pi
+
+    points: list[tuple[float, float]] = []
+    for i in range(1, num_segments + 1):
+        ang = theta1 + dtheta * (i / num_segments)
+        x = cos_p * rx * math.cos(ang) - sin_p * ry * math.sin(ang) + cx
+        y = sin_p * rx * math.cos(ang) + cos_p * ry * math.sin(ang) + cy
+        points.append((x, y))
     return points
 
 

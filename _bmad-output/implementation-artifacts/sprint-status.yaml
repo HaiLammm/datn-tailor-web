@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-05-30  # Epic 15: Story 15-5 implemented → review (homepage landing CV)
+last_updated: 2026-05-30  # Epic 15 done — all 5 stories complete (Customer Brand Presence, UX Rev 4)
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -125,14 +125,17 @@ development_status:
   10-7-rental-return-va-security-refund: review
   epic-10-retrospective: optional
 
-  epic-11: in-progress  # Sprint Change Proposal 2026-04-03: Technical Pattern Generation & Production Export
+  epic-11: in-progress  # SCP 2026-04-03 built it; SCP 2026-06-08 reopened for artisan-formula correction (see sprint-change-proposal-2026-06-08.md)
   11-1-db-migration-pattern-data-model: done
-  11-2-pattern-engine-core-api: done
-  11-3-svg-gcode-export-api: done
+  11-2-pattern-engine-core-api: done  # SCP 2026-06-08: formulas corrected; code review 2 rounds (P1–P8 + P4 regression) all fixed; 110 pattern tests green
+  11-3-svg-gcode-export-api: done  # SCP 2026-06-08: geometry G1–G10 + true arc/cubic gcode flattening; reviewed & fixed (validation guards added)
   11-4-profile-driven-measurement-form-ui: done
   11-5-split-pane-pattern-preview: done  # Code Review 2026-05-25: 10/10 patch items fixed (4H/6M)
-  11-6-dual-export-order-attachment: done 
-  epic-11-retrospective: optional
+  11-6-dual-export-order-attachment: done
+  11-7-sleeve-types-armhole-constraint: done  # 2026-06-08: set-in + FR93 cap-from-armhole (ease 3-4cm), wired end-to-end; review 2 rounds (F1-F4 fixed); 125 pattern tests green
+  11-8-extended-measurements-collar: done  # 2026-06-08: collar 4th piece + 5 measurements wired (incl. frontend); review F1-F3 (auto-fill deferred); 139 BE + 23 FE tests green
+  11-9-ground-truth-geometric-validation: blocked  # SCP 2026-06-08: story + test harness scaffolded (test_11_9_ground_truth.py, skipped); gated on artisan recorded cutting session (checklist group G)
+  epic-11-retrospective: optional  # run after 11.9
 
   epic-12: in-progress  # Bespoke Production Task Workflow — Full State Machine Redesign
   12-1-db-migration-orm-pydantic-foundation: done  # Code Review 2026-05-25: 6/6 patch items fixed (4M/2L)
@@ -142,10 +145,10 @@ development_status:
   12-5-tailor-mobile-order-integration: review
   epic-12-retrospective: optional
 
-  epic-15: in-progress  # UX Rev 4: Customer Brand Presence (Homepage, Showroom upgrade, About, Contact, shared nav/footer)
+  epic-15: done  # UX Rev 4: Customer Brand Presence — all 5 stories done (2026-05-30); retrospective optional
   15-1-shared-sitefooter-and-customer-navigation-refactor: done  # Code Review 2026-05-29: 4/4 items fixed (1 intent-gap + 3 patch)
   15-2-showroom-enhancement: done  # Code Review 2026-05-29: all 7 ACs pass, 3 patches applied (1H/1M/1L), 1 Med deferred
   15-3-about-page: done  # Code Review 2026-05-29: all 7 ACs pass, 3 patches applied (1H/2M reuse-hardening)
   15-4-contact-page-public-lead-capture: done  # Code Review 2026-05-30: all 6 ACs pass, 3 patches applied (2M/1L), 4 deferred (spec-accepted anti-spam limits)
-  15-5-homepage-landing-cv: review
+  15-5-homepage-landing-cv: done  # Code Review 2026-05-30: AC1–AC6 pass; 2 patches applied (1H loading-scope via (home) group, 1L Array.isArray guard), 1L deferred, 7 rejected
   epic-15-retrospective: optional

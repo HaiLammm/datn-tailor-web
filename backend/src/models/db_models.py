@@ -1203,9 +1203,19 @@ class PatternSessionDB(Base):
     vong_bap_tay: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
     vong_co_tay: Mapped[Decimal] = mapped_column(Numeric(5, 1), nullable=False)
 
+    # 5 extended measurements (Story 11.8) — nullable, optional by style
+    ha_ben_nguc: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    dang_nguc: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    ha_mong: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    xuoi_vai: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+    rong_vai: Mapped[Decimal | None] = mapped_column(Numeric(5, 1), nullable=True)
+
     garment_type: Mapped[str] = mapped_column(
         String(50), nullable=False, default="ao_dai"
     )
+    sleeve_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="raglan", server_default="raglan"
+    )  # FR91a (Story 11.7): raglan | set_in
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
     created_at: Mapped[datetime] = mapped_column(

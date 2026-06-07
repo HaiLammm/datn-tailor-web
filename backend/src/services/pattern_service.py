@@ -73,6 +73,7 @@ async def create_session(
         customer_id=data.customer_id,
         created_by=user.id,
         garment_type=data.garment_type,
+        sleeve_type=data.sleeve_type.value if hasattr(data.sleeve_type, "value") else data.sleeve_type,
         notes=data.notes,
         status="draft",
         # 10 measurement snapshot
@@ -86,6 +87,12 @@ async def create_session(
         do_dai_tay=data.do_dai_tay,
         vong_bap_tay=data.vong_bap_tay,
         vong_co_tay=data.vong_co_tay,
+        # 5 extended measurements (Story 11.8) — optional
+        ha_ben_nguc=data.ha_ben_nguc,
+        dang_nguc=data.dang_nguc,
+        ha_mong=data.ha_mong,
+        xuoi_vai=data.xuoi_vai,
+        rong_vai=data.rong_vai,
     )
 
     db.add(session)
@@ -166,9 +173,20 @@ async def generate_patterns(
         "vong_bap_tay": session.vong_bap_tay,
         "vong_co_tay": session.vong_co_tay,
     }
+    # Story 11.8: include optional extended measurements when present (engine uses ha_mong;
+    # the others feed darts/shoulder once those land). None values are skipped.
+    for _k in ("ha_ben_nguc", "dang_nguc", "ha_mong", "xuoi_vai", "rong_vai"):
+        _v = getattr(session, _k, None)
+        if _v is not None:
+            measurements[_k] = _v
 
-    pieces = generate_pattern_pieces(measurements)
-    logger.info("Generated %d pattern pieces for session %s", len(pieces), session_id)
+    # FR91a: honour the session's chosen sleeve type (raglan default for legacy rows)
+    sleeve_type = getattr(session, "sleeve_type", None) or "raglan"
+    pieces = generate_pattern_pieces(measurements, sleeve_type=sleeve_type)
+    logger.info(
+        "Generated %d pattern pieces (sleeve=%s) for session %s",
+        len(pieces), sleeve_type, session_id,
+    )
 
     # Create PatternPieceDB records (AC #2)
     piece_db_list: list[PatternPieceDB] = []
@@ -218,7 +236,13 @@ async def generate_patterns(
         do_dai_tay=session.do_dai_tay,
         vong_bap_tay=session.vong_bap_tay,
         vong_co_tay=session.vong_co_tay,
+        ha_ben_nguc=session.ha_ben_nguc,
+        dang_nguc=session.dang_nguc,
+        ha_mong=session.ha_mong,
+        xuoi_vai=session.xuoi_vai,
+        rong_vai=session.rong_vai,
         garment_type=session.garment_type,
+        sleeve_type=sleeve_type,
         notes=session.notes,
         status=PatternSessionStatus.completed,
         pieces=piece_responses,

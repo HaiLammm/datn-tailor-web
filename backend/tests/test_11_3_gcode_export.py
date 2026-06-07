@@ -26,7 +26,7 @@ from src.patterns.svg_export import render_bodice_svg, render_sleeve_svg
 # ---------------------------------------------------------------------------
 MEASUREMENTS = {
     "do_dai_ao": Decimal("100.0"),
-    "ha_eo": Decimal("18.0"),
+    "ha_eo": Decimal("36.0"),   # realistic shoulder→waist drop (was 18, too short for nach/2 armhole)
     "vong_co": Decimal("34.0"),
     "vong_nach": Decimal("38.0"),
     "vong_nguc": Decimal("80.0"),
@@ -78,7 +78,7 @@ class TestParseSvgPath:
 
     def test_parse_bodice_svg(self):
         """Parse actual bodice SVG from render_bodice_svg."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
+        params = generate_bodice(MEASUREMENTS, piece="back_bodice")
         svg = render_bodice_svg(params, piece_type="back_bodice")
         coords = parse_svg_path(svg)
 
@@ -319,7 +319,7 @@ class TestFullPipeline:
 
     def test_bodice_svg_to_gcode(self):
         """Convert actual bodice SVG to G-code."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
+        params = generate_bodice(MEASUREMENTS, piece="back_bodice")
         svg = render_bodice_svg(params, piece_type="back_bodice")
         gcode = svg_to_gcode(svg, speed=1000, power=80, piece_type="back_bodice")
 

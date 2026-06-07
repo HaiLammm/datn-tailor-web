@@ -99,6 +99,12 @@ _MEASUREMENT_INFO_VI: dict[str, tuple[str, int, int]] = {
     "do_dai_tay": ("Độ dài tay", 30, 100),
     "vong_bap_tay": ("Vòng bắp tay", 15, 60),
     "vong_co_tay": ("Vòng cổ tay", 10, 35),
+    # 5 extended measurements (Story 11.8)
+    "ha_ben_nguc": ("Hạ ben ngực", 15, 35),
+    "dang_nguc": ("Dang ngực", 10, 25),
+    "ha_mong": ("Hạ mông", 10, 30),
+    "xuoi_vai": ("Xuôi vai", 1, 8),
+    "rong_vai": ("Rộng vai", 28, 50),
 }
 
 

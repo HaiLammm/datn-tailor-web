@@ -72,7 +72,8 @@ describe("MeasurementForm", () => {
 
     const suffixes = container.querySelectorAll("span");
     const cmSuffixes = Array.from(suffixes).filter((s) => s.textContent === "cm");
-    expect(cmSuffixes.length).toBe(10);
+    // 10 required + optional extended fields (Story 11.8) all show a cm suffix
+    expect(cmSuffixes.length).toBeGreaterThanOrEqual(10);
   });
 
   it("renders submit button with correct label", () => {

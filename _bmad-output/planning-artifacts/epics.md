@@ -144,15 +144,16 @@ FR89: For deposit-based orders, customers pay the remaining balance (order total
 FR90: For rental orders, the system returns the security deposit (cash) or CCCD to the customer after the returned product passes Owner's condition inspection (Good/Damaged/Lost).
 
 **Section 17: Technical Pattern Generation & Production Export**
-FR91: Owner creates a pattern session by selecting a customer profile; system auto-fills 10 body measurements from the customer's measurement record.
-FR92: System generates 3 technical pattern pieces (front bodice, back bodice, sleeve) from 10 body measurements using deterministic formulas. Geometric deviation from tailor-validated reference patterns < 1mm.
-FR93: System generates armhole curves (1/4 ellipse arc) and sleeve cap curves (1/2 ellipse arc) matching tailor-validated contours.
+FR91: Owner creates a pattern session by selecting a customer profile; system auto-fills all required body measurements (currently 15: the base 10 plus hạ ben ngực, dang ngực, hạ mông, xuôi vai, rộng vai) from the customer's measurement record. Measurements not required by the selected sleeve type may be left empty. [Amended SCP 2026-06-08]
+FR91a: System supports two sleeve construction types per pattern session: raglan (tay liền cổ — sleeve drafted to the neckline) and set-in (tay tra thẳng — shoulder seam + armhole, cap drafted from the body armhole curve). Owner selects the type at session creation. [Added SCP 2026-06-08]
+FR92: System generates technical pattern pieces (front bodice, back bodice, sleeve, and optional collar) from body measurements using deterministic formulas derived from the artisan's documented method (Thanh Lộc sewing-school notebook). Geometric deviation from a digitized real artisan paper pattern (not engine output) < 1mm, validated per Story 11.9. [Amended SCP 2026-06-08]
+FR93: System generates armhole and sleeve-cap curves using the artisan's 3-segment divided-curve construction (chia 3 đoạn, cơi điểm). The sleeve-cap perimeter is constrained to the body armhole perimeter + 3–4 cm ease (front = front-armhole + 1 cm; back = back-armhole + 1–1.5 cm), so cap height / bicep are derived from the armhole, not specified independently. For set-in sleeves the cap is drafted from the body armhole curve per the artisan rule. [Amended SCP 2026-06-08]
 FR94: System exports each pattern piece as SVG at 1:1 scale — printed output matches physical measurements within +/-0.5mm tolerance.
 FR95: System exports pattern pieces as G-code for laser cutting with closed paths, cut sequence, and configurable speed/power parameters.
 FR96: System displays real-time SVG preview in split-pane layout (measurement input left, pattern preview right) — preview updates within 500ms of measurement change.
 FR97: Owner attaches a completed pattern session to an order when assigning a tailor task. Tailor receives order with linked pattern pieces.
 FR98: Tailor views attached pattern pieces in order/task detail page with zoom and pan interaction.
-FR99: System validates all 10 measurements against min/max ranges before pattern generation. Invalid measurements display specific error messages with acceptable range.
+FR99: System validates all required measurements against min/max ranges before pattern generation. Invalid measurements display specific error messages (Vietnamese) with acceptable range. [Amended SCP 2026-06-08: "10" → "all required" to cover the 5 added measurements]
 
 ### NonFunctional Requirements
 

@@ -1,6 +1,22 @@
 # Story 11.3: SVG & G-code Export API
 
-Status: completed
+Status: done
+
+> ✅ **CODE REVIEW PASSED 2026-06-08 (2 rounds):** geometry fixes G1–G10 confirmed in rendered
+> output (tests parse the path back out). True W3C arc + cubic flattening in gcode verified. neck_rise
+> wired into the sleeve back-neck; viewBox/path-closure checked. AC 11.3.12 (per-edge seam offset)
+> deferred — 2cm seam value pending artisan confirmation. 110 pattern tests green.
+
+> ✅ **DEV COMPLETE 2026-06-08 (correction pass):** `svg_export.py` rewritten — raglan half-bodice
+> (cut-on-fold): neckline arc (A) + raglan-seam curve (C) + side seam (waist nip → hip → flared
+> hem) from real do_dai_ao/ha_eo/hip_drop; raglan sleeve symmetric with two cap curves. Fixes
+> G1–G10 (no 60 cm hard-code, real arcs, hem>hip, neck decoupled from seam). `gcode_export.py`:
+> `parse_svg_path` now handles `C` (cubic) + true W3C elliptical-arc flattening (`_arc_to_polyline`
+> replaces the fake-quadratic), added `_cubic_to_polyline`. Tests: `test_11_3_svg_geometry.py` (10)
+> asserts the G-fixes in rendered output; `test_11_3_gcode_export.py` updated. Closed cuttable paths
+> verified. Sample SVGs regenerated in research/svg-samples/ (now CORRECT engine output).
+
+> ⚠️ **COURSE CORRECTION 2026-06-08** — reopened by `sprint-change-proposal-2026-06-08.md`. The export plumbing ACs (#1–#7: endpoints, ZIP, auth, params) stand. **Add geometry-correctness ACs 11.3.8–11.3.14** (SCP §4.4) fixing 10 SVG defects G1–G10: bodice length from `do_dai_ao`/`ha_eo` (no hard-coded 60 cm), real armhole arc, correct sleeve-cap rx/ry+sweep, neck/shoulder curves, seam as per-edge offset, hem ≥ hip, G-code real arc fidelity. Reference: `research/bang-cong-thuc-hop-nhat-pattern-engine-2026-06-08.md` §7–8.
 
 ## Story
 

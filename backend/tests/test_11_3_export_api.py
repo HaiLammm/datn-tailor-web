@@ -3,8 +3,8 @@
 Tests:
   5.1  Single piece SVG export returns correct content-type and attachment header
   5.2  Single piece G-code export with custom speed/power
-  5.3  Batch SVG export creates valid ZIP with 3 files
-  5.4  Batch G-code export creates valid ZIP with 3 files
+  5.3  Batch SVG export creates valid ZIP with 4 files (incl collar)
+  5.4  Batch G-code export creates valid ZIP with 4 files (incl collar)
   5.5  404 for piece from different tenant
   5.6  404 for draft session (no pieces yet)
   5.7  422 for invalid format parameter
@@ -46,7 +46,7 @@ SAMPLE_PAYLOAD = {
     "garment_type": "ao_dai",
     "notes": "Export test session",
     "do_dai_ao": "100.0",
-    "ha_eo": "18.0",
+    "ha_eo": "36.0",   # realistic shoulder→waist drop (was 18, too short for nach/2 armhole)
     "vong_co": "34.0",
     "vong_nach": "38.0",
     "vong_nguc": "80.0",
@@ -396,10 +396,11 @@ class TestBatchSvgExport:
         zip_buffer = io.BytesIO(resp.content)
         with zipfile.ZipFile(zip_buffer, "r") as zf:
             names = zf.namelist()
-            assert len(names) == 3
+            assert len(names) == 4  # Story 11.8: collar added
             assert "front_bodice.svg" in names
             assert "back_bodice.svg" in names
             assert "sleeve.svg" in names
+            assert "collar.svg" in names
 
     @pytest.mark.asyncio
     async def test_batch_svg_export_files_contain_valid_svg(self, client, seed_users):
@@ -476,10 +477,11 @@ class TestBatchGcodeExport:
         zip_buffer = io.BytesIO(resp.content)
         with zipfile.ZipFile(zip_buffer, "r") as zf:
             names = zf.namelist()
-            assert len(names) == 3
+            assert len(names) == 4  # Story 11.8: collar added
             assert "front_bodice.gcode" in names
             assert "back_bodice.gcode" in names
             assert "sleeve.gcode" in names
+            assert "collar.gcode" in names
 
     @pytest.mark.asyncio
     async def test_batch_gcode_export_with_custom_params(self, client, seed_users):

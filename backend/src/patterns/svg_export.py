@@ -1,15 +1,24 @@
-"""SVG rendering from geometry parameters (Story 11.2).
+"""SVG rendering from geometry parameters (Story 11.3, corrected SCP 2026-06-08).
 
-Generates standalone SVG markup for pattern pieces.
+Draws a RAGLAN áo dài half-bodice (cut on fold) and a symmetric raglan sleeve, using
+the corrected dimensions from formulas.py. Fixes audit defects G1–G10:
+  G1/G2 — vertical positions come from do_dai_ao/ha_eo/hip_drop, no hard-coded 60 cm.
+  G3    — raglan seam is a real, non-degenerate curve from neck to underarm.
+  G4/G5 — sleeve cap curves bulge outward (no reversed sweep / self-intersection).
+  G6    — neck width = vong_co/8±x, decoupled from seam allowance.
+  G7    — shoulder has a small rise; raglan replaces the flat absolute shoulder.
+  G8    — hem_width (mong/4+2) > hip_width (mong/4+1): side seam never inverts.
+  G9    — net pattern line drawn; seam allowance is a separate per-edge offset (TODO param).
+  G10   — neckline is a curve (A arc), seams are curves (C), not straight L segments.
+
 Conventions:
-  - ViewBox units are in centimeters (1:1 scale)
-  - Uses <path> elements with M (moveto), L (lineto), A (arc), Z (close)
-  - Armhole: 1/4 ellipse arc  →  A {armhole_drop} {bust_width} 0 0 1 ex ey  (AC #4)
-  - Sleeve cap: 1/2 ellipse arc → A {cap_height} {bicep_width} 0 1 0 ex ey  (AC #5)
-  - Coordinates rounded to 1 decimal (0.1 mm precision)
-  - Each SVG is self-contained (standalone document with xmlns)
-  - Target: < 50 KB per piece
+  - ViewBox units are centimetres (1:1 scale, FR94).
+  - Bodice: centre fold at x=0, widths to +x; y=0 at shoulder line, +y downward.
+  - Sleeve: centre axis at x=0, symmetric ±x; y=0 at cap top, +y downward.
+  - Coordinates rounded to 0.1 cm (0.1 mm precision is overkill; 1 mm is the tolerance).
 """
+
+from src.patterns.curves import bodice_raglan_seam_controls, setin_cap_controls
 
 
 def _fmt(v: float) -> str:
@@ -17,158 +26,215 @@ def _fmt(v: float) -> str:
     return f"{v:.1f}"
 
 
+def _svg_document(title: str, piece_id: str, path_d: str,
+                  vb_x: float, vb_y: float, vb_w: float, vb_h: float,
+                  extra: str = "") -> str:
+    """Wrap a path in a standalone SVG document (1:1 scale, cm units)."""
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'viewBox="{_fmt(vb_x)} {_fmt(vb_y)} {_fmt(vb_w)} {_fmt(vb_h)}" '
+        f'width="{_fmt(vb_w)}cm" height="{_fmt(vb_h)}cm">\n'
+        f'  <title>{title}</title>\n'
+        f'  <path id="{piece_id}" d="{path_d}" fill="none" stroke="#000" stroke-width="0.1"/>\n'
+        f'{extra}'
+        f'</svg>'
+    )
+
+
 def render_bodice_svg(params: dict, piece_type: str) -> str:
-    """Render front or back bodice as SVG markup.
+    """Render a raglan front/back bodice half-pattern (cut on fold) as SVG.
 
-    Args:
-        params: Geometry params dict from formulas.generate_bodice().
-        piece_type: 'front_bodice' or 'back_bodice' (for SVG id / title).
-
-    Returns:
-        SVG markup string (standalone, < 50KB).
-
-    Shape (simplified Áo dài bodice outline):
-      - Starts at top-left (neck point)
-      - Draws neckline arc inward
-      - Draws shoulder line to armhole
-      - Drops armhole curve (1/4 ellipse)
-      - Draws side seam down to hip
-      - Draws hem line (fixed width 37cm)
-      - Closes path
+    Outline (clockwise from centre-neck): centre-neck → neckline arc → neck-shoulder
+    point → raglan seam (curve) → underarm/bust point → side seam (waist, hip) →
+    flared hem → centre hem → centre fold (Z).
     """
+    length = params["length"]
+    armhole_drop = params["armhole_drop"]
+    waist_drop = params["waist_drop"]
+    hip_drop = params["hip_drop"]
+    neck_width = params["neck_width"]
+    neck_depth = params["neck_depth"]
+    shoulder_rise = params["shoulder_rise"]
     bust_width = params["bust_width"]
     waist_width = params["waist_width"]
     hip_width = params["hip_width"]
-    armhole_drop = params["armhole_drop"]
-    neck_depth = params["neck_depth"]
     hem_width = params["hem_width"]
-    seam_allowance = params["seam_allowance"]
 
-    # Derived layout coordinates (origin = top-left of SVG)
-    # All in cm with seam allowance added to outer edges
-    neck_x = 0.0
-    neck_y = 0.0
-    shoulder_x = bust_width + seam_allowance
-    shoulder_y = 0.0
-    armhole_end_x = shoulder_x
-    armhole_end_y = armhole_drop
-    # Side seam follows bust → waist → hip
-    hip_end_x = hip_width + seam_allowance
-    # Approximated total length from measurements (use 60cm default for bodice)
-    bodice_length = 60.0
-    hem_y = bodice_length
-    hem_end_x = hem_width / 2 + seam_allowance
+    # Key points (x from centre fold, y down from shoulder line)
+    nc_x, nc_y = 0.0, neck_depth                 # centre-neck
+    ns_x, ns_y = neck_width, -shoulder_rise      # neck-shoulder point (raised)
+    bu_x, bu_y = bust_width, armhole_drop        # underarm / bust point
 
-    # Armhole arc: 1/4 ellipse (AC #4)
-    # rx=armhole_drop, ry=bust_width per spec. Naming as "semi_major/minor"
-    # in spec is misleading (bust_width > armhole_drop), but the rx/ry order
-    # is tailor-validated for correct armhole curvature at 1:1 scale.
-    armhole_arc = (
-        f"A {_fmt(armhole_drop)} {_fmt(bust_width)} 0 0 1 "
-        f"{_fmt(armhole_end_x)} {_fmt(armhole_end_y)}"
+    # Neckline scoop as an elliptical arc (G10)
+    neck_arc = (
+        f"A {_fmt(neck_width)} {_fmt(neck_depth + shoulder_rise)} 0 0 1 "
+        f"{_fmt(ns_x)} {_fmt(ns_y)}"
     )
 
-    # Build path: simplified outline of bodice shape
-    # neck point → shoulder → armhole (arc) → side seam → hem → centre fold → neck depth → close
+    # Raglan seam: cubic curve scooping inward in 3 segments (cơi 0.2 / 1.5) — G3/G10.
+    # Control points come from curves.py so the MEASURED armhole (FR93) matches what we draw.
+    _, c1, c2, _ = bodice_raglan_seam_controls(params)
+    raglan_seam = (
+        f"C {_fmt(c1[0])} {_fmt(c1[1])} {_fmt(c2[0])} {_fmt(c2[1])} "
+        f"{_fmt(bu_x)} {_fmt(bu_y)}"
+    )
+
     path_d = (
-        f"M {_fmt(neck_x)} {_fmt(neck_y)} "
-        f"L {_fmt(shoulder_x - bust_width)} {_fmt(neck_depth)} "   # neck curve down
-        f"L {_fmt(shoulder_x)} {_fmt(neck_depth)} "                 # shoulder point
-        f"{armhole_arc} "                                           # armhole curve
-        f"L {_fmt(waist_width + seam_allowance)} {_fmt(bodice_length * 0.45)} "  # waist
-        f"L {_fmt(hip_end_x)} {_fmt(bodice_length * 0.65)} "       # hip
-        f"L {_fmt(hem_end_x)} {_fmt(hem_y)} "                       # hem corner
-        f"L {_fmt(0.0)} {_fmt(hem_y)} "                             # hem-centre
-        f"L {_fmt(neck_x)} {_fmt(neck_depth)} "                     # centre front/back up
-        "Z"
+        f"M {_fmt(nc_x)} {_fmt(nc_y)} "
+        f"{neck_arc} "                                   # neckline
+        f"{raglan_seam} "                                # raglan seam to underarm
+        f"L {_fmt(waist_width)} {_fmt(waist_drop)} "     # side seam → waist
+        f"L {_fmt(hip_width)} {_fmt(hip_drop)} "         # → hip
+        f"L {_fmt(hem_width)} {_fmt(length)} "           # flared hem corner (hem > hip)
+        f"L 0.0 {_fmt(length)} "                         # hem → centre
+        "Z"                                              # centre fold up to start
     )
 
-    # Compute viewBox with small margin — use max of all X coordinates to avoid clipping
     margin = 2.0
-    vb_x = -margin
-    vb_y = -margin
-    max_x = max(hem_end_x, shoulder_x, hip_end_x)
-    vb_w = max_x + 2 * margin
-    vb_h = hem_y + 2 * margin
-
+    max_x = max(hem_width, bust_width, waist_width, hip_width, neck_width)
     title = "Front Bodice" if piece_type == "front_bodice" else "Back Bodice"
-    svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" '
-        f'viewBox="{_fmt(vb_x)} {_fmt(vb_y)} {_fmt(vb_w)} {_fmt(vb_h)}" '
-        f'width="{_fmt(vb_w)}cm" height="{_fmt(vb_h)}cm">\n'
-        f'  <title>{title} Pattern Piece</title>\n'
-        f'  <path id="{piece_type}" d="{path_d}" '
-        f'fill="none" stroke="#000" stroke-width="0.1"/>\n'
-        f'</svg>'
+    return _svg_document(
+        f"{title} Pattern Piece (raglan)", piece_type, path_d,
+        vb_x=-margin, vb_y=-(shoulder_rise + margin),
+        vb_w=max_x + 2 * margin, vb_h=length + shoulder_rise + 2 * margin,
     )
-    return svg
 
 
 def render_sleeve_svg(params: dict) -> str:
-    """Render sleeve pattern piece as SVG markup.
+    """Render a symmetric raglan sleeve as SVG.
 
-    Args:
-        params: Geometry params dict from formulas.generate_sleeve().
-
-    Returns:
-        SVG markup string (standalone, < 50KB).
-
-    Shape:
-      - Sleeve cap: 1/2 ellipse arc (AC #5)
-        A {cap_height} {bicep_width} 0 1 0 end_x end_y
-      - Side seams taper from bicep to wrist
-      - Wrist hem closes the bottom
+    Outline: small neckline at top → left raglan seam (curve) to underarm → left side
+    seam (underarm → bicep → wrist) → wrist hem → right side seam (mirror) → right
+    raglan seam → close. Front/back neck points differ (neck_front vs neck_back).
     """
-    cap_height = params["cap_height"]
-    bicep_width = params["bicep_width"]
-    wrist_width = params["wrist_width"]
     sleeve_length = params["sleeve_length"]
+    armhole_drop = params["armhole_drop"]
+    bicep_offset = params["bicep_offset"]
+    bicep_width = params["bicep_width"]
+    underarm_width = params["underarm_width"]
+    wrist_width = params["wrist_width"]
+    neck_front = params["neck_front"]
+    neck_back = params["neck_back"]
+    neck_rise = params.get("neck_rise", 0.0)
 
-    # Layout: cap centred on x-axis
-    cap_start_x = 0.0
-    cap_start_y = cap_height
-    cap_end_x = bicep_width * 2
-    cap_end_y = cap_height
+    bicep_y = armhole_drop + bicep_offset
 
-    # Sleeve cap: half-ellipse arc (AC #5)
-    # A {rx=cap_height} {ry=bicep_width} x-rotation large-arc-flag sweep-flag ex ey
-    sleeve_cap_arc = (
-        f"A {_fmt(cap_height)} {_fmt(bicep_width)} 0 1 0 "
-        f"{_fmt(cap_end_x)} {_fmt(cap_end_y)}"
-    )
+    # Points — left side is the BACK (neck_back, raised by neck_rise), right is FRONT
+    nl_x, nl_y = -neck_back, -neck_rise   # neckline left (back) — raised per "lên cổ sau"
+    nr_x, nr_y = neck_front, 0.0          # neckline right (front)
+    ul_x, ul_y = -underarm_width, armhole_drop
+    ur_x, ur_y = underarm_width, armhole_drop
+    bl_x, bl_y = -bicep_width, bicep_y
+    br_x, br_y = bicep_width, bicep_y
+    wl_x, wl_y = -wrist_width, sleeve_length
+    wr_x, wr_y = wrist_width, sleeve_length
 
-    # Clamp wrist to not exceed bicep (prevents inverted taper)
-    if wrist_width > bicep_width:
-        wrist_width = bicep_width
-
-    # Taper from bicep to wrist over sleeve length
-    wrist_offset = (bicep_width - wrist_width)
-    wrist_left_x = wrist_offset
-    wrist_right_x = cap_end_x - wrist_offset
-    hem_y = cap_height + sleeve_length
-
+    # Path runs: neck-left → (cap) → underarm-left → bicep-left → wrist-left →
+    # wrist-right → bicep-right → underarm-right → (cap reversed) → neck-right →
+    # neckline → close. Left cap drawn neck→underarm; right cap drawn underarm→neck.
     path_d = (
-        f"M {_fmt(cap_start_x)} {_fmt(cap_start_y)} "
-        f"{sleeve_cap_arc} "                                          # cap arc
-        f"L {_fmt(wrist_right_x)} {_fmt(hem_y)} "                    # right seam to wrist
-        f"L {_fmt(wrist_left_x)} {_fmt(hem_y)} "                     # wrist hem
-        f"L {_fmt(cap_start_x)} {_fmt(cap_start_y)} "                # left seam back up
+        f"M {_fmt(nl_x)} {_fmt(nl_y)} "
+        f"{_raglan_curve(nl_x, nl_y, ul_x, ul_y)} "     # left raglan cap (neck→underarm)
+        f"L {_fmt(bl_x)} {_fmt(bl_y)} "                  # left side: underarm → bicep
+        f"L {_fmt(wl_x)} {_fmt(wl_y)} "                  # → wrist
+        f"L {_fmt(wr_x)} {_fmt(wr_y)} "                  # wrist hem
+        f"L {_fmt(br_x)} {_fmt(br_y)} "                  # right side: wrist → bicep
+        f"L {_fmt(ur_x)} {_fmt(ur_y)} "                  # → underarm
+        f"{_raglan_curve_rev(nr_x, nr_y, ur_x, ur_y)} "  # right raglan cap (underarm→neck)
+        f"L {_fmt(nl_x)} {_fmt(nl_y)} "                  # neckline (front → back)
         "Z"
     )
 
     margin = 2.0
-    vb_x = -margin
-    vb_y = -margin
-    vb_w = cap_end_x + 2 * margin
-    vb_h = hem_y + 2 * margin
-
-    svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" '
-        f'viewBox="{_fmt(vb_x)} {_fmt(vb_y)} {_fmt(vb_w)} {_fmt(vb_h)}" '
-        f'width="{_fmt(vb_w)}cm" height="{_fmt(vb_h)}cm">\n'
-        f'  <title>Sleeve Pattern Piece</title>\n'
-        f'  <path id="sleeve" d="{path_d}" '
-        f'fill="none" stroke="#000" stroke-width="0.1"/>\n'
-        f'</svg>'
+    half_w = max(underarm_width, bicep_width, wrist_width, neck_front, neck_back)
+    return _svg_document(
+        "Sleeve Pattern Piece (raglan)", "sleeve", path_d,
+        vb_x=-(half_w + margin), vb_y=-(neck_rise + margin),
+        vb_w=2 * half_w + 2 * margin, vb_h=sleeve_length + neck_rise + 2 * margin,
     )
-    return svg
+
+
+def render_collar_svg(params: dict) -> str:
+    """Render the stand collar (lá cổ) as a strip: length × band (Story 11.8).
+
+    Drawn as a half-strip (cut on fold along the centre back), so width = length/2.
+    Cut on the line (no seam offset); a stand collar is a simple rectangle.
+    """
+    length = params["length"]
+    band = params["band"]
+    half = length / 2.0   # cut on fold at the centre back
+
+    path_d = (
+        f"M 0.0 0.0 "
+        f"L {_fmt(half)} 0.0 "
+        f"L {_fmt(half)} {_fmt(band)} "
+        f"L 0.0 {_fmt(band)} "
+        "Z"
+    )
+    margin = 1.0
+    return _svg_document(
+        "Collar Pattern Piece (lá cổ)", "collar", path_d,
+        vb_x=-margin, vb_y=-margin,
+        vb_w=half + 2 * margin, vb_h=band + 2 * margin,
+    )
+
+
+def render_setin_sleeve_svg(params: dict) -> str:
+    """Render a symmetric set-in sleeve (Story 11.7). The cap height was solved so the
+    cap perimeter matches the body armhole + ease (FR93); here we just draw it.
+
+    Outline: underarm-left → cap (two cubic halves over the top) → underarm-right →
+    side seam to wrist-right → wrist hem → (Z closes wrist-left → underarm-left).
+    """
+    sleeve_length = params["sleeve_length"]
+    cap_height = params["cap_height"]
+    bicep_width = params["bicep_width"]
+    wrist_width = params["wrist_width"]
+
+    (l0, l1, l2, l3), (r0, r1, r2, r3) = setin_cap_controls(bicep_width, cap_height)
+
+    path_d = (
+        f"M {_fmt(l0[0])} {_fmt(l0[1])} "                                   # underarm-left
+        f"C {_fmt(l1[0])} {_fmt(l1[1])} {_fmt(l2[0])} {_fmt(l2[1])} {_fmt(l3[0])} {_fmt(l3[1])} "  # cap → top
+        f"C {_fmt(r1[0])} {_fmt(r1[1])} {_fmt(r2[0])} {_fmt(r2[1])} {_fmt(r3[0])} {_fmt(r3[1])} "  # top → underarm-right
+        f"L {_fmt(wrist_width)} {_fmt(sleeve_length)} "                     # right side seam → wrist
+        f"L {_fmt(-wrist_width)} {_fmt(sleeve_length)} "                    # wrist hem
+        "Z"                                                                 # wrist-left → underarm-left
+    )
+
+    margin = 2.0
+    half_w = max(bicep_width, wrist_width)
+    return _svg_document(
+        "Sleeve Pattern Piece (set-in)", "sleeve", path_d,
+        vb_x=-(half_w + margin), vb_y=-margin,
+        vb_w=2 * half_w + 2 * margin, vb_h=sleeve_length + 2 * margin,
+    )
+
+
+def _raglan_curve(nx: float, ny: float, ux: float, uy: float) -> str:
+    """Cubic raglan cap curve from neck point to underarm, bulging outward (G4/G5)."""
+    dx, dy = ux - nx, uy - ny
+    out = 1.0 if ux >= 0 else -1.0   # pull control points outward so the cap bulges away from body
+    cp1_x = nx + dx * 0.33 + out * 1.0
+    cp1_y = ny + dy * 0.33
+    cp2_x = nx + dx * 0.66 + out * 0.5
+    cp2_y = ny + dy * 0.66
+    return (
+        f"C {_fmt(cp1_x)} {_fmt(cp1_y)} {_fmt(cp2_x)} {_fmt(cp2_y)} "
+        f"{_fmt(ux)} {_fmt(uy)}"
+    )
+
+
+def _raglan_curve_rev(nx: float, ny: float, ux: float, uy: float) -> str:
+    """Cubic cap curve drawn underarm→neck (reverse of _raglan_curve) for path continuity."""
+    dx, dy = nx - ux, ny - uy
+    out = 1.0 if ux >= 0 else -1.0
+    # control points mirror those of the forward curve so the silhouette matches
+    cp1_x = ux + dx * 0.33 + out * 0.5
+    cp1_y = uy + dy * 0.33
+    cp2_x = ux + dx * 0.66 + out * 1.0
+    cp2_y = uy + dy * 0.66
+    return (
+        f"C {_fmt(cp1_x)} {_fmt(cp1_y)} {_fmt(cp2_x)} {_fmt(cp2_y)} "
+        f"{_fmt(nx)} {_fmt(ny)}"
+    )

@@ -201,7 +201,7 @@ The system maintains two completely separate pattern-related modules:
 
 | Aspect | AI Bespoke Engine (Epic 7-9) | Technical Pattern Engine (Epic 11) |
 |--------|------------------------------|-------------------------------------|
-| Purpose | Emotional adjectives → concept pattern (artistic) | 10 body measurements → 3 production-ready patterns |
+| Purpose | Emotional adjectives → concept pattern (artistic) | 15 body measurements → 3–4 production-ready patterns (front/back bodice, sleeve, optional collar) |
 | Method | LLM + Semantic → Ease Delta → Geometry | Deterministic formulas (pure math) |
 | AI/LLM dependency | Yes (LangGraph, Emotional Compiler) | None — runs on standard CPU |
 | Output | Master Geometry JSON (concept) | SVG 1:1 scale + G-code (laser cutting) |
@@ -225,7 +225,7 @@ Deterministic formula-based generation producing 3 pattern pieces (front bodice,
 
 **Table `pattern_sessions`:**
 - `id` (UUID PK), `tenant_id` (FK → tenants), `customer_id` (FK → customers), `created_by` (FK → users)
-- 10 measurement snapshot columns (immutable at generation time):
+- 15 measurement snapshot columns (immutable at generation time):
   - `do_dai_ao` (NUMERIC 5,1) — body length
   - `ha_eo` (NUMERIC 5,1) — waist drop
   - `vong_co` (NUMERIC 5,1) — neck circumference
@@ -236,6 +236,12 @@ Deterministic formula-based generation producing 3 pattern pieces (front bodice,
   - `do_dai_tay` (NUMERIC 5,1) — sleeve length
   - `vong_bap_tay` (NUMERIC 5,1) — bicep circumference
   - `vong_co_tay` (NUMERIC 5,1) — wrist circumference
+  - `ha_ben_nguc` (NUMERIC 5,1, nullable) — bust-dart drop [added SCP 2026-06-08]
+  - `dang_nguc` (NUMERIC 5,1, nullable) — distance between bust apexes [added SCP 2026-06-08]
+  - `ha_mong` (NUMERIC 5,1, nullable) — waist-to-hip drop (default 18) [added SCP 2026-06-08]
+  - `xuoi_vai` (NUMERIC 5,1, nullable) — shoulder slope (set-in only) [added SCP 2026-06-08]
+  - `rong_vai` (NUMERIC 5,1, nullable) — shoulder width (set-in only) [added SCP 2026-06-08]
+- `sleeve_type` (VARCHAR) — `raglan` | `set_in` (FR91a) [added SCP 2026-06-08]
 - `garment_type` (VARCHAR) — extensible garment type for future open system
 - `notes` (TEXT, nullable) — Owner notes for this session
 - `status` (VARCHAR) — `draft` | `completed` | `exported`
@@ -243,7 +249,7 @@ Deterministic formula-based generation producing 3 pattern pieces (front bodice,
 
 **Table `pattern_pieces`:**
 - `id` (UUID PK), `session_id` (FK → pattern_sessions)
-- `piece_type` (VARCHAR) — `front_bodice` | `back_bodice` | `sleeve`
+- `piece_type` (VARCHAR) — `front_bodice` | `back_bodice` | `sleeve` | `collar` [collar added SCP 2026-06-08; `vat_con` deferred — dims pending artisan interview]
 - `svg_data` (TEXT) — SVG markup at 1:1 scale, stored directly in DB
 - `geometry_params` (JSONB) — computed geometric parameters (bust width, waist width, hip width, etc.)
 - `created_at` (TIMESTAMPTZ)

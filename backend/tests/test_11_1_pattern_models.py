@@ -397,24 +397,29 @@ class TestPydanticSchemas:
         assert params.bust_width == 24.5
         assert params.hem_width == 37.0
         assert params.seam_allowance == 1.0
-        assert params.cap_height is None
+        assert params.bicep_width is None  # sleeve field unset on a bodice (SCP 2026-06-08)
 
     def test_geometry_params_with_sleeve_fields(self):
+        # Raglan sleeve fields (corrected SCP 2026-06-08 — cap_height removed)
         params = GeometryParams(
-            **SAMPLE_GEOMETRY_PARAMS,
-            cap_height=18.0,
-            bicep_width=16.5,
-            wrist_width=9.5,
+            sleeve_type="raglan",
+            sleeve_length=58.0,
+            armhole_drop=20.0,
+            bicep_width=16.0,
+            underarm_width=17.0,
+            wrist_width=7.5,
         )
-        assert params.cap_height == 18.0
-        assert params.bicep_width == 16.5
-        assert params.wrist_width == 9.5
+        assert params.sleeve_type == "raglan"
+        assert params.bicep_width == 16.0
+        assert params.underarm_width == 17.0
+        assert params.wrist_width == 7.5
 
     def test_piece_type_enum_values(self):
         assert PieceType.front_bodice.value == "front_bodice"
         assert PieceType.back_bodice.value == "back_bodice"
         assert PieceType.sleeve.value == "sleeve"
-        assert len(PieceType) == 3
+        assert PieceType.collar.value == "collar"  # Story 11.8
+        assert len(PieceType) == 4
 
     def test_session_status_enum_values(self):
         assert PatternSessionStatus.draft.value == "draft"

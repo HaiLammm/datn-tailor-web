@@ -23,8 +23,12 @@ import {
   PATTERN_MEASUREMENT_FIELDS,
   PatternMeasurementSchema,
   PATTERN_TO_CUSTOMER_MAPPING,
+  EXTENDED_MEASUREMENT_RANGES,
+  SLEEVE_TYPE_LABELS,
   type PatternMeasurementInput,
   type MeasurementKey,
+  type SleeveType,
+  type ExtendedMeasurementKey,
 } from "@/types/pattern";
 import type { MeasurementResponse } from "@/types/customer";
 import {
@@ -281,6 +285,9 @@ export default function MeasurementForm({ onSessionCreated, onError }: Measureme
   const [selectedCustomer, setSelectedCustomer] = useState<SelectedCustomer | null>(null);
   const [isManuallyEdited, setIsManuallyEdited] = useState(false);
   const [autoFillDate, setAutoFillDate] = useState<string | null>(null);
+  // Story 11.7/11.8: sleeve style + 5 optional extended measurements
+  const [sleeveType, setSleeveType] = useState<SleeveType>("raglan");
+  const [extended, setExtended] = useState<Partial<Record<ExtendedMeasurementKey, number>>>({});
 
   // Fetch customer measurement when selected
   const { measurement, isLoading: isMeasurementLoading, hasMeasurement } = useCustomerMeasurement(
@@ -368,13 +375,19 @@ export default function MeasurementForm({ onSessionCreated, onError }: Measureme
     (data: PatternMeasurementInput) => {
       if (isSubmittingRef.current) return;
       isSubmittingRef.current = true;
+      // Only send extended fields that have a value (they are optional, by style)
+      const extendedPayload = Object.fromEntries(
+        Object.entries(extended).filter(([, v]) => typeof v === "number")
+      );
       createSession({
         customer_id: selectedCustomer?.id ?? null,
         garment_type: "ao_dai",
+        sleeve_type: sleeveType,
         ...data,
+        ...extendedPayload,
       });
     },
-    [createSession, selectedCustomer]
+    [createSession, selectedCustomer, sleeveType, extended]
   );
 
   const formatDate = (dateStr: string) => {
@@ -435,6 +448,23 @@ export default function MeasurementForm({ onSessionCreated, onError }: Measureme
         </div>
       )}
 
+      {/* Sleeve type selector (FR91a, Story 11.7) */}
+      <div>
+        <label htmlFor="sleeve_type" className="block text-sm font-medium text-gray-700 mb-1">
+          Kiểu tay áo
+        </label>
+        <select
+          id="sleeve_type"
+          value={sleeveType}
+          onChange={(e) => setSleeveType(e.target.value as SleeveType)}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:outline-none"
+        >
+          {(Object.keys(SLEEVE_TYPE_LABELS) as SleeveType[]).map((st) => (
+            <option key={st} value={st}>{SLEEVE_TYPE_LABELS[st]}</option>
+          ))}
+        </select>
+      </div>
+
       {/* 10 Measurement Fields (AC #4) - 2 columns on desktop */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {PATTERN_MEASUREMENT_FIELDS.map((field) => (
@@ -448,6 +478,31 @@ export default function MeasurementForm({ onSessionCreated, onError }: Measureme
           />
         ))}
       </div>
+
+      {/* Optional extended measurements (Story 11.8) — set-in shows shoulder fields */}
+      <details className="rounded-lg border border-gray-200 p-3">
+        <summary className="cursor-pointer text-sm font-medium text-gray-700">
+          Số đo nâng cao (tuỳ chọn{sleeveType === "set_in" ? " — tay tra cần xuôi/rộng vai" : ""})
+        </summary>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+          {(Object.keys(EXTENDED_MEASUREMENT_RANGES) as ExtendedMeasurementKey[])
+            .filter((k) =>
+              sleeveType === "set_in" ? true : k !== "xuoi_vai" && k !== "rong_vai"
+            )
+            .map((k) => (
+              <MeasurementInput
+                key={k}
+                label={EXTENDED_MEASUREMENT_RANGES[k].label}
+                name={k}
+                value={extended[k]}
+                onChange={(value) =>
+                  setExtended((prev) => ({ ...prev, [k]: value }))
+                }
+                error={undefined}
+              />
+            ))}
+        </div>
+      </details>
 
       {/* Submit Button (AC #7) */}
       <button

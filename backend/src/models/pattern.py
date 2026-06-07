@@ -22,11 +22,19 @@ class PatternSessionStatus(str, Enum):
 
 
 class PieceType(str, Enum):
-    """Pattern piece types — 3 fixed types in MVP."""
+    """Pattern piece types (collar added Story 11.8)."""
 
     front_bodice = "front_bodice"
     back_bodice = "back_bodice"
     sleeve = "sleeve"
+    collar = "collar"
+
+
+class SleeveType(str, Enum):
+    """Sleeve construction style (FR91a, Story 11.7)."""
+
+    raglan = "raglan"     # tay liền cổ — sleeve drafted to the neckline
+    set_in = "set_in"     # tay tra — cap drafted from the body armhole (FR93)
 
 
 class PatternSessionCreate(BaseModel):
@@ -38,6 +46,7 @@ class PatternSessionCreate(BaseModel):
 
     customer_id: UUID
     garment_type: str = Field(default="ao_dai", max_length=50)
+    sleeve_type: SleeveType = Field(default=SleeveType.raglan, description="raglan | set_in (FR91a)")
     notes: str | None = Field(None, max_length=2000)
 
     # 10 body measurements (cm) with min/max validation
@@ -52,26 +61,49 @@ class PatternSessionCreate(BaseModel):
     vong_bap_tay: Decimal = Field(..., ge=15, le=60, description="Vong bap tay (cm)")
     vong_co_tay: Decimal = Field(..., ge=10, le=35, description="Vong co tay (cm)")
 
+    # 5 extended measurements (Story 11.8) — optional; required by style (set-in: vai; darts: nguc)
+    ha_ben_nguc: Decimal | None = Field(None, ge=15, le=35, description="Ha ben nguc (cm)")
+    dang_nguc: Decimal | None = Field(None, ge=10, le=25, description="Dang nguc (cm)")
+    ha_mong: Decimal | None = Field(None, ge=10, le=30, description="Ha mong — eo→mong (cm)")
+    xuoi_vai: Decimal | None = Field(None, ge=1, le=8, description="Xuoi vai (cm)")
+    rong_vai: Decimal | None = Field(None, ge=28, le=50, description="Rong vai (cm)")
+
 
 class GeometryParams(BaseModel):
     """Structure for pattern_pieces.geometry_params JSONB.
 
-    Computed geometric parameters from deterministic formula engine.
+    Computed geometric parameters from the deterministic formula engine.
+    Corrected per SCP 2026-06-08 — front/back bodice now diverge in multiple
+    dimensions; sleeve uses raglan drafting. Stored as a free dict in the DB, so
+    this model documents the shape but is not strictly enforced on read.
     """
 
+    model_config = {"extra": "allow"}
+
+    piece: Optional[str] = None
     # Bodice-specific (None for sleeve pieces)
+    length: Optional[float] = None
+    armhole_drop: Optional[float] = None
+    waist_drop: Optional[float] = None
+    hip_drop: Optional[float] = None
+    neck_width: Optional[float] = None
+    neck_depth: Optional[float] = None
+    shoulder_rise: Optional[float] = None
     bust_width: Optional[float] = None
     waist_width: Optional[float] = None
     hip_width: Optional[float] = None
-    armhole_drop: Optional[float] = None
-    neck_depth: Optional[float] = None
     hem_width: Optional[float] = None
     seam_allowance: float = 1.0
-    # Sleeve-specific (None for bodice pieces)
-    cap_height: Optional[float] = None
-    bicep_width: Optional[float] = None
-    wrist_width: Optional[float] = None
+    # Sleeve-specific (None for bodice pieces) — raglan
+    sleeve_type: Optional[str] = None
     sleeve_length: Optional[float] = None
+    bicep_offset: Optional[float] = None
+    bicep_width: Optional[float] = None
+    underarm_width: Optional[float] = None
+    wrist_width: Optional[float] = None
+    neck_front: Optional[float] = None
+    neck_back: Optional[float] = None
+    neck_rise: Optional[float] = None
 
 
 class PatternPieceResponse(BaseModel):
@@ -104,7 +136,13 @@ class PatternSessionResponse(BaseModel):
     do_dai_tay: Decimal
     vong_bap_tay: Decimal
     vong_co_tay: Decimal
+    ha_ben_nguc: Decimal | None = None
+    dang_nguc: Decimal | None = None
+    ha_mong: Decimal | None = None
+    xuoi_vai: Decimal | None = None
+    rong_vai: Decimal | None = None
     garment_type: str
+    sleeve_type: SleeveType = SleeveType.raglan  # default for pre-11.7 rows without the column
     notes: str | None
     status: PatternSessionStatus
     pieces: list[PatternPieceResponse] = []

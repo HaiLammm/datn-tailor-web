@@ -42,7 +42,7 @@ SAMPLE_PAYLOAD = {
     "garment_type": "ao_dai",
     "notes": "Integration test session",
     "do_dai_ao": "100.0",
-    "ha_eo": "18.0",
+    "ha_eo": "36.0",   # realistic shoulder→waist drop (was 18, too short for nach/2 armhole)
     "vong_co": "34.0",
     "vong_nach": "38.0",
     "vong_nguc": "80.0",
@@ -254,8 +254,40 @@ class TestGeneratePatternPieces:
         assert resp.status_code == 200, resp.text
 
     @pytest.mark.asyncio
-    async def test_generate_produces_three_pieces(self, client, seed_users):
-        """Generated session has exactly 3 pieces."""
+    async def test_set_in_sleeve_reaches_engine_via_api(self, client, seed_users):
+        """Story 11.7 FR91a: sleeve_type='set_in' round-trips create→generate→pieces."""
+        create_resp = client.post(
+            "/api/v1/patterns/sessions",
+            json={**SAMPLE_PAYLOAD, "sleeve_type": "set_in"},
+            headers=_owner_a_headers(),
+        )
+        assert create_resp.status_code == 201, create_resp.text
+        assert create_resp.json()["data"]["sleeve_type"] == "set_in"
+        session_id = create_resp.json()["data"]["id"]
+
+        gen_resp = client.post(
+            f"/api/v1/patterns/sessions/{session_id}/generate",
+            headers=_owner_a_headers(),
+        )
+        assert gen_resp.status_code == 200, gen_resp.text
+        data = gen_resp.json()["data"]
+        assert data["sleeve_type"] == "set_in"
+        sleeve = next(p for p in data["pieces"] if p["piece_type"] == "sleeve")
+        assert sleeve["geometry_params"]["sleeve_type"] == "set_in"
+        # FR93 constraint visible end-to-end
+        assert 3.0 <= sleeve["geometry_params"]["cap_ease"] <= 4.0
+
+    @pytest.mark.asyncio
+    async def test_default_sleeve_type_is_raglan(self, client, seed_users):
+        """Omitting sleeve_type defaults to raglan (backward compatible)."""
+        create_resp = client.post(
+            "/api/v1/patterns/sessions", json=SAMPLE_PAYLOAD, headers=_owner_a_headers(),
+        )
+        assert create_resp.json()["data"]["sleeve_type"] == "raglan"
+
+    @pytest.mark.asyncio
+    async def test_generate_produces_four_pieces(self, client, seed_users):
+        """Story 11.8: generated session has 4 pieces (incl. collar)."""
         create_resp = client.post(
             "/api/v1/patterns/sessions",
             json=SAMPLE_PAYLOAD,
@@ -268,11 +300,12 @@ class TestGeneratePatternPieces:
             headers=_owner_a_headers(),
         )
         data = gen_resp.json()["data"]
-        assert len(data["pieces"]) == 3
+        assert len(data["pieces"]) == 4
+        assert "collar" in [p["piece_type"] for p in data["pieces"]]
 
     @pytest.mark.asyncio
     async def test_generate_piece_types(self, client, seed_users):
-        """Pieces have correct types: front_bodice, back_bodice, sleeve."""
+        """Pieces have correct types: front_bodice, back_bodice, sleeve, collar (11.8)."""
         create_resp = client.post(
             "/api/v1/patterns/sessions",
             json=SAMPLE_PAYLOAD,
@@ -286,7 +319,7 @@ class TestGeneratePatternPieces:
         )
         pieces = gen_resp.json()["data"]["pieces"]
         types = {p["piece_type"] for p in pieces}
-        assert types == {"front_bodice", "back_bodice", "sleeve"}
+        assert types == {"front_bodice", "back_bodice", "sleeve", "collar"}
 
     @pytest.mark.asyncio
     async def test_generate_session_status_completed(self, client, seed_users):
@@ -405,7 +438,7 @@ class TestGetPatternSession:
             headers=_owner_a_headers(),
         )
         data = get_resp.json()["data"]
-        assert len(data["pieces"]) == 3
+        assert len(data["pieces"]) == 4
 
 
 # ---------------------------------------------------------------------------
@@ -430,6 +463,19 @@ class TestMeasurementValidation:
         assert detail.get("code") == "ERR_INVALID_MEASUREMENTS"
         assert "Vòng ngực" in detail.get("message", "")
         assert "50" in detail.get("message", "") and "180" in detail.get("message", "")
+
+    @pytest.mark.asyncio
+    async def test_new_measurement_out_of_range_returns_vietnamese_422(self, client, seed_users):
+        """Story 11.8: the 5 new fields get the same Vietnamese ERR_INVALID_MEASUREMENTS shape."""
+        payload = {**SAMPLE_PAYLOAD, "xuoi_vai": "20.0"}  # max is 8
+        resp = client.post(
+            "/api/v1/patterns/sessions", json=payload, headers=_owner_a_headers(),
+        )
+        assert resp.status_code == 422
+        detail = resp.json().get("detail", {})
+        assert detail.get("code") == "ERR_INVALID_MEASUREMENTS"
+        assert "Xuôi vai" in detail.get("message", "")
+        assert "1" in detail.get("message", "") and "8" in detail.get("message", "")
 
     @pytest.mark.asyncio
     async def test_vong_nguc_above_max_returns_422(self, client, seed_users):

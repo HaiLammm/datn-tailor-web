@@ -1,6 +1,22 @@
 # Story 11.2: Pattern Engine Core API
 
-Status: review
+Status: done
+
+> ✅ **CODE REVIEW PASSED 2026-06-08 (2 rounds):** 3-layer adversarial review. Round 1 → 8 patches
+> (P1 vertical-order guard, P2 sleeve-cap-vs-length guard, P3 wrist≤bicep clamp, P4 waist sanity,
+> P5 neck floor, P6 shoulder_rise back-only, P7 real-SVG G3 test, P8 neck_rise wired). Round 2 →
+> P4 over-rejected normal full-waist bodies; revised to gross-data-error-only on raw circumferences
+> + regression tests. 110 pattern tests green. Formulas verified faithful to consolidated table.
+
+> ✅ **DEV COMPLETE 2026-06-08 (correction pass):** `formulas.py` rewritten to the artisan
+> raglan formulas — `generate_bodice(measurements, piece)` (front/back branch, no single-offset
+> DRY), `generate_sleeve(measurements, sleeve_type='raglan')` with hạ nách tay = `vong_nguc/4−1`.
+> `engine.py` + `models.GeometryParams` updated. Tests rewritten non-circular:
+> `tests/test_11_2_pattern_engine.py` (18) asserts artisan values + geometry invariants
+> (hem>hip, vertical order, neck≠seam, no-legacy-/12 regression). 102 pattern tests green.
+> set_in sleeve raises NotImplementedError → Story 11.7. FR92 <1mm → Story 11.9 (gated).
+
+> ⚠️ **COURSE CORRECTION 2026-06-08** — reopened by `sprint-change-proposal-2026-06-08.md`. The adversarial audit found AC#3/#4/#5/#8 formulas diverge from the artisan's documented method (coefficients `/12`, `/16`, ease=0 are not in any source). **AC#3/#4/#5/#8 below are SUPERSEDED** — implement against the corrected formulas in `_bmad-output/planning-artifacts/research/bang-cong-thuc-hop-nhat-pattern-engine-2026-06-08.md` (§1–3) and the rewritten ACs in SCP §4.3. FR92 <1mm validation moves to Story 11.9 (gated). Evidence: `research/danh-gia-cong-thuc-ve-rap-ao-dai-2026-06-07.md`.
 
 ## Story
 

@@ -1,11 +1,12 @@
-"""Unit tests for Pattern Engine (Story 11.2 — AC #3, #4, #5, #8).
+"""Unit tests for Pattern Engine (Story 11.2/11.3 — corrected SCP 2026-06-08).
 
-Tests:
-  4.1  formulas.generate_bodice() — known measurement sets
-  4.2  formulas.generate_sleeve() — known measurement sets
-  4.3  SVG output contains correct `A` arc commands
-  4.4  engine.generate_pattern_pieces() returns exactly 3 pieces
-  4.5  Geometric precision: calculated coordinates vs reference values (ΔG ≤ 1 mm = ≤ 0.1 cm)
+The previous suite was CIRCULAR — EXPECTED_* recomputed the same (wrong) formulas,
+and arc tests locked in the rx/ry swap. Rewritten to assert:
+  - formula values against the ARTISAN notebook formulas (consolidated table),
+  - geometric SANITY invariants that fix audit defects G1–G10,
+  - engine wiring (3 pieces, raglan).
+
+True <1mm validation against a digitized real artisan paper pattern is Story 11.9 (gated).
 """
 
 from decimal import Decimal
@@ -14,318 +15,195 @@ import pytest
 
 from src.patterns.engine import PieceResult, generate_pattern_pieces
 from src.patterns.formulas import generate_bodice, generate_sleeve
-from src.patterns.svg_export import render_bodice_svg, render_sleeve_svg
 
-
-# ---------------------------------------------------------------------------
-# Reference measurement set (tailor-validated sample, all within schema min/max)
-# ---------------------------------------------------------------------------
+# Sample measurement set (within schema min/max). Worked values mirror the
+# consolidated table's example column.
 MEASUREMENTS = {
     "do_dai_ao": Decimal("100.0"),
-    "ha_eo": Decimal("18.0"),
-    "vong_co": Decimal("34.0"),
-    "vong_nach": Decimal("38.0"),
-    "vong_nguc": Decimal("80.0"),
-    "vong_eo": Decimal("64.0"),
-    "vong_mong": Decimal("88.0"),
-    "do_dai_tay": Decimal("58.0"),
-    "vong_bap_tay": Decimal("28.0"),
-    "vong_co_tay": Decimal("16.0"),
+    "ha_eo": Decimal("36.0"),
+    "vong_co": Decimal("36.0"),
+    "vong_nach": Decimal("34.0"),
+    "vong_nguc": Decimal("84.0"),
+    "vong_eo": Decimal("66.0"),
+    "vong_mong": Decimal("90.0"),
+    "do_dai_tay": Decimal("60.0"),
+    "vong_bap_tay": Decimal("32.0"),
+    "vong_co_tay": Decimal("15.0"),
 }
 
-# Pre-calculated reference values (from manual formula application)
-# Used for geometric precision test (AC #8, ΔG ≤ 1 mm = 0.1 cm)
-EXPECTED_BACK = {
-    "bust_width": 80.0 / 4,           # 20.0
-    "waist_width": 64.0 / 4 + 0.0,   # 16.0
-    "hip_width": 88.0 / 4,            # 22.0
-    "armhole_drop": 38.0 / 12,        # 3.166... → 3.2
-    "neck_depth": 34.0 / 16,          # 2.125 → 2.1
-    "hem_width": 37.0,
-    "seam_allowance": 1.0,
-}
-
-EXPECTED_FRONT = {
-    "bust_width": 80.0 / 4,           # 20.0
-    "waist_width": 64.0 / 4 + (-1.0), # 15.0
-    "hip_width": 88.0 / 4,            # 22.0
-    "armhole_drop": 38.0 / 12,        # 3.2
-    "neck_depth": 34.0 / 16,          # 2.1
-    "hem_width": 37.0,
-    "seam_allowance": 1.0,
-}
-
-EXPECTED_SLEEVE = {
-    "cap_height": 38.0 / 2 - 1,       # 18.0
-    "bicep_width": 28.0 / 2 + 2.5,    # 16.5
-    "wrist_width": 16.0 / 2 + 1,      # 9.0
-    "sleeve_length": 58.0,
-}
-
-TOLERANCE_CM = 0.1  # 1 mm = 0.1 cm (AC #8)
+TOL = 0.1  # 1 mm
 
 
 # ---------------------------------------------------------------------------
-# 4.1  generate_bodice()
+# Bodice formulas — assert against the ARTISAN notebook (not circular)
 # ---------------------------------------------------------------------------
 
-class TestGenerateBodice:
-    """AC #3: Front/Back Bodice using DRY offset architecture."""
+class TestBackBodiceFormulas:
+    def test_back_values(self):
+        p = generate_bodice(MEASUREMENTS, piece="back_bodice")
+        assert p["armhole_drop"] == pytest.approx(34 / 2 + 1, abs=TOL)   # 18.0  (NOT vong_nach/12)
+        assert p["neck_width"] == pytest.approx(36 / 8 - 1, abs=TOL)     # 3.5
+        assert p["bust_width"] == pytest.approx(84 / 4 + 0.5, abs=TOL)   # 21.5
+        assert p["waist_width"] == pytest.approx(66 / 4 + 3, abs=TOL)    # 19.5
+        assert p["hip_width"] == pytest.approx(90 / 4 + 1, abs=TOL)      # 23.5
+        assert p["hem_width"] == pytest.approx(90 / 4 + 2, abs=TOL)      # 24.5
+        assert p["length"] == pytest.approx(100.0, abs=TOL)             # do_dai_ao, NOT 60
+        assert p["hip_drop"] == pytest.approx(36 + 18, abs=TOL)         # ha_eo + 18
 
-    def test_back_bodice_formula_values(self):
-        """Back bodice: offset=0, all formula values match reference."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
-
-        assert abs(params["bust_width"] - EXPECTED_BACK["bust_width"]) <= TOLERANCE_CM
-        assert abs(params["waist_width"] - EXPECTED_BACK["waist_width"]) <= TOLERANCE_CM
-        assert abs(params["hip_width"] - EXPECTED_BACK["hip_width"]) <= TOLERANCE_CM
-        assert abs(params["armhole_drop"] - EXPECTED_BACK["armhole_drop"]) <= TOLERANCE_CM
-        assert abs(params["neck_depth"] - EXPECTED_BACK["neck_depth"]) <= TOLERANCE_CM
-        assert params["hem_width"] == 37.0
-        assert params["seam_allowance"] == 1.0
-
-    def test_front_bodice_offset_minus_one(self):
-        """Front bodice: offset=-1, waist_width is 1cm less than back."""
-        back = generate_bodice(MEASUREMENTS, offset=0.0)
-        front = generate_bodice(MEASUREMENTS, offset=-1.0)
-
-        assert abs(front["waist_width"] - EXPECTED_FRONT["waist_width"]) <= TOLERANCE_CM
-        # All other keys identical between front and back
-        assert back["bust_width"] == front["bust_width"]
-        assert back["hip_width"] == front["hip_width"]
-        assert back["armhole_drop"] == front["armhole_drop"]
-
-    def test_waist_width_delta_is_one_cm(self):
-        """DRY architecture: back.waist_width - front.waist_width == 1 cm exactly."""
-        back = generate_bodice(MEASUREMENTS, offset=0.0)
-        front = generate_bodice(MEASUREMENTS, offset=-1.0)
-        delta = back["waist_width"] - front["waist_width"]
-        assert abs(delta - 1.0) <= TOLERANCE_CM
-
-    def test_hem_width_fixed_constant(self):
-        """Hem width is always 37 cm regardless of measurements."""
-        for measurements in [MEASUREMENTS, {k: Decimal("100.0") for k in MEASUREMENTS}]:
-            params = generate_bodice(measurements, offset=0.0)
-            assert params["hem_width"] == 37.0
-
-    def test_seam_allowance_fixed(self):
-        """Seam allowance is always 1 cm (not user-configurable)."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
-        assert params["seam_allowance"] == 1.0
-
-    def test_bodice_with_decimal_inputs(self):
-        """Decimal values from DB Numeric columns are handled correctly."""
-        measurements = {k: Decimal(str(80.0)) for k in MEASUREMENTS}
-        measurements.update(MEASUREMENTS)  # use real values
-        params = generate_bodice(measurements, offset=0.0)
-        assert isinstance(params["bust_width"], float)
+    def test_no_legacy_bad_coefficients(self):
+        """Regression: armhole_drop must never again be vong_nach/12 (the audited bug)."""
+        p = generate_bodice(MEASUREMENTS, piece="back_bodice")
+        assert abs(p["armhole_drop"] - 34 / 12) > 10  # ~3 vs ~18 — far apart
 
 
-# ---------------------------------------------------------------------------
-# 4.2  generate_sleeve()
-# ---------------------------------------------------------------------------
+class TestFrontBodiceFormulas:
+    def test_front_values(self):
+        p = generate_bodice(MEASUREMENTS, piece="front_bodice")
+        assert p["armhole_drop"] == pytest.approx(34 / 2, abs=TOL)       # 17.0
+        assert p["neck_width"] == pytest.approx(36 / 8 + 0.5, abs=TOL)   # 5.0
+        assert p["neck_depth"] == pytest.approx(36 / 8 + 1.5, abs=TOL)   # 6.0
+        assert p["bust_width"] == pytest.approx(84 / 4 + 1, abs=TOL)     # 22.0
+        assert p["waist_width"] == pytest.approx(66 / 4 + 4, abs=TOL)    # 20.5
+        assert p["length"] == pytest.approx(100 + 1, abs=TOL)           # + sa vạt
 
-class TestGenerateSleeve:
-    """AC #5: Sleeve generation formulas."""
+    def test_front_back_differ_in_multiple_dims(self):
+        """Front/back now diverge in >1 dimension (no single-offset DRY)."""
+        f = generate_bodice(MEASUREMENTS, piece="front_bodice")
+        b = generate_bodice(MEASUREMENTS, piece="back_bodice")
+        assert f["armhole_drop"] != b["armhole_drop"]
+        assert f["neck_width"] != b["neck_width"]
+        assert f["bust_width"] != b["bust_width"]
 
-    def test_cap_height(self):
-        """cap_height = vong_nach / 2 - 1."""
-        params = generate_sleeve(MEASUREMENTS)
-        assert abs(params["cap_height"] - EXPECTED_SLEEVE["cap_height"]) <= TOLERANCE_CM
+    def test_invalid_piece_rejected(self):
+        with pytest.raises(ValueError):
+            generate_bodice(MEASUREMENTS, piece="sleeve")
 
-    def test_bicep_width(self):
-        """bicep_width = vong_bap_tay / 2 + 2.5."""
-        params = generate_sleeve(MEASUREMENTS)
-        assert abs(params["bicep_width"] - EXPECTED_SLEEVE["bicep_width"]) <= TOLERANCE_CM
-
-    def test_wrist_width(self):
-        """wrist_width = vong_co_tay / 2 + 1."""
-        params = generate_sleeve(MEASUREMENTS)
-        assert abs(params["wrist_width"] - EXPECTED_SLEEVE["wrist_width"]) <= TOLERANCE_CM
-
-    def test_sleeve_length(self):
-        """length = do_dai_tay."""
-        params = generate_sleeve(MEASUREMENTS)
-        assert abs(params["sleeve_length"] - float(MEASUREMENTS["do_dai_tay"])) <= TOLERANCE_CM
-
-    def test_sleeve_params_are_floats(self):
-        """All returned values must be float (not Decimal)."""
-        params = generate_sleeve(MEASUREMENTS)
-        for key in ("cap_height", "bicep_width", "wrist_width", "sleeve_length"):
-            assert isinstance(params[key], float), f"{key} should be float"
+    def test_missing_measurement_rejected(self):
+        bad = {k: v for k, v in MEASUREMENTS.items() if k != "do_dai_ao"}
+        with pytest.raises(ValueError):
+            generate_bodice(bad, piece="back_bodice")
 
 
-# ---------------------------------------------------------------------------
-# 4.3  SVG output — arc commands
-# ---------------------------------------------------------------------------
+class TestGeometryValidationGuards:
+    """Guards added in code-review fix pass (P1–P4): reject measurement combos that
+    would produce a self-intersecting / uncuttable outline, with Vietnamese errors."""
 
-class TestSVGOutput:
-    """AC #4, #5: SVG contains correct A arc commands."""
+    def test_p1_armhole_below_waist_rejected(self):
+        """Large vong_nach + tiny ha_eo → armhole_drop > waist_drop → reject."""
+        bad = {**MEASUREMENTS, "vong_nach": Decimal("70"), "ha_eo": Decimal("5"),
+               "do_dai_ao": Decimal("40")}
+        with pytest.raises(ValueError, match="dọc không hợp lệ"):
+            generate_bodice(bad, piece="back_bodice")
 
-    def test_bodice_svg_contains_armhole_arc_command(self):
-        """Bodice SVG must contain 'A' arc command for armhole curve (AC #4)."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
-        svg = render_bodice_svg(params, piece_type="back_bodice")
-        assert " A " in svg, "SVG must use A (arc) command for armhole"
+    def test_p4_gross_data_error_rejected(self):
+        """Only GROSS errors rejected: vong_eo implausibly larger than BOTH bust and hip."""
+        bad = {**MEASUREMENTS, "vong_eo": Decimal("160"), "vong_nguc": Decimal("50"),
+               "vong_mong": Decimal("50")}
+        with pytest.raises(ValueError, match="eo quá lớn"):
+            generate_bodice(bad, piece="back_bodice")
 
-    def test_sleeve_svg_contains_cap_arc_command(self):
-        """Sleeve SVG must contain 'A' arc command for half-ellipse cap (AC #5)."""
-        params = generate_sleeve(MEASUREMENTS)
-        svg = render_sleeve_svg(params)
-        assert " A " in svg, "Sleeve SVG must use A (arc) command for cap"
+    @pytest.mark.parametrize("eo,nguc,mong", [
+        ("84", "88", "86"),   # waist < hip (normal) — must NOT be rejected
+        ("90", "92", "88"),   # apple shape, waist slightly > hip — must NOT be rejected
+        ("88", "88", "88"),   # waist == bust == hip — must NOT be rejected
+    ])
+    def test_p4_normal_full_waist_accepted(self, eo, nguc, mong):
+        """Regression: realistic full/apple-shaped bodies must still generate (no false reject)."""
+        ok = {**MEASUREMENTS, "vong_eo": Decimal(eo), "vong_nguc": Decimal(nguc),
+              "vong_mong": Decimal(mong)}
+        generate_bodice(ok, piece="front_bodice")
+        generate_bodice(ok, piece="back_bodice")
 
-    def test_bodice_svg_is_valid_xml_structure(self):
-        """Bodice SVG starts with <svg and closes with </svg>."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
-        svg = render_bodice_svg(params, piece_type="front_bodice")
-        assert svg.strip().startswith("<svg")
-        assert svg.strip().endswith("</svg>")
+    def test_p2_sleeve_cap_exceeds_length_rejected(self):
+        """Large vong_nguc + short do_dai_tay → cap+bicep below wrist → reject."""
+        bad = {**MEASUREMENTS, "vong_nguc": Decimal("180"), "do_dai_tay": Decimal("30")}
+        with pytest.raises(ValueError, match="Dài tay quá ngắn"):
+            generate_sleeve(bad)
 
-    def test_sleeve_svg_is_valid_xml_structure(self):
-        """Sleeve SVG starts with <svg and closes with </svg>."""
-        params = generate_sleeve(MEASUREMENTS)
-        svg = render_sleeve_svg(params)
-        assert svg.strip().startswith("<svg")
-        assert svg.strip().endswith("</svg>")
+    def test_p3_wrist_clamped_to_bicep(self):
+        """co_tay > bap_tay must not produce an inverted taper (wrist ≤ bicep)."""
+        bad = {**MEASUREMENTS, "vong_co_tay": Decimal("35"), "vong_bap_tay": Decimal("15")}
+        p = generate_sleeve(bad)
+        assert p["wrist_width"] <= p["bicep_width"]
 
-    def test_bodice_svg_has_path_element(self):
-        """Bodice SVG contains a <path> element."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
-        svg = render_bodice_svg(params, piece_type="back_bodice")
-        assert "<path" in svg
+    def test_valid_measurements_still_pass(self):
+        """The happy-path sample must not trip any new guard."""
+        generate_bodice(MEASUREMENTS, piece="front_bodice")
+        generate_bodice(MEASUREMENTS, piece="back_bodice")
+        generate_sleeve(MEASUREMENTS)
 
-    def test_sleeve_svg_closes_path_with_z(self):
-        """Sleeve SVG path closes with Z command."""
-        params = generate_sleeve(MEASUREMENTS)
-        svg = render_sleeve_svg(params)
-        assert "Z" in svg
 
-    def test_bodice_svg_under_50kb(self):
-        """Each bodice SVG must be < 50 KB (NFR6 / AC #4)."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
-        svg = render_bodice_svg(params, piece_type="front_bodice")
-        assert len(svg.encode("utf-8")) < 50_000
+class TestBodiceGeometryInvariants:
+    """Geometric sanity that fixes audit defects G1, G2, G8."""
 
-    def test_sleeve_svg_under_50kb(self):
-        """Sleeve SVG must be < 50 KB (NFR6 / AC #5)."""
-        params = generate_sleeve(MEASUREMENTS)
-        svg = render_sleeve_svg(params)
-        assert len(svg.encode("utf-8")) < 50_000
+    @pytest.mark.parametrize("piece", ["front_bodice", "back_bodice"])
+    def test_hem_wider_than_hip_fixes_g8(self, piece):
+        p = generate_bodice(MEASUREMENTS, piece=piece)
+        assert p["hem_width"] > p["hip_width"]  # no inverted side seam
 
-    def test_bodice_svg_has_xmlns(self):
-        """Bodice SVG is standalone (contains xmlns declaration)."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
-        svg = render_bodice_svg(params, piece_type="back_bodice")
-        assert 'xmlns="http://www.w3.org/2000/svg"' in svg
+    @pytest.mark.parametrize("piece", ["front_bodice", "back_bodice"])
+    def test_vertical_order_fixes_g1_g2(self, piece):
+        p = generate_bodice(MEASUREMENTS, piece=piece)
+        assert 0 < p["armhole_drop"] < p["waist_drop"] < p["hip_drop"] < p["length"]
 
-    def test_armhole_arc_uses_correct_radii(self):
-        """Armhole arc: A {armhole_drop} {bust_width} (AC #4 exact format)."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
-        svg = render_bodice_svg(params, piece_type="back_bodice")
-        arm_drop = params["armhole_drop"]   # 3.2
-        bust_w = params["bust_width"]        # 20.0
-        expected_arc_prefix = f"A {arm_drop:.1f} {bust_w:.1f}"
-        assert expected_arc_prefix in svg, f"Expected '{expected_arc_prefix}' in SVG"
-
-    def test_sleeve_arc_uses_correct_radii(self):
-        """Sleeve cap arc: A {cap_height} {bicep_width} (AC #5 exact format)."""
-        params = generate_sleeve(MEASUREMENTS)
-        svg = render_sleeve_svg(params)
-        cap_h = params["cap_height"]        # 18.0
-        bic_w = params["bicep_width"]       # 16.5
-        expected_arc_prefix = f"A {cap_h:.1f} {bic_w:.1f}"
-        assert expected_arc_prefix in svg, f"Expected '{expected_arc_prefix}' in SVG"
+    def test_neck_width_decoupled_from_seam_fixes_g6(self):
+        p = generate_bodice(MEASUREMENTS, piece="back_bodice")
+        assert p["neck_width"] != p["seam_allowance"]  # not accidentally 1 cm
 
 
 # ---------------------------------------------------------------------------
-# 4.4  engine.generate_pattern_pieces()
+# Sleeve formulas (raglan)
 # ---------------------------------------------------------------------------
 
-class TestGeneratePatternPieces:
-    """AC #2: Engine returns exactly 3 pieces."""
+class TestSleeveFormulas:
+    def test_raglan_values(self):
+        p = generate_sleeve(MEASUREMENTS)
+        assert p["sleeve_type"] == "raglan"
+        assert p["armhole_drop"] == pytest.approx(84 / 4 - 1, abs=TOL)   # 20.0 (vong_nguc/4 - 1)
+        assert p["bicep_width"] == pytest.approx(32 / 2, abs=TOL)        # 16.0
+        assert p["underarm_width"] == pytest.approx(32 / 2 + 1, abs=TOL)  # 17.0
+        assert p["wrist_width"] == pytest.approx(15 / 2, abs=TOL)        # 7.5
+        assert p["neck_front"] == pytest.approx(36 / 8, abs=TOL)         # 4.5
+        assert p["neck_back"] == pytest.approx(36 / 16, abs=TOL)         # 2.25
+        assert p["sleeve_length"] == pytest.approx(60.0, abs=TOL)
 
-    def test_returns_exactly_three_pieces(self):
-        """generate_pattern_pieces() must return exactly 3 PieceResult objects."""
+    def test_underarm_wider_than_bicep(self):
+        p = generate_sleeve(MEASUREMENTS)
+        assert p["underarm_width"] > p["bicep_width"]
+
+    def test_set_in_now_implemented_needs_armhole(self):
+        """Story 11.7: set_in is implemented; it requires the body armhole perimeter."""
+        with pytest.raises(ValueError, match="vòng nách"):
+            generate_sleeve(MEASUREMENTS, sleeve_type="set_in")  # no armhole → clear error
+
+    def test_all_floats(self):
+        p = generate_sleeve(MEASUREMENTS)
+        for k in ("armhole_drop", "bicep_width", "wrist_width", "sleeve_length"):
+            assert isinstance(p[k], float)
+
+
+# ---------------------------------------------------------------------------
+# Engine wiring
+# ---------------------------------------------------------------------------
+
+class TestEngine:
+    def test_returns_four_pieces_with_collar(self):
+        """Story 11.8: engine now also produces the collar (4 pieces)."""
         pieces = generate_pattern_pieces(MEASUREMENTS)
-        assert len(pieces) == 3
+        assert len(pieces) == 4
+        assert [p.piece_type for p in pieces] == [
+            "front_bodice", "back_bodice", "sleeve", "collar",
+        ]
 
-    def test_piece_types_are_correct(self):
-        """Pieces must be front_bodice, back_bodice, sleeve in that order."""
-        pieces = generate_pattern_pieces(MEASUREMENTS)
-        piece_types = [p.piece_type for p in pieces]
-        assert piece_types == ["front_bodice", "back_bodice", "sleeve"]
-
-    def test_all_pieces_have_svg_data(self):
-        """Every piece must have non-empty svg_data."""
-        pieces = generate_pattern_pieces(MEASUREMENTS)
-        for piece in pieces:
-            assert piece.svg_data, f"{piece.piece_type} has empty svg_data"
-
-    def test_all_pieces_have_geometry_params(self):
-        """Every piece must have non-empty geometry_params dict."""
-        pieces = generate_pattern_pieces(MEASUREMENTS)
-        for piece in pieces:
-            assert piece.geometry_params, f"{piece.piece_type} has empty geometry_params"
-
-    def test_pieces_are_pieceresult_instances(self):
-        """Each returned object must be a PieceResult dataclass."""
-        pieces = generate_pattern_pieces(MEASUREMENTS)
-        for p in pieces:
+    def test_all_pieces_have_svg_and_params(self):
+        for p in generate_pattern_pieces(MEASUREMENTS):
             assert isinstance(p, PieceResult)
+            assert p.svg_data and p.geometry_params
 
-    def test_front_and_back_differ_by_waist_offset(self):
-        """Front bodice waist_width is 1cm less than back bodice waist_width."""
-        pieces = generate_pattern_pieces(MEASUREMENTS)
-        front = next(p for p in pieces if p.piece_type == "front_bodice")
-        back = next(p for p in pieces if p.piece_type == "back_bodice")
-        delta = back.geometry_params["waist_width"] - front.geometry_params["waist_width"]
-        assert abs(delta - 1.0) <= TOLERANCE_CM
-
-
-# ---------------------------------------------------------------------------
-# 4.5  Geometric precision (AC #8, NFR6: ΔG ≤ 1 mm = 0.1 cm)
-# ---------------------------------------------------------------------------
-
-class TestGeometricPrecision:
-    """AC #8: All formula outputs within 1mm of tailor-validated reference values."""
-
-    @pytest.mark.parametrize("key,expected", [
-        ("bust_width", EXPECTED_BACK["bust_width"]),
-        ("hip_width", EXPECTED_BACK["hip_width"]),
-        ("armhole_drop", EXPECTED_BACK["armhole_drop"]),
-        ("neck_depth", EXPECTED_BACK["neck_depth"]),
-        ("hem_width", EXPECTED_BACK["hem_width"]),
-        ("seam_allowance", EXPECTED_BACK["seam_allowance"]),
-    ])
-    def test_back_bodice_precision(self, key: str, expected: float):
-        """Back bodice key coordinate within ±0.1 cm of reference."""
-        params = generate_bodice(MEASUREMENTS, offset=0.0)
-        assert abs(params[key] - expected) <= TOLERANCE_CM, (
-            f"Back {key}: got {params[key]:.3f}, expected {expected:.3f}, "
-            f"Δ = {abs(params[key] - expected):.3f} cm"
-        )
-
-    @pytest.mark.parametrize("key,expected", [
-        ("waist_width", EXPECTED_FRONT["waist_width"]),
-    ])
-    def test_front_bodice_precision(self, key: str, expected: float):
-        """Front bodice waist_width within ±0.1 cm of reference."""
-        params = generate_bodice(MEASUREMENTS, offset=-1.0)
-        assert abs(params[key] - expected) <= TOLERANCE_CM, (
-            f"Front {key}: got {params[key]:.3f}, expected {expected:.3f}, "
-            f"Δ = {abs(params[key] - expected):.3f} cm"
-        )
-
-    @pytest.mark.parametrize("key,expected", [
-        ("cap_height", EXPECTED_SLEEVE["cap_height"]),
-        ("bicep_width", EXPECTED_SLEEVE["bicep_width"]),
-        ("wrist_width", EXPECTED_SLEEVE["wrist_width"]),
-        ("sleeve_length", EXPECTED_SLEEVE["sleeve_length"]),
-    ])
-    def test_sleeve_precision(self, key: str, expected: float):
-        """Sleeve key coordinates within ±0.1 cm of reference."""
-        params = generate_sleeve(MEASUREMENTS)
-        assert abs(params[key] - expected) <= TOLERANCE_CM, (
-            f"Sleeve {key}: got {params[key]:.3f}, expected {expected:.3f}, "
-            f"Δ = {abs(params[key] - expected):.3f} cm"
-        )
+    def test_set_in_produces_pieces(self):
+        """Story 11.7: engine builds a set-in sleeve (cap sized from the armhole)."""
+        pieces = generate_pattern_pieces(MEASUREMENTS, sleeve_type="set_in")
+        assert [p.piece_type for p in pieces] == [
+            "front_bodice", "back_bodice", "sleeve", "collar",
+        ]
+        assert pieces[2].geometry_params["sleeve_type"] == "set_in"

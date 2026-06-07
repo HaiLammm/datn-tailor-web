@@ -27,6 +27,25 @@ export const MEASUREMENT_RANGES = {
 
 export type MeasurementKey = keyof typeof MEASUREMENT_RANGES;
 
+// ===== Sleeve type (FR91a, Story 11.7) =====
+export type SleeveType = "raglan" | "set_in";
+
+export const SLEEVE_TYPE_LABELS: Record<SleeveType, string> = {
+  raglan: "Tay liền cổ (raglan)",
+  set_in: "Tay tra (có đường may vai)",
+};
+
+// ===== Extended measurements (Story 11.8) — optional, by style =====
+export const EXTENDED_MEASUREMENT_RANGES = {
+  ha_ben_nguc: { min: 15, max: 35, label: "Hạ ben ngực" },
+  dang_nguc: { min: 10, max: 25, label: "Dang ngực" },
+  ha_mong: { min: 10, max: 30, label: "Hạ mông" },
+  xuoi_vai: { min: 1, max: 8, label: "Xuôi vai" },
+  rong_vai: { min: 28, max: 50, label: "Rộng vai" },
+} as const;
+
+export type ExtendedMeasurementKey = keyof typeof EXTENDED_MEASUREMENT_RANGES;
+
 // ===== Pattern Measurement Fields Configuration (AC #4) =====
 
 export const PATTERN_MEASUREMENT_FIELDS: Array<{
@@ -79,19 +98,35 @@ export type PatternMeasurementInput = z.infer<typeof PatternMeasurementSchema>;
 
 // ===== Pattern Session Create Schema (AC #7) =====
 
+const optionalExtended = (key: ExtendedMeasurementKey) => {
+  const { min, max, label } = EXTENDED_MEASUREMENT_RANGES[key];
+  return z
+    .number()
+    .min(min, `${label} phải từ ${min} đến ${max} cm`)
+    .max(max, `${label} phải từ ${min} đến ${max} cm`)
+    .optional();
+};
+
 export const PatternSessionCreateSchema = z.object({
   customer_id: z.string().uuid().nullable(),
   garment_type: z.string().default("ao_dai"),
+  sleeve_type: z.enum(["raglan", "set_in"]).default("raglan"),
   notes: z.string().optional(),
-  // Spread measurement fields
+  // Spread the 10 required measurement fields
   ...PatternMeasurementSchema.shape,
+  // 5 optional extended measurements (Story 11.8)
+  ha_ben_nguc: optionalExtended("ha_ben_nguc"),
+  dang_nguc: optionalExtended("dang_nguc"),
+  ha_mong: optionalExtended("ha_mong"),
+  xuoi_vai: optionalExtended("xuoi_vai"),
+  rong_vai: optionalExtended("rong_vai"),
 });
 
 export type PatternSessionCreate = z.infer<typeof PatternSessionCreateSchema>;
 
 // ===== Pattern Pieces =====
 
-export type PieceType = "front_bodice" | "back_bodice" | "sleeve";
+export type PieceType = "front_bodice" | "back_bodice" | "sleeve" | "collar";
 
 export type ExportFormat = "svg" | "gcode";
 
@@ -112,6 +147,7 @@ export interface PatternSessionResponse {
   customer_id: string | null;
   created_by: string;
   garment_type: string;
+  sleeve_type: SleeveType;
   status: "draft" | "completed" | "exported";
   do_dai_ao: number;
   ha_eo: number;
@@ -123,6 +159,11 @@ export interface PatternSessionResponse {
   do_dai_tay: number;
   vong_bap_tay: number;
   vong_co_tay: number;
+  ha_ben_nguc: number | null;
+  dang_nguc: number | null;
+  ha_mong: number | null;
+  xuoi_vai: number | null;
+  rong_vai: number | null;
   notes: string | null;
   pieces: PatternPieceResponse[];
   created_at: string;
@@ -176,6 +217,7 @@ export const PIECE_TYPE_LABELS: Record<PieceType, string> = {
   front_bodice: "Thân trước",
   back_bodice: "Thân sau",
   sleeve: "Tay áo",
+  collar: "Lá cổ",
 };
 
 export const PATTERN_SESSION_STATUS_LABELS: Record<string, string> = {
@@ -185,16 +227,22 @@ export const PATTERN_SESSION_STATUS_LABELS: Record<string, string> = {
 };
 
 export const GEOMETRY_PARAM_LABELS: Record<string, string> = {
+  length: "Dài",
   bust_width: "Rộng ngực",
   waist_width: "Rộng eo",
   hip_width: "Rộng mông",
-  shoulder_width: "Rộng vai",
-  bodice_length: "Dài thân",
+  hem_width: "Rộng tà",
+  neck_width: "Rộng cổ",
+  neck_depth: "Sâu cổ",
+  armhole_drop: "Hạ nách",
   sleeve_length: "Dài tay",
-  sleeve_width: "Rộng tay",
-  neckline_width: "Rộng cổ",
-  neckline_depth: "Sâu cổ",
-  armhole_depth: "Sâu nách",
+  bicep_width: "Rộng bắp tay",
+  underarm_width: "Rộng nách tay",
+  wrist_width: "Cửa tay",
+  cap_height: "Cao đầu tay",
+  cap_ease: "Cử động đầu tay",
+  band: "Bản cổ",
+  neck_perimeter: "Chu vi cổ",
 };
 
 // ===== Story 11.6: Attach Pattern Types =====
@@ -208,8 +256,11 @@ export interface AttachPatternResponse {
   pattern_session_id: string | null;
 }
 
+// Keys aligned with the actual engine output (SCP 2026-06-08). The sleeve list covers
+// both raglan and set-in fields; only the present ones render.
 export const PIECE_GEOMETRY_PARAM_KEYS: Record<PieceType, string[]> = {
-  front_bodice: ["bust_width", "waist_width", "hip_width", "shoulder_width", "bodice_length", "neckline_width", "neckline_depth", "armhole_depth"],
-  back_bodice: ["bust_width", "waist_width", "hip_width", "shoulder_width", "bodice_length", "neckline_width", "armhole_depth"],
-  sleeve: ["sleeve_length", "sleeve_width", "armhole_depth"],
+  front_bodice: ["length", "bust_width", "waist_width", "hip_width", "hem_width", "neck_width", "neck_depth", "armhole_drop"],
+  back_bodice: ["length", "bust_width", "waist_width", "hip_width", "hem_width", "neck_width", "armhole_drop"],
+  sleeve: ["sleeve_length", "bicep_width", "underarm_width", "wrist_width", "armhole_drop", "cap_height", "cap_ease"],
+  collar: ["length", "band", "neck_perimeter"],
 };

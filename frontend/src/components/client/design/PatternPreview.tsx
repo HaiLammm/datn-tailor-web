@@ -17,7 +17,7 @@ interface PatternPreviewProps {
   onActivePieceChange?: (pieceType: PieceType) => void;
 }
 
-const PIECE_ORDER: PieceType[] = ["front_bodice", "back_bodice", "sleeve"];
+const PIECE_ORDER: PieceType[] = ["front_bodice", "back_bodice", "sleeve", "collar"];
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 5;
 
