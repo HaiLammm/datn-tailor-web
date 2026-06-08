@@ -290,6 +290,10 @@ class OrderListItem(BaseModel):
     # Cancellation tracking
     cancellation_reason: str | None = None
     tailor_task_info: TailorTaskInfoBrief | None = None
+    # Story 10.7b: rental return / security info for Order Board (read-only)
+    rental_condition: str | None = None
+    security_type: str | None = None
+    security_value: str | None = None
 
     model_config = {"from_attributes": True}
 

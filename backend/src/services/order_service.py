@@ -763,6 +763,11 @@ async def list_orders(
             remaining_amount=o.remaining_amount,
             cancellation_reason=o.cancellation_reason,
             tailor_task_info=tailor_task_map.get(o.id),
+            rental_condition=o.rental_condition,
+            security_type=o.security_type,
+            # Never ship the raw CCCD number in the (multi-order) list payload — the board
+            # only needs the cash amount; CCCD just needs the type. (PII minimization.)
+            security_value=o.security_value if o.security_type != "cccd" else None,
         )
         for o in orders
     ]

@@ -22,6 +22,8 @@ import type {
   OrderStatus,
   PayRemainingRequest,
   PayRemainingResponse,
+  RefundSecurityResponse,
+  RentalCondition,
   UpdatePreparationStepRequest,
   UpdatePreparationStepResponse,
 } from "@/types/order";
@@ -298,6 +300,59 @@ export async function updateOrderStatus(
 
     const result = await response.json();
     return result.data as OrderResponse;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Yêu cầu hết thời gian. Vui lòng thử lại.");
+    }
+    throw error;
+  }
+}
+
+/**
+ * Story 10.7b — Process a rental security-deposit refund (Owner only).
+ * Calls the existing backend endpoint; cash-only scope (no gateway). The backend is
+ * idempotent — a duplicate call returns already_processed=true (NOT an error).
+ * Throws on real errors so TanStack Query can handle error state.
+ */
+export async function refundSecurity(
+  orderId: string,
+  condition: RentalCondition,
+): Promise<RefundSecurityResponse> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) throw new Error("Chưa đăng nhập. Vui lòng đăng nhập lại.");
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/orders/${orderId}/refund-security`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ condition }),
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(
+        err?.detail?.error?.message ||
+          err?.error?.message ||
+          err?.detail ||
+          `Lỗi hoàn cọc (HTTP ${response.status})`
+      );
+    }
+
+    const result = await response.json();
+    return result.data as RefundSecurityResponse;
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === "AbortError") {

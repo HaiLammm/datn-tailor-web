@@ -7,12 +7,14 @@ import {
   approveOrder,
   fetchOrderDetail,
   fetchOrders,
+  refundSecurity,
   updateOrderStatus,
   updatePreparationStep,
 } from "@/app/actions/order-actions";
 import { fetchStaffData } from "@/app/actions/owner-task-actions";
-import type { ApproveOrderRequest, OrderListItem, OrderListParams, OrderStatus, UpdatePreparationStepRequest } from "@/types/order";
-import { RENT_PREP_STEPS, BUY_PREP_STEPS } from "@/types/order";
+import type { ApproveOrderRequest, OrderListItem, OrderListParams, OrderStatus, RentalCondition, UpdatePreparationStepRequest } from "@/types/order";
+import { RENT_PREP_STEPS, BUY_PREP_STEPS, RENTAL_CONDITION_LABELS } from "@/types/order";
+import { formatMoney } from "@/utils/format";
 import OrderFilters from "./OrderFilters";
 import OrderTable from "./OrderTable";
 import Pagination from "./Pagination";
@@ -252,6 +254,96 @@ function DeliveryModeDialog({ order, onConfirm, onCancel, isLoading }: DeliveryM
 }
 
 // ---------------------------------------------------------------------------
+// Story 10.7b: Security-deposit refund dialog (condition selection)
+// ---------------------------------------------------------------------------
+
+interface RefundDialogProps {
+  order: OrderListItem;
+  onConfirm: (condition: RentalCondition) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}
+
+const REFUND_CONDITIONS: RentalCondition[] = ["Good", "Damaged", "Lost"];
+
+export function RefundDialog({ order, onConfirm, onCancel, isLoading }: RefundDialogProps) {
+  const [condition, setCondition] = useState<RentalCondition>("Good");
+  const isCccd = order.security_type === "cccd";
+  const depositValue = order.security_value != null ? Number(order.security_value) : NaN;
+  const depositText = Number.isFinite(depositValue) && depositValue > 0 ? formatMoney(depositValue) : "—";
+
+  // Cash-only refund preview per condition (CCCD returns the physical card, no money)
+  function previewFor(c: RentalCondition): string {
+    if (isCccd) return "Trả lại giấy tờ tùy thân cho khách";
+    if (c === "Lost") return "Không hoàn cọc (0 đ)";
+    return `Hoàn ${depositText}`;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">Hoàn cọc thuê</h3>
+        <p className="text-xs text-gray-500 font-mono mb-1">
+          #{order.id.slice(0, 8).toUpperCase()} — {order.customer_name}
+        </p>
+        <p className="text-sm text-gray-600 mb-4">
+          {isCccd
+            ? "Đặt cọc bằng giấy tờ tùy thân (CCCD) — không hoàn tiền, trả lại thẻ cho khách."
+            : `Cọc tiền mặt: ${depositText}. Chọn tình trạng đồ khi khách trả:`}
+        </p>
+        <div className="space-y-2 mb-5">
+          {REFUND_CONDITIONS.map((c) => (
+            <label
+              key={c}
+              className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                condition === c ? "border-emerald-400 bg-emerald-50" : "border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="rental-condition"
+                value={c}
+                checked={condition === c}
+                onChange={() => setCondition(c)}
+                className="mt-0.5"
+              />
+              <span className="flex-1">
+                <span className="block text-sm font-medium text-gray-900">
+                  {RENTAL_CONDITION_LABELS[c]}
+                </span>
+                <span className="block text-xs text-gray-500">{previewFor(c)}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            disabled={isLoading}
+            className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={() => onConfirm(condition)}
+            disabled={isLoading}
+            className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isLoading ? "Đang xử lý..." : isCccd ? "Xác nhận trả giấy tờ" : "Xác nhận hoàn cọc"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -289,6 +381,12 @@ export default function OrderBoardClient() {
     nextStep: string;
     nextStepLabel: string;
   }>({ open: false, order: null, nextStep: "", nextStepLabel: "" });
+
+  // Story 10.7b: security-deposit refund dialog state
+  const [refundDialog, setRefundDialog] = useState<{
+    open: boolean;
+    order: OrderListItem | null;
+  }>({ open: false, order: null });
 
   // Story 10.4: toast state
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({
@@ -457,6 +555,31 @@ export default function OrderBoardClient() {
     },
   });
 
+  // ---- Story 10.7b: security refund mutation ----
+  const refundMutation = useMutation({
+    mutationFn: ({ orderId, condition }: { orderId: string; condition: RentalCondition }) =>
+      refundSecurity(orderId, condition),
+
+    onSuccess: (result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["owner-orders"] });
+      // Invalidate the refunded order's detail (it may differ from the currently-open drawer)
+      queryClient.invalidateQueries({ queryKey: ["owner-order-detail", variables.orderId] });
+      setRefundDialog({ open: false, order: null });
+      if (result.already_processed) {
+        showToast("Cọc đơn này đã được hoàn trước đó.");
+      } else if (result.security_type === "cccd") {
+        showToast("Đã trả lại giấy tờ tùy thân cho khách.");
+      } else {
+        showToast(`Đã hoàn cọc: ${formatMoney(result.refund_amount)}`);
+      }
+    },
+
+    onError: (err) => {
+      setRefundDialog({ open: false, order: null });
+      showToast(err instanceof Error ? err.message : "Hoàn cọc thất bại");
+    },
+  });
+
   // ---- handlers ----
   const handleParamsChange = useCallback(
     (updated: Partial<OrderListParams>) => {
@@ -553,6 +676,20 @@ export default function OrderBoardClient() {
     });
   }, [approveDialog, approveMutation]);
 
+  // Story 10.7b: refund handlers
+  const handleRefund = useCallback((order: OrderListItem) => {
+    setRefundDialog({ open: true, order });
+  }, []);
+
+  const handleRefundConfirm = useCallback(
+    (condition: RentalCondition) => {
+      if (!refundDialog.order) return;
+      // Dialog closes in onSuccess/onError (prevent double-submit)
+      refundMutation.mutate({ orderId: refundDialog.order.id, condition });
+    },
+    [refundDialog, refundMutation]
+  );
+
   // ---- render ----
   const orders = data?.data ?? [];
   const pagination = data?.meta.pagination;
@@ -612,6 +749,7 @@ export default function OrderBoardClient() {
               onRowClick={(order) => setSelectedOrderId(order.id)}
               onApprove={handleApprove}
               onAdvancePrep={handleAdvancePrep}
+              onRefund={handleRefund}
             />
             {pagination && (
               <Pagination
@@ -677,6 +815,16 @@ export default function OrderBoardClient() {
           onConfirm={handleDeliveryConfirm}
           onCancel={() => setDeliveryDialog({ open: false, order: null, nextStep: "" })}
           isLoading={prepMutation.isPending}
+        />
+      )}
+
+      {/* Story 10.7b: Security refund dialog */}
+      {refundDialog.open && refundDialog.order && (
+        <RefundDialog
+          order={refundDialog.order}
+          onConfirm={handleRefundConfirm}
+          onCancel={() => setRefundDialog({ open: false, order: null })}
+          isLoading={refundMutation.isPending}
         />
       )}
 

@@ -91,6 +91,13 @@ class CustomerOrderDetail(BaseModel):
     remaining_amount: Decimal | None = None
     # Cancellation tracking
     cancellation_reason: str | None = None
+    # Story 10.7b: rental return / security deposit info (read-only)
+    service_type: str | None = None
+    security_type: str | None = None
+    security_value: str | None = None
+    return_date: datetime | None = None
+    rental_condition: str | None = None
+    security_refund_amount: Decimal | None = None  # set once the deposit is refunded
 
     model_config = {"from_attributes": True}
 

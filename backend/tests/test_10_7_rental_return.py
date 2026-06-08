@@ -554,3 +554,101 @@ async def test_refund_security_cccd_returns_card_not_cash(
     assert len(notifs) == 1
     assert "giấy tờ" in notifs[0].message.lower()
     assert "vnd" not in notifs[0].message.lower()
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Test Suite: Story 10.7b backend exposure — customer order detail rental fields
+# ────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_customer_order_detail_exposes_security_and_refund(db_session: AsyncSession):
+    """Story 10.7b: get_order_detail surfaces security + rental_condition + refunded amount."""
+    from src.services.order_customer_service import DEFAULT_TENANT_ID, get_order_detail
+
+    # Tenant must match the customer-service hardcoded DEFAULT_TENANT_ID
+    tenant = TenantDB(id=DEFAULT_TENANT_ID, name="Default", slug="default")
+    db_session.add(tenant)
+    customer = UserDB(
+        email="c107b@test.com", hashed_password="x", role="Customer",
+        is_active=True, full_name="Khách 107b", tenant_id=DEFAULT_TENANT_ID,
+    )
+    db_session.add(customer)
+    await db_session.flush()
+
+    order = OrderDB(
+        tenant_id=DEFAULT_TENANT_ID,
+        customer_id=customer.id,
+        customer_name="Khách 107b",
+        customer_phone="0912345678",
+        shipping_address={"province": "HCM", "district": "Q1", "ward": "W1", "address_detail": "1 Le Loi"},
+        payment_method="cod",
+        status="returned",
+        payment_status="paid",
+        subtotal_amount=Decimal("500000"),
+        total_amount=Decimal("500000"),
+        service_type="rent",
+        security_type="cash_deposit",
+        security_value="500000",
+        return_date=datetime.now(timezone.utc),
+    )
+    db_session.add(order)
+    await db_session.commit()
+
+    # Before refund: no condition, no refund amount
+    detail_before = await get_order_detail(db_session, order.id, customer.id)
+    assert detail_before.service_type == "rent"
+    assert detail_before.security_type == "cash_deposit"
+    assert detail_before.security_value == "500000"
+    assert detail_before.rental_condition is None
+    assert detail_before.security_refund_amount is None
+
+    # Process refund (Good → full)
+    await order_service.refund_security(
+        db_session, order.id, DEFAULT_TENANT_ID, RefundSecurityRequest(condition=RentalCondition.good)
+    )
+
+    detail_after = await get_order_detail(db_session, order.id, customer.id)
+    assert detail_after.rental_condition == "Good"
+    assert detail_after.security_refund_amount == Decimal("500000")
+    # PII: CCCD value would be masked; this is a cash deposit so value is present
+    assert detail_after.security_value == "500000"
+
+
+@pytest.mark.asyncio
+async def test_board_list_item_exposes_rental_fields(
+    db_session: AsyncSession, rental_order_at_delivered: OrderDB, tenant: TenantDB
+):
+    """Story 10.7b: list_orders OrderListItem carries rental_condition + security fields."""
+    from src.models.order import OrderFilterParams
+
+    order = rental_order_at_delivered
+    order.status = "returned"
+    await db_session.commit()
+    await order_service.refund_security(
+        db_session, order.id, tenant.id, RefundSecurityRequest(condition=RentalCondition.good)
+    )
+
+    result = await order_service.list_orders(db_session, tenant.id, OrderFilterParams())
+    item = next(i for i in result.data if i.id == order.id)
+    assert item.security_type == "cash_deposit"
+    assert item.security_value == "500000"
+    assert item.rental_condition == "Good"
+
+
+@pytest.mark.asyncio
+async def test_board_list_item_masks_cccd_security_value(
+    db_session: AsyncSession, rental_order_at_delivered: OrderDB, tenant: TenantDB
+):
+    """Story 10.7b (PII): the raw CCCD number must NOT be shipped in the board list payload."""
+    from src.models.order import OrderFilterParams
+
+    order = rental_order_at_delivered
+    order.security_type = "cccd"
+    order.security_value = "079123456789"  # an ID card number
+    await db_session.commit()
+
+    result = await order_service.list_orders(db_session, tenant.id, OrderFilterParams())
+    item = next(i for i in result.data if i.id == order.id)
+    assert item.security_type == "cccd"
+    assert item.security_value is None  # masked

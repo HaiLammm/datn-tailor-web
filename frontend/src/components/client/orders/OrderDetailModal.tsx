@@ -7,7 +7,8 @@
 
 import { useState } from "react";
 import { downloadOrderInvoice, payRemaining } from "@/app/actions/order-actions";
-import type { CustomerOrderDetail, TailorInfoForCustomer } from "@/types/order";
+import type { CustomerOrderDetail, RentalCondition, TailorInfoForCustomer } from "@/types/order";
+import { RENTAL_CONDITION_LABELS } from "@/types/order";
 import { OrderStatusBadge, OrderTypeBadge } from "./OrderStatusBadge";
 import { formatCurrency, formatDate, formatDateOnly } from "@/utils/order-formatters";
 import Avatar from "@/components/ui/Avatar";
@@ -312,6 +313,61 @@ export default function OrderDetailModal({
                   )}
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Story 10.7b: Rental security deposit info */}
+          {order.service_type === "rent" && order.security_type && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-2">
+              <h3 className="font-semibold text-gray-800 text-sm">Tiền cọc thuê</h3>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>Hình thức cọc:</span>
+                  <span className="font-medium text-gray-800">
+                    {order.security_type === "cccd" ? "Giấy tờ tùy thân (CCCD)" : "Tiền mặt"}
+                  </span>
+                </div>
+                {order.security_type !== "cccd" &&
+                  order.security_value != null &&
+                  Number.isFinite(Number(order.security_value)) && (
+                  <div className="flex justify-between text-gray-600">
+                    <span>Giá trị cọc:</span>
+                    <span className="font-medium text-gray-800">
+                      {formatCurrency(Number(order.security_value))}
+                    </span>
+                  </div>
+                )}
+                {order.return_date && (
+                  <div className="flex justify-between text-gray-600">
+                    <span>Ngày hẹn trả:</span>
+                    <span className="font-medium text-gray-800">{formatDateOnly(order.return_date)}</span>
+                  </div>
+                )}
+                {order.rental_condition && (
+                  <div className="flex justify-between text-gray-600">
+                    <span>Tình trạng khi trả:</span>
+                    <span className="font-medium text-gray-800">
+                      {RENTAL_CONDITION_LABELS[order.rental_condition as RentalCondition] ?? order.rental_condition}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between text-gray-600">
+                  <span>Trạng thái hoàn cọc:</span>
+                  {!order.rental_condition ? (
+                    <span className="font-medium text-amber-600">Chưa hoàn</span>
+                  ) : order.security_type === "cccd" ? (
+                    <span className="font-medium text-green-600">Đã trả lại giấy tờ</span>
+                  ) : order.rental_condition === "Lost" ? (
+                    <span className="font-medium text-red-600">Không hoàn (đồ thất lạc)</span>
+                  ) : order.security_refund_amount != null ? (
+                    <span className="font-medium text-green-600">
+                      Đã hoàn {formatCurrency(order.security_refund_amount)}
+                    </span>
+                  ) : (
+                    <span className="font-medium text-green-600">Đã hoàn</span>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

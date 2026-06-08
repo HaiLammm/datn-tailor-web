@@ -34,6 +34,28 @@ export interface ShippingAddress {
 export type ServiceType = "buy" | "rent" | "bespoke";
 export type SecurityType = "cccd" | "cash_deposit";
 
+// Story 10.7b: rental return condition (backend enum values are capitalized)
+export type RentalCondition = "Good" | "Damaged" | "Lost";
+
+export const RENTAL_CONDITION_LABELS: Record<RentalCondition, string> = {
+  Good: "Tốt",
+  Damaged: "Hỏng",
+  Lost: "Thất lạc",
+};
+
+export interface RefundSecurityRequest {
+  condition: RentalCondition;
+}
+
+export interface RefundSecurityResponse {
+  order_id: string;
+  refund_amount: number;
+  security_type: string; // "cccd" | "cash_deposit"
+  original_amount: string | null;
+  condition: RentalCondition;
+  already_processed: boolean;
+}
+
 export interface RentalCheckoutFields {
   pickup_date: string;
   return_date: string;
@@ -165,6 +187,10 @@ export interface OrderListItem {
   remaining_amount?: number | null;
   // Cancellation tracking
   cancellation_reason?: string | null;
+  // Story 10.7b: rental return / security info for Order Board
+  rental_condition?: RentalCondition | null;
+  security_type?: string | null;
+  security_value?: string | null;
   // Tailor task info for bespoke orders
   tailor_task_info?: {
     tailor_name: string;
@@ -344,6 +370,13 @@ export interface CustomerOrderDetail extends CustomerOrderSummary {
   deposit_amount?: number | null;
   remaining_amount?: number | null;
   cancellation_reason?: string | null;
+  // Story 10.7b: rental return / security deposit info
+  service_type?: string | null;
+  security_type?: string | null;
+  security_value?: string | null;
+  return_date?: string | null;
+  rental_condition?: RentalCondition | null;
+  security_refund_amount?: number | null;
 }
 
 export interface CustomerOrderListMeta {

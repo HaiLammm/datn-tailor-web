@@ -115,7 +115,7 @@ development_status:
   9-5-cat-export-ban-thiet-ke-so: done
   epic-9-retrospective: optional
 
-  epic-10: in-progress  # Sprint Change Proposal 2026-03-26: Unified Order Workflow (5-Phase)
+  epic-10: done  # 2026-06-08: all stories done incl. 10-7 (backend) + 10-7b (frontend, split). Unified Order Workflow complete.
   10-1-db-migration-service-type-model: done
   10-2-measurement-gate-cho-dat-may: done
   10-3-checkout-phan-loai-dich-vu: done
@@ -123,6 +123,7 @@ development_status:
   10-5-sub-steps-chuan-bi-thue-va-mua: done
   10-6-remaining-payment-va-handover: done
   10-7-rental-return-va-security-refund: done  # 2026-06-08 BACKEND done: code-review R1 (6 findings fixed) → R2 (re-review approved, 3 minor hardening patches incl. mig041); 15/15 tests green. Frontend AC#5/#6 descoped → new story 10.7b.
+  10-7b-rental-return-refund-frontend: done  # 2026-06-08 dev→review→fix→approved: Order Board rental controls + condition modal + refund + customer rental view + additive backend exposure. Review: 7 hardening patches (PII mask, Lost copy, NaN guards...). 18 BE + 35 FE tests green, tsc clean.
   epic-10-retrospective: optional
 
   epic-11: in-progress  # SCP 2026-04-03 built it; SCP 2026-06-08 reopened for artisan-formula correction (see sprint-change-proposal-2026-06-08.md)

@@ -151,6 +151,55 @@ describe("OrderDetailModal", () => {
     expect(screen.getByText("Đã trả")).toBeInTheDocument();
   });
 
+  it("shows the rental security deposit section with refund status (Story 10.7b)", () => {
+    const refundedRental: CustomerOrderDetail = {
+      ...MOCK_RENTAL_ORDER,
+      status: "completed",
+      service_type: "rent",
+      security_type: "cash_deposit",
+      security_value: "500000",
+      return_date: "2026-03-20T00:00:00Z",
+      rental_condition: "Good",
+      security_refund_amount: 500000,
+    };
+    render(<OrderDetailModal order={refundedRental} isOpen={true} onClose={() => {}} />);
+
+    expect(screen.getByText("Tiền cọc thuê")).toBeInTheDocument();
+    expect(screen.getByText("Tiền mặt")).toBeInTheDocument();
+    // condition + refunded status
+    expect(screen.getByText("Tốt")).toBeInTheDocument();
+    expect(screen.getByText(/Đã hoàn/)).toBeInTheDocument();
+  });
+
+  it("shows a forfeited message for a Lost rental (not 'Đã hoàn 0đ') (Story 10.7b)", () => {
+    const lostRental: CustomerOrderDetail = {
+      ...MOCK_RENTAL_ORDER,
+      status: "completed",
+      service_type: "rent",
+      security_type: "cash_deposit",
+      security_value: "500000",
+      rental_condition: "Lost",
+      security_refund_amount: 0,
+    };
+    render(<OrderDetailModal order={lostRental} isOpen={true} onClose={() => {}} />);
+    expect(screen.getByText(/Không hoàn/)).toBeInTheDocument();
+    expect(screen.queryByText(/Đã hoàn/)).not.toBeInTheDocument();
+  });
+
+  it("shows 'Chưa hoàn' before a rental deposit is refunded (Story 10.7b)", () => {
+    const pendingRental: CustomerOrderDetail = {
+      ...MOCK_RENTAL_ORDER,
+      status: "returned",
+      service_type: "rent",
+      security_type: "cash_deposit",
+      security_value: "500000",
+      rental_condition: null,
+    };
+    render(<OrderDetailModal order={pendingRental} isOpen={true} onClose={() => {}} />);
+    expect(screen.getByText("Tiền cọc thuê")).toBeInTheDocument();
+    expect(screen.getByText("Chưa hoàn")).toBeInTheDocument();
+  });
+
   it("calls onClose when close button is clicked", () => {
     const mockClose = jest.fn();
     render(

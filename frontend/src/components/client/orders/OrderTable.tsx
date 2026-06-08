@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { OrderListItem, OrderStatus, ServiceType, UpdatePreparationStepRequest } from "@/types/order";
-import { RENT_PREP_STEPS, BUY_PREP_STEPS } from "@/types/order";
+import type { OrderListItem, OrderStatus, RentalCondition, ServiceType, UpdatePreparationStepRequest } from "@/types/order";
+import { RENT_PREP_STEPS, BUY_PREP_STEPS, RENTAL_CONDITION_LABELS } from "@/types/order";
 import { OrderStatusBadge, PaymentStatusBadge, ServiceTypeBadge } from "./StatusBadge";
 import { formatMoney, formatDate } from "@/utils/format";
 
@@ -14,7 +14,40 @@ const NEXT_STATUS_LABELS: Partial<Record<OrderStatus, string>> = {
   ready_to_ship: "Giao hàng",
   ready_for_pickup: "Bàn giao tại tiệm",
   delivered: "Hoàn tất",
+  // Story 10.7b: rental lifecycle
+  renting: "Xác nhận đã trả",
+  returned: "Hoàn tất",
 };
+
+// Story 10.7b: the 'delivered' next-status label depends on service_type
+// (rent → "Khách đang thuê" / renting; everything else → "Hoàn tất" / completed).
+function nextStatusLabel(order: OrderListItem): string | undefined {
+  if (order.status === "delivered" && order.service_type === "rent") {
+    return "Khách đang thuê";
+  }
+  return NEXT_STATUS_LABELS[order.status];
+}
+
+// Story 10.7b: returned-rental condition badge (Tốt / Hỏng / Thất lạc)
+const RENTAL_CONDITION_STYLES: Record<RentalCondition, string> = {
+  Good: "bg-green-100 text-green-800",
+  Damaged: "bg-amber-100 text-amber-800",
+  Lost: "bg-red-100 text-red-800",
+};
+
+function RentalConditionBadge({ condition }: { condition: RentalCondition }) {
+  // Fallback gracefully for any legacy / out-of-enum stored value
+  const style = RENTAL_CONDITION_STYLES[condition] ?? "bg-gray-100 text-gray-700";
+  const label = RENTAL_CONDITION_LABELS[condition] ?? condition;
+  return (
+    <span
+      className={`inline-block text-[10px] px-1.5 py-0.5 rounded font-medium ${style}`}
+      title="Tình trạng đồ khi trả"
+    >
+      {label}
+    </span>
+  );
+}
 
 interface OrderTableProps {
   orders: OrderListItem[];
@@ -25,6 +58,7 @@ interface OrderTableProps {
   onRowClick: (order: OrderListItem) => void;
   onApprove?: (order: OrderListItem) => void;  // Story 10.4: approve action
   onAdvancePrep?: (order: OrderListItem) => void;  // Story 10.5: advance preparation step
+  onRefund?: (order: OrderListItem) => void;  // Story 10.7b: open refund-security modal
 }
 
 // Story 10.5: Preparation step progress indicator
@@ -125,6 +159,7 @@ export default function OrderTable({
   onRowClick,
   onApprove,
   onAdvancePrep,
+  onRefund,
 }: OrderTableProps) {
   const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -212,6 +247,11 @@ export default function OrderTable({
               const nextStatus = order.next_valid_status as OrderStatus | null;
               const canCancel = !["delivered", "cancelled", "completed"].includes(order.status);
               const isLoading = loadingId === order.id;
+              // Story 10.7b: a returned rental must be refunded before it can complete
+              const needsRefund =
+                order.status === "returned" &&
+                order.service_type === "rent" &&
+                !order.rental_condition;
               return (
                 <tr
                   key={order.id}
@@ -286,6 +326,12 @@ export default function OrderTable({
                         Chờ thanh toán
                       </span>
                     )}
+                    {/* Story 10.7b: returned-rental condition badge */}
+                    {order.rental_condition && (
+                      <div className="mt-1">
+                        <RentalConditionBadge condition={order.rental_condition} />
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <PaymentStatusBadge status={order.payment_status} />
@@ -340,16 +386,31 @@ export default function OrderTable({
                           Bàn giao cho thợ
                         </button>
                       )}
-                      {/* Generic next-status button for non-pending orders (skip bespoke in_progress) */}
+                      {/* Story 10.7b: returned rental → refund deposit before completing */}
+                      {needsRefund && onRefund && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRefund(order);
+                          }}
+                          disabled={isLoading}
+                          title="Hoàn trả cọc cho khách"
+                          className="px-2.5 py-1 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                        >
+                          Hoàn cọc
+                        </button>
+                      )}
+                      {/* Generic next-status button for non-pending orders (skip bespoke in_progress + refund-pending rentals) */}
                       {order.status !== "pending" && order.status !== "preparing" && nextStatus &&
+                        !needsRefund &&
                         !(order.status === "in_progress" && order.service_type === "bespoke") && (
                         <button
                           onClick={(e) => handleNextStatus(e, order)}
                           disabled={isLoading}
-                          title={NEXT_STATUS_LABELS[order.status]}
+                          title={nextStatusLabel(order)}
                           className="px-2.5 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                         >
-                          {isLoading ? "..." : NEXT_STATUS_LABELS[order.status]}
+                          {isLoading ? "..." : nextStatusLabel(order)}
                         </button>
                       )}
                       {canCancel ? (

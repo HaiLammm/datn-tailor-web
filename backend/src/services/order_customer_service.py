@@ -13,7 +13,7 @@ from sqlalchemy import func, or_, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, TailorTaskDB, UserDB
+from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, OrderPaymentDB, TailorTaskDB, UserDB
 from src.models.order import OrderStatus
 from src.models.order_customer import (
     CustomerOrderDeliveryInfo,
@@ -357,6 +357,23 @@ async def get_order_detail(
     timeline = _build_timeline(order.status, order.created_at, order.updated_at, order.service_type)
     delivery_info = _build_delivery_info(order)
 
+    # Story 10.7b: surface the refunded security amount (cash-only) if it has been processed.
+    # .first() (not scalar_one_or_none) defends against any legacy/duplicate refund rows.
+    security_refund_amount = None
+    if order.service_type == "rent" and order.rental_condition:
+        refund_row = await db.execute(
+            select(OrderPaymentDB.amount).where(
+                OrderPaymentDB.order_id == order.id,
+                OrderPaymentDB.payment_type == "security_deposit",
+                OrderPaymentDB.status == "refunded",
+            )
+        )
+        security_refund_amount = refund_row.scalars().first()
+
+    # PII minimization: don't echo the raw CCCD number (security_value holds the ID number
+    # for cccd deposits). The customer view shows "Giấy tờ tùy thân (CCCD)" without the number.
+    _security_value = order.security_value if order.security_type != "cccd" else None
+
     # Query tailor tasks for this order (privacy-safe fields only)
     task_query = (
         select(TailorTaskDB, UserDB)
@@ -396,4 +413,10 @@ async def get_order_detail(
         deposit_amount=order.deposit_amount,
         remaining_amount=order.remaining_amount,
         cancellation_reason=order.cancellation_reason,
+        service_type=order.service_type,
+        security_type=order.security_type,
+        security_value=_security_value,
+        return_date=order.return_date,
+        rental_condition=order.rental_condition,
+        security_refund_amount=security_refund_amount,
     )
