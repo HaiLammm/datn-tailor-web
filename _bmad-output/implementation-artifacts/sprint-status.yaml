@@ -32,7 +32,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-last_updated: 2026-05-30  # Epic 15 done — all 5 stories complete (Customer Brand Presence, UX Rev 4)
+last_updated: 2026-06-08  # Story 10.7 code-review R1 backend fixes (rental return); frontend descoped to 10.7b
 generated: 2026-03-19
 project: tailor_project
 project_key: NOKEY
@@ -122,7 +122,7 @@ development_status:
   10-4-owner-approve-va-auto-routing: done
   10-5-sub-steps-chuan-bi-thue-va-mua: done
   10-6-remaining-payment-va-handover: done
-  10-7-rental-return-va-security-refund: review
+  10-7-rental-return-va-security-refund: done  # 2026-06-08 BACKEND done: code-review R1 (6 findings fixed) → R2 (re-review approved, 3 minor hardening patches incl. mig041); 15/15 tests green. Frontend AC#5/#6 descoped → new story 10.7b.
   epic-10-retrospective: optional
 
   epic-11: in-progress  # SCP 2026-04-03 built it; SCP 2026-06-08 reopened for artisan-formula correction (see sprint-change-proposal-2026-06-08.md)

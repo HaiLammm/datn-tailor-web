@@ -18,6 +18,7 @@ from uuid import uuid4, UUID
 from unittest.mock import AsyncMock, MagicMock
 from sqlalchemy.orm import sessionmaker
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -28,7 +29,6 @@ from src.models.db_models import (
     OrderDB,
     OrderItemDB,
     OrderPaymentDB,
-    PaymentTransactionDB,
     GarmentDB,
     NotificationDB,
 )
@@ -138,7 +138,7 @@ async def rental_order_at_delivered(
         customer_id=customer.id,
         customer_name="Test Customer",
         customer_phone="0912345678",
-        shipping_address={"province": "HCM", "district": "Q1", "ward": "W1", "detail": "123 St"},
+        shipping_address={"province": "HCM", "district": "Q1", "ward": "W1", "address_detail": "123 Nguyen Trai"},
         payment_method="vnpay",
         status="delivered",
         payment_status="paid",
@@ -223,7 +223,11 @@ async def test_renting_to_returned_sets_timestamps(
 async def test_delivered_to_renting_only_for_rent_service_type(
     db_session: AsyncSession, rental_order_at_delivered: OrderDB, tenant: TenantDB
 ):
-    """Test: delivered→renting blocked for non-rent service types."""
+    """Test: delivered→renting blocked for non-rent service types.
+
+    For a buy order the forward target of 'delivered' is 'completed', so requesting
+    'renting' is rejected by the structural transition check (single source of truth).
+    """
     from src.models.order import OrderStatusUpdate, OrderStatus
 
     # Change order to buy service type
@@ -237,7 +241,9 @@ async def test_delivered_to_renting_only_for_rent_service_type(
         await order_service.update_order_status(db_session, order.id, tenant.id, update)
 
     assert exc_info.value.status_code == 422
-    assert "ERR_ONLY_RENT_CAN_RENT" in str(exc_info.value.detail)
+    assert "ERR_INVALID_TRANSITION" in str(exc_info.value.detail)
+    # buy orders advance to 'completed', never 'renting'
+    assert "completed" in str(exc_info.value.detail)
 
 
 @pytest.mark.asyncio
@@ -283,14 +289,18 @@ async def test_refund_security_condition_good_full_refund(
     assert result.order_id == order.id
     assert result.refund_amount == Decimal("500000")  # Full security_value
     assert result.condition == RentalCondition.good
+    assert result.already_processed is False  # first call is not a replay
 
-    # Verify PaymentTransactionDB created
-    tx_result = await db_session.execute(
-        db_session.query(PaymentTransactionDB).filter_by(order_id=order.id)
+    # Verify the refund audit row was written to OrderPaymentDB (cash-only scope)
+    pay_result = await db_session.execute(
+        select(OrderPaymentDB).where(OrderPaymentDB.order_id == order.id)
     )
-    transactions = tx_result.scalars().all()
-    assert len(transactions) > 0
-    assert transactions[0].method == "refund"
+    payments = pay_result.scalars().all()
+    assert len(payments) == 1
+    assert payments[0].payment_type == "security_deposit"
+    assert payments[0].status == "refunded"
+    assert payments[0].method == "cash"
+    assert payments[0].amount == Decimal("500000")
 
 
 @pytest.mark.asyncio
@@ -446,13 +456,101 @@ async def test_refund_security_idempotency_safe_duplicate_call(
 
     request = RefundSecurityRequest(condition=RentalCondition.good)
 
-    # First call
+    # First call — processes the refund
     result1 = await order_service.refund_security(db_session, order.id, tenant.id, request)
     assert result1.refund_amount == Decimal("500000")
+    assert result1.already_processed is False
 
-    # Second call (same condition)
+    # Second call (same condition) — idempotent replay, flagged
     result2 = await order_service.refund_security(db_session, order.id, tenant.id, request)
     assert result2.refund_amount == Decimal("500000")
-
-    # Both calls should succeed (idempotent)
+    assert result2.already_processed is True
     assert result1.refund_amount == result2.refund_amount
+
+    # Exactly one audit row exists despite two calls
+    pay_result = await db_session.execute(
+        select(OrderPaymentDB).where(
+            OrderPaymentDB.order_id == order.id,
+            OrderPaymentDB.payment_type == "security_deposit",
+            OrderPaymentDB.status == "refunded",
+        )
+    )
+    assert len(pay_result.scalars().all()) == 1
+
+
+@pytest.mark.asyncio
+async def test_refund_security_replay_keeps_original_condition(
+    db_session: AsyncSession, rental_order_at_delivered: OrderDB, tenant: TenantDB
+):
+    """P2: a replay with a DIFFERENT condition must return the originally-stored
+    condition + amount, not silently relabel the refund."""
+    order = rental_order_at_delivered
+    order.status = "returned"
+    await db_session.commit()
+
+    # First call: Good → full refund
+    first = await order_service.refund_security(
+        db_session, order.id, tenant.id, RefundSecurityRequest(condition=RentalCondition.good)
+    )
+    assert first.refund_amount == Decimal("500000")
+    assert first.condition == RentalCondition.good
+
+    # Replay with Lost — must still reflect the stored Good outcome
+    replay = await order_service.refund_security(
+        db_session, order.id, tenant.id, RefundSecurityRequest(condition=RentalCondition.lost)
+    )
+    assert replay.already_processed is True
+    assert replay.refund_amount == Decimal("500000")  # stored amount, not 0
+    assert replay.condition == RentalCondition.good     # stored condition, not Lost
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Test Suite: Edge cases (P5 CCCD, P6 negative deposit)
+# ────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_refund_security_negative_value_rejected(
+    db_session: AsyncSession, rental_order_at_delivered: OrderDB, tenant: TenantDB
+):
+    """P6: a negative security_value must be rejected with 422, never refunded."""
+    order = rental_order_at_delivered
+    order.status = "returned"
+    order.security_value = "-500000"
+    await db_session.commit()
+
+    request = RefundSecurityRequest(condition=RentalCondition.good)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await order_service.refund_security(db_session, order.id, tenant.id, request)
+
+    assert exc_info.value.status_code == 422
+    assert "ERR_INVALID_SECURITY_VALUE" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_refund_security_cccd_returns_card_not_cash(
+    db_session: AsyncSession, rental_order_at_delivered: OrderDB, customer: UserDB, tenant: TenantDB
+):
+    """P5: CCCD security → refund_amount 0 and the notification says the ID card was
+    returned, NOT '0 VND'."""
+    order = rental_order_at_delivered
+    order.status = "returned"
+    order.security_type = "cccd"
+    order.security_value = "CCCD-079..."  # an ID card number, not money
+    await db_session.commit()
+
+    request = RefundSecurityRequest(condition=RentalCondition.good)
+    result = await order_service.refund_security(db_session, order.id, tenant.id, request)
+
+    assert result.refund_amount == Decimal("0")
+    assert result.security_type == "cccd"
+
+    # Notification should mention returning the ID card, not a VND amount
+    notif_result = await db_session.execute(
+        select(NotificationDB).where(NotificationDB.user_id == customer.id)
+    )
+    notifs = notif_result.scalars().all()
+    assert len(notifs) == 1
+    assert "giấy tờ" in notifs[0].message.lower()
+    assert "vnd" not in notifs[0].message.lower()

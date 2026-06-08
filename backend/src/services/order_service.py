@@ -11,7 +11,7 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, OrderPaymentDB, PaymentTransactionDB, TailorTaskDB, UserDB
+from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, OrderPaymentDB, TailorTaskDB, UserDB
 from src.services.notification_creator import (
     ORDER_APPROVED_BESPOKE_MESSAGE,
     ORDER_APPROVED_WAREHOUSE_MESSAGE,
@@ -532,6 +532,23 @@ _VALID_TRANSITIONS: dict[str, str | None] = {
 }
 
 
+def _structural_next_status(order: OrderDB) -> str | None:
+    """Single source of truth for the forward transition target (Story 10.7).
+
+    Most statuses map 1:1 via ``_VALID_TRANSITIONS``, but ``delivered`` branches on
+    ``service_type``: rental orders go to ``renting`` (post-delivery rental window),
+    everything else goes straight to ``completed``. Both the mutation validator
+    (``update_order_status``) and the display hint (``_next_status`` in ``list_orders``)
+    MUST use this so they never disagree — the prior bug was a static dict that always
+    said ``delivered → completed``, which rejected every ``delivered → renting``.
+
+    Readiness gates (payment settled, tailor tasks done) are applied separately by callers.
+    """
+    if order.status == "delivered":
+        return "renting" if order.service_type == "rent" else "completed"
+    return _VALID_TRANSITIONS.get(order.status)
+
+
 _TASK_NON_BLOCKING = ["cancelled", "cancellation_requested", "unassigned", "rejected", "reassigning"]
 
 
@@ -722,17 +739,9 @@ async def list_orders(
             return None if _is_remaining_unpaid(o) else "shipped"
         if o.status == "ready_for_pickup":
             return None if _is_remaining_unpaid(o) else "delivered"
-        if o.status == "shipped":
-            return "delivered"
-        if o.status == "delivered":
-            # Story 10.7: Rental orders transition to renting, others to completed
-            return "renting" if o.service_type == "rent" else "completed"
-        # Story 10.7: Rental lifecycle transitions
-        if o.status == "renting":
-            return "returned"
-        if o.status == "returned":
-            return "completed"
-        return _VALID_TRANSITIONS.get(o.status)
+        # shipped / delivered / renting / returned → structural matrix (Story 10.7).
+        # delivered branches on service_type inside _structural_next_status.
+        return _structural_next_status(o)
 
     items = [
         OrderListItem(
@@ -812,8 +821,8 @@ async def update_order_status(
                 },
             )
     else:
-        # Forward-only transition validation
-        expected_next = _VALID_TRANSITIONS.get(current_status)
+        # Forward-only transition validation (Story 10.7: rental-aware via service_type)
+        expected_next = _structural_next_status(order)
         if expected_next is None:
             raise HTTPException(
                 status_code=422,
@@ -1741,8 +1750,10 @@ async def refund_security(
       - Good: 100% of security_value
       - Damaged: 100% of security_value (MVP: no damage fee config)
       - Lost: 0% (security forfeited)
-    - Creates PaymentTransactionDB (provider='system', method='refund')
-    - Sends ORDER_RENTAL_REFUND_MESSAGE notification to customer
+      - CCCD security: refund_amount = 0 (Owner physically returns the ID card)
+    - Records the refund as an OrderPaymentDB row (payment_type='security_deposit',
+      status='refunded', method='cash') — cash-only scope, no payment gateway.
+    - Sends a refund/return notification to the customer AFTER the refund is committed.
 
     Args:
         db: Database session
@@ -1815,12 +1826,24 @@ async def refund_security(
     )
     existing_record = existing_refund.scalar_one_or_none()
     if existing_record is not None:
+        # Idempotent replay: return the ALREADY-STORED outcome, not the new caller's
+        # condition (a second call with a different condition must not silently relabel
+        # the original refund). already_processed=True lets the caller detect the dup.
+        # Parse defensively: a legacy/hand-edited rental_condition outside the enum must
+        # not turn the safe replay path into a 500.
+        stored_condition = request.condition
+        if order.rental_condition:
+            try:
+                stored_condition = RentalCondition(order.rental_condition)
+            except ValueError:
+                stored_condition = request.condition
         return RefundSecurityResponse(
             order_id=order.id,
             refund_amount=existing_record.amount,
             security_type=order.security_type or "",
             original_amount=order.security_value,
-            condition=request.condition,
+            condition=stored_condition,
+            already_processed=True,
         )
 
     # P3 fix: Only parse as Decimal for cash_deposit; CCCD refund = 0 (return the ID card)
@@ -1830,10 +1853,24 @@ async def refund_security(
         security_amount = Decimal("0")
         refund_amount = Decimal("0")
     else:
-        # cash_deposit: parse security_value as Decimal
+        # cash_deposit: parse security_value as Decimal.
+        # decimal.InvalidOperation (e.g. "500,000" / "abc") is an ArithmeticError subclass,
+        # so it is caught here and surfaced as 422 rather than a 500.
         try:
             security_amount = Decimal(order.security_value)
         except (ValueError, ArithmeticError):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": {
+                        "code": "ERR_INVALID_SECURITY_VALUE",
+                        "message": f"Giá trị cọc không hợp lệ: '{order.security_value}'",
+                    }
+                },
+            )
+
+        # P6 fix: a negative deposit is invalid — never emit a negative refund
+        if security_amount < 0:
             raise HTTPException(
                 status_code=422,
                 detail={
@@ -1858,28 +1895,44 @@ async def refund_security(
     # Set rental_condition on order
     order.rental_condition = condition.value
 
-    # P4 fix: Create OrderPaymentDB record (business-level tracking, matches spec AC3)
+    # Record the refund as a business-level OrderPaymentDB row. Cash-only scope:
+    # method is the instrument ('cash'); the refund nature is encoded by
+    # payment_type='security_deposit' + status='refunded' (no payment gateway involved).
     refund_record = OrderPaymentDB(
         tenant_id=tenant_id,
         order_id=order.id,
         payment_type="security_deposit",
         amount=refund_amount,
-        method="refund",
+        method="cash",
         status="refunded",
     )
     db.add(refund_record)
 
-    # Capture before commit (avoid DetachedInstanceError)
+    # P8 fix: capture every value the response/notification needs BEFORE commit —
+    # expire_on_commit would otherwise invalidate order.* and force an async lazy-load.
     _customer_id = order.customer_id
+    _security_type = order.security_type or ""
+    _original_amount = order.security_value
     _order_code = _build_order_code(order.id, order.created_at)
+    _order_id = order.id
 
-    await db.flush()
+    # P4 fix: commit the refund FIRST, then notify. The refund must be durable before the
+    # customer is told; create_notification runs its own commit, so a notification failure
+    # can no longer partially-commit or roll back the refund.
+    await db.commit()
 
-    # Create notification (before commit for atomicity)
     if _customer_id is not None:
         try:
-            title = "Cọc thuê đã được hoàn trả"
-            message = f"Cọc của đơn hàng {_order_code} đã được hoàn trả: {refund_amount:,.0f} VND"
+            if _security_type == "cccd":
+                title = "Đã trả lại giấy tờ đặt cọc"
+                message = (
+                    f"Giấy tờ tùy thân đặt cọc cho đơn hàng {_order_code} đã được trả lại."
+                )
+            else:
+                title = "Cọc thuê đã được hoàn trả"
+                message = (
+                    f"Cọc của đơn hàng {_order_code} đã được hoàn trả: {refund_amount:,.0f} VND"
+                )
             await create_notification(
                 db=db,
                 user_id=_customer_id,
@@ -1887,18 +1940,16 @@ async def refund_security(
                 notification_type="order_status",
                 title=title,
                 message=message,
-                data={"order_id": str(order.id)},
+                data={"order_id": str(_order_id)},
             )
         except Exception:
             logger.warning("Failed to create refund notification for order %s", order_id)
 
-    await db.commit()
-
     return RefundSecurityResponse(
-        order_id=order.id,
+        order_id=_order_id,
         refund_amount=refund_amount,
-        security_type=order.security_type or "",
-        original_amount=order.security_value,
+        security_type=_security_type,
+        original_amount=_original_amount,
         condition=condition,
     )
 

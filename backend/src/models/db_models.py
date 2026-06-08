@@ -495,7 +495,6 @@ class PaymentTransactionDB(Base):
     """ORM model for the `payment_transactions` table (Story 4.1).
 
     Stores payment gateway webhook callback records for audit and idempotency.
-    Story 10.7: Extended with method field to distinguish payments from refunds.
     """
 
     __tablename__ = "payment_transactions"
@@ -514,8 +513,6 @@ class PaymentTransactionDB(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
-    # Story 10.7: Payment method — 'payment' (customer→system) or 'refund' (system→customer)
-    method: Mapped[str] = mapped_column(String(20), nullable=False, default="payment")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

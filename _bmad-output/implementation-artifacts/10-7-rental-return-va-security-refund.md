@@ -1,6 +1,9 @@
 # Story 10.7: Rental Return & Security Refund (Trả thuê & Hoàn trả cọc)
 
-Status: review
+Status: done
+
+> ✅ **Backend done (2026-06-08)** after code-review R1 (fix) → R2 (re-review approved).
+> **Scope:** backend only — frontend Order Board / customer view (AC#5/#6) continues in **Story 10.7b**.
 
 ## Story
 
@@ -83,28 +86,16 @@ So that tôi kiểm soát được tình trạng đồ thuê và đảm bảo qu
   - [x] 5.3 Updated ORM models in db_models.py with new columns
 
 - [x] Task 6: Backend — Write comprehensive tests (AC: #1–#6)
-  - [ ] 6.1 Unit tests for status transitions:
-    - delivered→renting for rent order (success)
-    - delivered→renting for buy/bespoke order (422 error)
-    - renting→returned with condition=Good (success)
-    - renting→returned with condition=Damaged (success)
-    - renting→returned with condition=Lost (success)
-    - returned→completed (success)
-  - [ ] 6.2 Unit tests for `refund_security()`:
-    - Condition=Good: full refund
-    - Condition=Damaged: full refund (MVP, no damage fee config yet)
-    - Condition=Lost: zero refund
-    - Invalid status: 422 error
-    - Wrong service_type: 422 error
-    - Null security_value: 422 error
-  - [ ] 6.3 Integration tests for full rental lifecycle:
-    - Order flow: confirmed → preparing → ready_to_ship → shipped → delivered → renting → returned → refund → completed
-    - Verify all timestamps set correctly
-    - Verify all notifications sent
-    - Verify PaymentTransactionDB records created
-  - [ ] 6.4 Idempotency tests: calling refund-security twice should be safe
+  - [x] 6.1 Unit tests for status transitions (delivered→renting, renting→returned, returned→completed; buy order rejected)
+  - [x] 6.2 Unit tests for `refund_security()` (Good/Damaged/Lost; invalid status/service_type/null security; negative value rejected)
+  - [x] 6.3 Integration test for full rental lifecycle (delivered→renting→returned→refund→completed; timestamps + audit row)
+  - [x] 6.4 Idempotency tests: duplicate refund-security is safe (single audit row, `already_processed=True`, stored condition preserved)
 
-- [ ] Task 7: Frontend — Rental status transitions in Order Board (AC: #1, #2, #6)
+> 🔀 **DESCOPED 2026-06-08:** Frontend Tasks 7–11 (AC#5/#6) are moved to a new story
+> **10.7b** (cash-only Order Board rental/refund UI — no payment gateway). Story 10.7 is now
+> backend-only. See Change Log + Senior Developer Review below.
+
+- [ ] Task 7: Frontend — Rental status transitions in Order Board (AC: #1, #2, #6) — _moved to 10.7b_
   - [ ] 7.1 Add TypeScript types: `RefundSecurityRequest`, `RefundSecurityResponse`, `RentalCondition` enum
   - [ ] 7.2 Update `OrderStatus` enum to include: `renting`, `returned`, `completed`
   - [ ] 7.3 Update `ORDER_STATUS_STYLES` in StatusBadge.tsx: add colors for renting (blue), returned (amber), completed (green)
@@ -142,6 +133,28 @@ So that tôi kiểm soát được tình trạng đồ thuê và đảm bảo qu
   - [ ] 11.1 Display notifications for all rental status transitions
   - [ ] 11.2 On refund success: show toast "Cọc đã hoàn trả: {amount} VND"
   - [ ] 11.3 Toast auto-dismiss after 3 seconds with default behavior
+
+### Review Follow-ups (AI) — Round 1 (2026-06-08)
+
+All backend findings from the code review have been resolved (tests green):
+
+- [x] **[AI-Review][High] P1** — `update_order_status` validated transitions via a static
+  `_VALID_TRANSITIONS` dict (`delivered → completed`), so `delivered → renting` was always
+  rejected (5 tests red). Added module-level `_structural_next_status(order)` as the single
+  source of truth (rent-aware `delivered` branch); both the validator and the `_next_status`
+  display hint now use it.
+- [x] **[AI-Review][High] P2** — Idempotent refund replay now returns `already_processed=True`
+  and the originally-stored condition/amount (a second call with a different condition no longer
+  relabels the refund).
+- [x] **[AI-Review][Med] P3** — Refund audit row kept in `OrderPaymentDB` (cash-only scope);
+  removed the dead `payment_transactions.method` column (migration 029 deleted + ORM field
+  removed), fixed the lying docstring, and set `method="cash"` (instrument) instead of `"refund"`.
+- [x] **[AI-Review][Med] P4/P8** — `refund_security` now commits the refund once, BEFORE
+  notifying (spec atomicity rule), and builds the response from values captured before commit
+  (no post-commit expired-attribute access).
+- [x] **[AI-Review][Low] P5** — CCCD refund sends a "returned the ID card" notification instead
+  of a misleading "0 VND" message.
+- [x] **[AI-Review][Low] P6** — Negative `security_value` is rejected with 422.
 
 ## Dev Notes
 
@@ -505,3 +518,64 @@ ALTER TABLE payment_transactions ADD CONSTRAINT check_payment_type
 - Run code review with a different LLM for fresh perspective
 - Validate all acceptance criteria are satisfied
 - Test full rental lifecycle through UI
+
+## Senior Developer Review (AI)
+
+**Date:** 2026-06-08 · **Outcome (Round 1):** Changes Requested → **Resolved (backend)**
+
+Adversarial 3-layer review (Blind Hunter / Edge Case Hunter / Acceptance Auditor) + empirical
+verification (ran the suite: 5/12 tests were red). Key structural finding: the story was marked
+`review` but only backend existed — AC#5/#6 (frontend) had zero code, and 5 backend tests failed.
+
+**Scope decision (with Owner):** split — 10.7 stays backend-only and is fixed here; frontend
+moves to **10.7b** (cash-only, no gateway). Audit table stays `OrderPaymentDB` (fits cash-only
+scope per the payment-scope decision); the gateway-oriented `payment_transactions.method` path
+was removed as dead.
+
+**Action Items (all backend findings resolved — see Review Follow-ups Round 1):**
+- [x] P1 (High) — rental-aware transition validator (`_structural_next_status`)
+- [x] P2 (High) — idempotency `already_processed` + stored condition
+- [x] P3 (Med) — keep `OrderPaymentDB`, delete migration 029 + ORM field, `method="cash"`, fix docstring
+- [x] P4/P8 (Med) — commit-before-notify + capture attrs before commit
+- [x] P5 (Low) — CCCD returns-the-card notification
+- [x] P6 (Low) — reject negative security_value
+
+**Rejected as noise (verified false):** "OrderPaymentDB.method missing → crash" (column exists),
+"Decimal InvalidOperation → 500" (caught → 422), "security_value='0' = no deposit" (truthy string),
+"double-refund race" (mitigated by `with_for_update` on OrderDB), "non-rent reaches returned" (impossible).
+
+**Deferred:** unique-constraint backstop on the refund row (defense-in-depth); `create_notification`'s
+internal commit is a system-wide pattern (separate refactor).
+
+### Files Modified (Round 1 fix)
+
+- `backend/src/services/order_service.py` — `_structural_next_status()` (new SSoT); validator + `_next_status` use it; `refund_security()` reworked (idempotency, commit-then-notify, captured attrs, CCCD msg, negative guard, `method="cash"`)
+- `backend/src/models/db_models.py` — removed dead `PaymentTransactionDB.method` field + docstring
+- `backend/migrations/029_add_payment_method_to_transactions.sql` — **deleted** (dead migration)
+- `backend/migrations/041_drop_dead_payment_transactions_method.sql` — **new** (R2: idempotent drop of the orphan `method` column on already-migrated DBs)
+- `backend/tests/test_10_7_rental_return.py` — fixed broken assertion (query `OrderPaymentDB`, `method="cash"`); fixed `shipping_address` fixture key; added tests for replay-condition, negative value, CCCD; 15 tests green
+
+### Review Follow-ups (AI) — Round 2 (2026-06-08)
+
+Re-review confirmed all 6 R1 findings resolved + backend AC#1–#4 satisfied + no regressions
+(Acceptance Auditor ran the suite). Three minor hardening items applied:
+
+- [x] **[AI-Review][Low] R2-A** — Deleting migration 029 alone leaves an orphan `method` column
+  on already-migrated DBs. Added `041_drop_dead_payment_transactions_method.sql`
+  (`DROP ... IF EXISTS`) so schema converges whether or not 029 was applied.
+- [x] **[AI-Review][Low] R2-B** — Hardened the idempotent-replay condition parse: a
+  legacy/hand-edited `rental_condition` outside the enum no longer turns the safe replay into
+  a 500 (wrapped `RentalCondition(...)` in try/except → falls back to the request condition).
+- [x] **[AI-Review][Trivial] R2-C** — Removed dead `PaymentTransactionDB` import in order_service.py.
+
+R2 rejected as noise (verified false, Blind Hunter lacked project access): payment-gate "bypass"
+(handover guard still enforces unpaid at order_service.py:877-892); `already_processed` "no default"
+(order.py:443 `= False`); `method="cash"` "violates CHECK" (order_payments.method has no CHECK; cash
+is a documented value).
+
+### Change Log
+
+| Date | Round | Change |
+|------|-------|--------|
+| 2026-06-08 | R1 | Addressed code review findings — 6 backend items resolved (2 High, 2 Med, 2 Low). Frontend (AC#5/#6) descoped to Story 10.7b. Backend tests: 15/15 green. |
+| 2026-06-08 | R2 | Re-review: 6 R1 findings confirmed resolved, no regressions. 3 minor hardening patches (drop-dead-column migration 041, replay parse guard, dead import). Backend tests: 15/15 green. **Backend approved.** |
