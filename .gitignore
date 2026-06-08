@@ -31,3 +31,7 @@ frontend/out/
 # OS
 .DS_Store
 Thumbs.db
+
+# Runtime uploads (keep only the seed/demo image, ignore user-uploaded files)
+backend/uploads/garments/*
+!backend/uploads/garments/aodai.jpg
