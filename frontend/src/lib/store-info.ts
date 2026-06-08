@@ -7,7 +7,7 @@
 
 export const STORE = {
   name: "Nhà May Thanh Lộc",
-  address: "123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh",
+  address: "187B/1 Mai Hắc Đế, Phường Tân Thành, TP. Buôn Ma Thuột, tỉnh Đắk Lắk",
   phone: "0901 234 567",
   zalo: "0901 234 567",
   email: "lienhe@nhamaythanhloc.vn",
