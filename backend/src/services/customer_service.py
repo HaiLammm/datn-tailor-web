@@ -176,6 +176,66 @@ async def create_customer_with_account(
     return user
 
 
+async def create_account_for_customer(
+    db: AsyncSession,
+    customer_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+) -> CustomerProfileDB | None:
+    """Tạo tài khoản đăng nhập cho một hồ sơ khách hàng đã tồn tại.
+
+    Dùng cho luồng chỉnh sửa khách hàng (Owner/Tailor bấm "Tạo tài khoản").
+    - Nếu đã tồn tại user trùng email thì liên kết; ngược lại tạo user inactive
+      và gửi email mời (tái dùng create_customer_with_account).
+
+    Args:
+        db: Database session
+        customer_id: ID hồ sơ khách hàng
+        tenant_id: Tenant ID để cô lập dữ liệu
+
+    Returns:
+        CustomerProfileDB đã được liên kết tài khoản, hoặc None nếu không tìm thấy.
+
+    Raises:
+        ValueError: Nếu khách chưa có email hoặc đã có tài khoản.
+    """
+    result = await db.execute(
+        select(CustomerProfileDB).where(
+            and_(
+                CustomerProfileDB.id == customer_id,
+                CustomerProfileDB.tenant_id == tenant_id,
+                CustomerProfileDB.is_deleted == False,  # noqa: E712
+            )
+        )
+    )
+    customer = result.scalar_one_or_none()
+    if not customer:
+        return None
+
+    if customer.user_id:
+        raise ValueError("Khách hàng đã có tài khoản đăng nhập")
+
+    if not customer.email:
+        raise ValueError("Khách hàng cần có email để tạo tài khoản")
+
+    # Liên kết nếu user trùng email đã tồn tại, ngược lại tạo mới + gửi email mời
+    user_id = await link_customer_to_user_by_email(db, customer.email)
+    if not user_id:
+        await create_customer_with_account(
+            db=db,
+            email=customer.email,
+            full_name=customer.full_name,
+            phone=customer.phone,
+        )
+        user_id = await link_customer_to_user_by_email(db, customer.email)
+
+    customer.user_id = user_id
+    customer.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(customer)
+
+    return customer
+
+
 async def get_customer_list(
     db: AsyncSession,
     tenant_id: uuid.UUID,

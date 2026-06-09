@@ -275,6 +275,58 @@ async def update_customer(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
+@router.post("/{customer_id}/create-account", response_model=CustomerProfileResponse)
+async def create_customer_account(
+    customer_id: uuid.UUID,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> CustomerProfileResponse:
+    """Tạo tài khoản đăng nhập cho khách hàng đã tồn tại và gửi email mời.
+
+    AC: 10
+    - Requires Owner or Tailor role
+    - Khách phải có email và chưa có tài khoản
+
+    Raises:
+        HTTPException 404: Nếu không tìm thấy khách hàng
+        HTTPException 409: Nếu khách đã có tài khoản hoặc chưa có email
+    """
+    try:
+        customer = await customer_service.create_account_for_customer(
+            db, customer_id, tenant_id
+        )
+        if not customer:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy khách hàng"
+            )
+
+        measurements = await measurement_service.get_measurements_history(
+            db, customer_id, tenant_id
+        )
+
+        return CustomerProfileResponse(
+            id=customer.id,
+            tenant_id=customer.tenant_id,
+            user_id=customer.user_id,
+            full_name=customer.full_name,
+            phone=customer.phone,
+            email=customer.email,
+            date_of_birth=customer.date_of_birth,
+            gender=customer.gender,
+            address=customer.address,
+            notes=customer.notes,
+            is_deleted=customer.is_deleted,
+            created_at=customer.created_at,
+            updated_at=customer.updated_at,
+            has_account=customer.user_id is not None,
+            measurement_count=len(measurements),
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+
 @router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_customer(
     customer_id: uuid.UUID,
