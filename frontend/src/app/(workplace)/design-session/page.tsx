@@ -9,6 +9,7 @@
 
 import { Suspense } from "react";
 
+import { auth } from "@/auth";
 import type { StylePillarListResponse } from "@/types/style";
 import type { MasterGeometry } from "@/types/geometry";
 import { fetchBaselineGeometry } from "@/app/actions/geometry-actions";
@@ -16,13 +17,25 @@ import { fetchBaselineGeometry } from "@/app/actions/geometry-actions";
 import { DesignSessionClient } from "./DesignSessionClient";
 
 /**
- * Fetch style pillars from Backend API
+ * Fetch style pillars from Backend API.
+ * Endpoint yêu cầu vai trò Owner/Tailor nên phải đính kèm JWT của phiên đăng nhập
+ * (giống các Server Action trong geometry-actions.ts).
  */
 async function fetchStylePillars(): Promise<StylePillarListResponse> {
   const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
 
   try {
+    const session = await auth();
+    const token = session?.accessToken;
+    if (!token) {
+      console.error("fetchStylePillars: no auth token");
+      return { pillars: [], total: 0 };
+    }
+
     const response = await fetch(`${backendUrl}/api/v1/styles/pillars`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
       cache: "no-store", // Always fetch fresh data
     });
 
