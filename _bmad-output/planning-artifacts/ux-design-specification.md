@@ -688,6 +688,7 @@ graph TD
 - **Purpose:** Visual pipeline cho order flow trên Owner Dashboard
 - **States:** Pending → Confirmed → Production → Quality Check → Shipped → Delivered
 - **Variants:** Compact (dashboard table row), Expanded (order detail page)
+- **Bespoke (SCP 2026-06-10):** Vòng Fitting ⇄ Alteration hiển thị dạng các vòng lặp lại (Vòng thử 1, Vòng thử 2…) kèm outcome + ghi chú mỗi vòng, thay vì một bước tuyến tính. Đơn bespoke đã completed trong thời hạn bảo hành hiển thị thời gian bảo hành còn lại.
 
 **7. LeadCard (CRM)**
 - **Purpose:** Hiển thị lead trong CRM module
@@ -711,6 +712,13 @@ graph TD
 - **States:** Disabled (chưa generate rập), Ready (rập đã generate), Exporting (loading)
 - **Content:** [Xuất SVG] [Xuất G-code] + dropdown speed/power cho laser. Nút "Xuất tất cả" (batch zip)
 - **Unique:** G-code button mở popover chọn speed/power trước khi download. Owner và Tailor đều thấy component này
+
+**11. Fitting & After-care Touchpoints (UX-DR32, SCP 2026-06-10)**
+- **Purpose:** Điểm chạm thử đồ và hậu mãi cho luồng Bespoke (Story 12.6/12.7)
+- **Customer order detail:** dải tiến trình thử đồ với copy thuần Việt ("Chờ bạn tới thử", "Đang chỉnh sửa theo góp ý của bạn", "Thử đạt — đang hoàn thiện"); CTA "Đặt lịch thử đồ" tái dùng BookingCalendar
+- **Owner/Tailor task detail:** bộ ghi vòng thử — toggle kết quả (Đạt / Cần chỉnh sửa) + ô ghi chú chỉnh sửa, touch target ≥44px, mật độ Command Mode
+- **Customer completed-order view:** nút "Yêu cầu chỉnh sửa" + form mô tả chỗ chưa vừa, chỉ hiện trong thời hạn bảo hành; ngoài thời hạn hiện CTA liên hệ tiệm
+- **Unique:** 100% copy hướng khách là tiếng Việt thuần — không dùng "Fitting", "Alteration", "QC" trong Boutique Mode
 
 ### Component Implementation Strategy
 

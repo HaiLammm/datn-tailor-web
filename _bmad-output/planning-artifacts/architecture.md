@@ -161,15 +161,17 @@ pending → confirmed → preparing (Cleaning → Altering → Ready) → ready_
 
 **Bespoke (Đặt may):**
 ```
-pending_measurement → pending → confirmed → in_production (Cutting → Sewing → Fitting → Finishing) → ready_to_ship | ready_for_pickup → shipped → delivered → completed
+pending_measurement → pending → confirmed → in_production (Cutting → Sewing → Fitting ⇄ Alteration → Finishing) → ready_to_ship | ready_for_pickup → shipped → delivered → completed (alteration warranty window — FR101)
 ```
 
 - `pending_measurement`: Chỉ áp dụng cho Bespoke — đơn chờ khách xác nhận hoặc cập nhật số đo.
 - `confirmed`: Owner phê duyệt đơn hàng. Auto-routing: Bespoke → tạo TailorTask, Rent/Buy → chuyển kho (preparing).
 - `preparing`: Sub-steps phân biệt theo service_type (Rent: Cleaning/Altering/Ready, Buy: QC/Packaging).
+- `Fitting ⇄ Alteration` (SCP 2026-06-10): vòng lặp có thể lặp 1–n lần; mỗi vòng thử ghi nhận outcome (`passed` / `needs_alteration`) + ghi chú chỉnh sửa như business event (nguyên tắc SCP 2026-05-01). Khi tới Fitting, hệ thống mời khách đặt lịch thử qua module Booking (Epic 4).
 - `ready_to_ship` / `ready_for_pickup`: Sản phẩm sẵn sàng giao/nhận.
 - `renting`: Chỉ Rent — khách đang giữ đồ, hệ thống theo dõi thời gian.
 - `returned`: Chỉ Rent — khách trả đồ, Owner kiểm tra tình trạng.
+- `completed` (Bespoke, SCP 2026-06-10): trong thời hạn bảo hành cấu hình được (`alteration_warranty_days`, default 30), khách có thể yêu cầu chỉnh sửa → tạo alteration task nhẹ, KHÔNG quay lại pipeline sản xuất đầy đủ (FR101).
 
 #### Payment Model (Multi-Transaction)
 
@@ -192,6 +194,25 @@ Mở rộng từ mô hình thanh toán 1 lần sang hỗ trợ nhiều giao dị
 - Buy: 1 transaction (`full`)
 - Rent: 2-3 transactions (`deposit` + optional `security_deposit` + `remaining`)
 - Bespoke: 2 transactions (`deposit` + `remaining`)
+
+#### Fitting & Alteration (SCP 2026-06-10 — FR100, FR101)
+
+**Bảng mới `fitting_rounds`:**
+- `id` (UUID), `tenant_id`, `order_id` (FK → orders), `task_id` (FK → tailor_tasks)
+- `round_number` (INT), `appointment_id` (nullable FK → appointments)
+- `outcome`: `passed` | `needs_alteration`, `notes` (TEXT)
+- `fitted_at`, `created_at` (TIMESTAMPTZ)
+
+**Fields/cấu hình mở rộng:**
+- `tailor_tasks.task_type`: `production` | `alteration` (default `production` — backward compatible). Alteration task dùng state machine 11 trạng thái sẵn có của Epic 12 với stage list rút gọn (alteration → finishing).
+- Cấu hình tenant: `alteration_warranty_days` (default 30).
+- `GARMENT_STAGES` (Epic 12): chèn stage `fitting` sau `assembly` cho mọi loại áo — ví dụ ao_dai: cutting, body_sewing, sleeve_sewing, assembly, **fitting**, embroidery, finishing. Stage `fitting` chỉ complete khi tồn tại fitting_round với outcome = `passed`.
+
+**API endpoints mới (additive):**
+- `POST /api/v1/orders/{id}/fitting-rounds` — Owner/Tailor ghi kết quả vòng thử
+- `GET /api/v1/orders/{id}/fitting-rounds` — lịch sử vòng thử (Owner + Customer)
+- `POST /api/v1/orders/{id}/request-alteration` — Customer, trong thời hạn bảo hành
+- Notification triggers: "Mời bạn tới thử đồ" (fitting ready), "Đang chỉnh sửa theo góp ý của bạn" (needs_alteration), "Yêu cầu chỉnh sửa đã được tiếp nhận" (alteration request)
 
 ### Technical Pattern Engine (Epic 11)
 

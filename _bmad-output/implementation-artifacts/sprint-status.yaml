@@ -144,6 +144,8 @@ development_status:
   12-3-matching-stages-notifications: done  # Code Review 2026-05-25: 11/11 items fixed (2H/6M/3L) + 2 intent gaps resolved
   12-4-frontend-types-production-board: done  # Code Review 2026-05-25: 9/9 items fixed (1I/3H/5M) — I1 backend qc-result accepts failed_qc
   12-5-tailor-mobile-order-integration: review
+  12-6-fitting-rounds-alteration-loop: backlog  # SCP 2026-06-10: domain research gap #1 — fitting ⇄ alteration loop (FR87 amended, FR100)
+  12-7-post-delivery-alteration-warranty: backlog  # SCP 2026-06-10: domain research gap #2 — hậu mãi chỉnh sửa sau giao (FR101)
   epic-12-retrospective: optional
 
   epic-15: done  # UX Rev 4: Customer Brand Presence — all 5 stories done (2026-05-30); retrospective optional

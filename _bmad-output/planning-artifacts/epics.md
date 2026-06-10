@@ -138,10 +138,12 @@ FR83: System supports 3 payment modes by service type: Buy (100% upfront payment
 FR84: Rental orders require recording either a government-issued ID (CCCD) or a cash security deposit, plus scheduled pickup and return dates at checkout.
 FR85: Owner must approve pending orders before they enter production or preparation. Order transitions from pending to confirmed upon Owner approval.
 FR86: Upon Owner confirmation, the system automatically creates a TailorTask with attached measurement data for bespoke orders, or routes to warehouse preparation queue for rent/buy orders.
-FR87: Preparation sub-steps are differentiated by service type: Rent (Cleaning > Altering > Ready), Buy (QC > Packaging). Bespoke follows existing production sub-steps (Cutting > Sewing > Fitting > Finishing).
+FR87: Preparation sub-steps are differentiated by service type: Rent (Cleaning > Altering > Ready), Buy (QC > Packaging). Bespoke follows production sub-steps (Cutting > Sewing > Fitting <> Alteration > Finishing), where Fitting <> Alteration is a repeatable loop (industry norm: 1–2 rounds) rather than a single linear step. [Amended SCP 2026-06-10]
 FR88: System marks orders as ready_to_ship or ready_for_pickup when all preparation sub-steps are complete, and notifies the customer.
 FR89: For deposit-based orders, customers pay the remaining balance (order total minus deposit) before product handover.
 FR90: For rental orders, the system returns the security deposit (cash) or CCCD to the customer after the returned product passes Owner's condition inspection (Good/Damaged/Lost).
+FR100: When a bespoke garment reaches the Fitting sub-step, the system notifies the customer to schedule a fitting appointment (reusing the Appointment Booking module). Owner/Tailor records the outcome of each fitting round (passed / needs alteration, with adjustment notes). A "needs alteration" outcome returns the task to Alteration and allows a subsequent fitting round. Every round is recorded as a timestamped business event. [Added SCP 2026-06-10]
+FR101: Within a shop-configurable warranty window (default: 30 days) after a bespoke order is delivered, the customer can request a free fit alteration. An approved request creates a lightweight alteration task (no full production pipeline re-entry) and is tracked through completion and re-handover. [Added SCP 2026-06-10]
 
 **Section 17: Technical Pattern Generation & Production Export**
 FR91: Owner creates a pattern session by selecting a customer profile; system auto-fills all required body measurements (currently 15: the base 10 plus hạ ben ngực, dang ngực, hạ mông, xuôi vai, rộng vai) from the customer's measurement record. Measurements not required by the selected sleeve type may be left empty. [Amended SCP 2026-06-08]
@@ -265,7 +267,7 @@ UX-DR7: Build StatusBadge custom component — color-coded status chips for Orde
 
 UX-DR8: Build TaskRow custom component — tailor task list item with task name, customer name, garment type, deadline, status badge, income preview. Quick status toggle via badge tap, swipe left for actions.
 
-UX-DR9: Build OrderTimeline custom component — visual pipeline for order status flow. Variants: Compact (dashboard table row), Expanded (order detail page).
+UX-DR9: Build OrderTimeline custom component — visual pipeline for order status flow. Variants: Compact (dashboard table row), Expanded (order detail page). Bespoke orders render the Fitting ⇄ Alteration loop as repeated rounds (Vòng thử 1, Vòng thử 2…) with outcome + notes per round, instead of a single linear step. Completed bespoke orders within the alteration warranty window show the remaining warranty period. [Amended SCP 2026-06-10]
 
 UX-DR10: Build LeadCard custom component — CRM lead display with name, phone, source, classification (Hot/Warm/Cold), last contact, notes. Actions: Convert to Customer, Add Note, Schedule Follow-up.
 
@@ -290,6 +292,8 @@ UX-DR19: Implement error handling UX — natural language error messages (no tec
 UX-DR20: Implement Adaptive Density spacing system — 8px base grid. Customer Mode: spacious (16-24px gaps). Dashboard Mode: dense (8-12px gaps). Border radius: 8px default, 12px cards, 24px buttons, full avatars. 3-level shadow system (sm/md/lg).
 
 UX-DR21: Implement i18n hook — useTranslate wrapper for all UI strings, supporting Vietnamese and English. JSON locale files with lazy-loading.
+
+UX-DR32: Implement Fitting & After-care touchpoints (SCP 2026-06-10) — (1) Customer order detail: fitting progress strip with plain-Vietnamese states ("Chờ bạn tới thử", "Đang chỉnh sửa theo góp ý của bạn", "Thử đạt — đang hoàn thiện"); CTA "Đặt lịch thử đồ" reusing BookingCalendar (UX-DR5). (2) Owner/Tailor task detail: fitting-round recorder — outcome toggle (Đạt / Cần chỉnh sửa) + adjustment notes field, ≥44px touch targets, Command Mode density. (3) Customer completed-order view: "Yêu cầu chỉnh sửa" button + simple form (mô tả chỗ chưa vừa), visible only within warranty window; outside window shows contact CTA instead. (4) All customer-facing copy is plain Vietnamese — no technical/English terms in Boutique Mode.
 
 **UX Rev 4 — Customer Brand Presence (Phase 5):**
 
@@ -411,6 +415,8 @@ FR96: Epic 11 — Real-time SVG preview in split-pane
 FR97: Epic 11 — Pattern-order attachment for tailor task
 FR98: Epic 11 — Tailor pattern view with zoom/pan
 FR99: Epic 11 — Measurement validation (min/max ranges)
+FR100: Epic 12 (Bespoke Production Task Workflow, Story 12.6) — Fitting round management [Added SCP 2026-06-10]
+FR101: Epic 12 (Bespoke Production Task Workflow, Story 12.7) — Post-delivery alteration warranty [Added SCP 2026-06-10]
 
 ### UX-DR Coverage Map (Epic 15 — Customer Brand Presence)
 
