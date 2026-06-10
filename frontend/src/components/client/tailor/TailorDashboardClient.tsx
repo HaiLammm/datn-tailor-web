@@ -64,6 +64,9 @@ export default function TailorDashboardClient() {
     );
   }
 
+  const statusRank = (t: TailorTask): number =>
+    t.status === "failed_qc" ? 0 : t.status === "assigned" ? 1 : 2;
+
   const urgentTasks = data.tasks
     .filter(
       (t) =>
@@ -73,6 +76,16 @@ export default function TailorDashboardClient() {
             t.status === "failed_qc" ||
             (t.days_until_deadline !== null && t.days_until_deadline <= 2))
     )
+    .sort((a, b) => {
+      // Overdue first
+      if (a.is_overdue !== b.is_overdue) return a.is_overdue ? -1 : 1;
+      // Then nearest deadline (nulls last)
+      const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
+      const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
+      if (aDeadline !== bDeadline) return aDeadline - bDeadline;
+      // Then failed_qc / assigned before the rest
+      return statusRank(a) - statusRank(b);
+    })
     .slice(0, 5);
 
   return (

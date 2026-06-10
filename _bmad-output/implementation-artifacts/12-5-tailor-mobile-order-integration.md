@@ -1,6 +1,6 @@
 # Story 12.5: Tailor Mobile Order Integration — 11-State Workflow UI
 
-Status: review
+Status: done
 
 ## Story
 
@@ -224,6 +224,25 @@ Claude Opus 4.6 (1M context)
 ### Change Log
 
 - 2026-05-21: Story 12.5 implementation complete — all 6 tasks, 10 ACs satisfied
+- 2026-06-10: Code Review Round 3 (3-layer adversarial: Blind Hunter / Edge Case Hunter / Acceptance Auditor) — 14 patch findings fixed (2 Critical, 4 High, 4 Med, 4 Low), 2 deferred, 3 rejected as noise. Story APPROVED → done.
+
+### Code Review Round 3 (2026-06-10) — Summary
+
+**Critical/High fixed:**
+- C1: backend `get_task_detail` không trả `stage_logs`/`history` (luôn rỗng → checklist không hiển thị, submit-QC deadlock) → service nay query TaskStageLogDB + reuse get_task_history
+- C2: `setDetail(updated)` lưu mutation response sai kiểu → modal nay luôn `loadDetail()` sau mọi mutation
+- H1: thrown `Error("CONFLICT")` bị Next.js redact ở production → toàn bộ actions chuyển sang discriminated result `ActionResult<T>` (không throw qua server-action boundary)
+- H2: nút "Bắt đầu sửa lại" (failed_qc) luôn 400 → thay bằng info text (rework do Owner qc-result điều phối)
+- H3: pattern section gate trên field backend không gửi → backend thêm `order_info.pattern_session_id`, FE gate theo detail
+- H4: optimistic locking "trang trí" → backend nhận `version` từ client trên cả 7 mutation, stale → 409 thật
+
+**Med/Low fixed:** sub-form gating theo status; conflict branch invalidate list cha; cancellation actions qua helper chung (abort+version+error detail); urgent list sort overdue-first; skipped stage tính là hoàn thành (FE+BE); STATUS_OPTIONS đủ 12 trạng thái; retry khi load detail lỗi; STAGE_LABELS.cutting "Cắt vải"; touch target 44px cho links; OrderDetailDrawer check result trước khi refresh.
+
+**Deferred (ghi nhận, không thuộc story):** thẻ tổng vs thẻ ẩn cancelled/rejected trong TaskSummaryCards; không có đường báo lỗi ở trạng thái accepted/on_hold (backend cũng gate — quyết định sản phẩm).
+
+**Verification:** backend tailor suites 87/87 pass; frontend jest 1006/1006 pass (109 suites); tsc 0 lỗi trong file thuộc story (582 lỗi repo-wide tồn đọng ở test files cũ — ngoài phạm vi).
+
+**Lưu ý phạm vi:** review buộc sửa backend nhỏ (3 file) dù story ghi "frontend-only" — tiền đề spec ("backend đã đủ, stage_logs có trong detail response") sai từ Story 12.2.
 
 ### File List
 

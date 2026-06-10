@@ -19,6 +19,7 @@ from src.models.tailor_task import (
     ProductionStepUpdateRequest,
     QCResultRequest,
     ResolveCancellationInput,
+    StageCompleteRequest,
     StatusUpdateRequest,
     TaskAcceptRequest,
     TaskCreateRequest,
@@ -28,6 +29,7 @@ from src.models.tailor_task import (
     TaskRejectRequest,
     TaskResumeRequest,
     TaskStartRequest,
+    TaskSubmitForQCRequest,
     TaskUpdateRequest,
 )
 from src.services import tailor_task_service
@@ -410,12 +412,15 @@ async def delete_task_endpoint(
 )
 async def accept_task_endpoint(
     task_id: uuid.UUID,
-    body: TaskAcceptRequest,
     user: OwnerOrTailor,
     tenant_id: TenantId,
+    body: TaskAcceptRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    result = await tailor_task_service.accept_task(db, task_id, user.id, tenant_id, body)
+    body = body or TaskAcceptRequest()
+    result = await tailor_task_service.accept_task(
+        db, task_id, user.id, tenant_id, body, client_version=body.version
+    )
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 
@@ -431,7 +436,9 @@ async def reject_task_endpoint(
     tenant_id: TenantId,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    result = await tailor_task_service.reject_task(db, task_id, user.id, tenant_id, body)
+    result = await tailor_task_service.reject_task(
+        db, task_id, user.id, tenant_id, body, client_version=body.version
+    )
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 
@@ -442,12 +449,15 @@ async def reject_task_endpoint(
 )
 async def start_task_endpoint(
     task_id: uuid.UUID,
-    body: TaskStartRequest,
     user: OwnerOrTailor,
     tenant_id: TenantId,
+    body: TaskStartRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    result = await tailor_task_service.start_task(db, task_id, user.id, tenant_id, body)
+    body = body or TaskStartRequest()
+    result = await tailor_task_service.start_task(
+        db, task_id, user.id, tenant_id, body, client_version=body.version
+    )
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 
@@ -463,7 +473,9 @@ async def hold_task_endpoint(
     tenant_id: TenantId,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    result = await tailor_task_service.hold_task(db, task_id, user.id, tenant_id, body)
+    result = await tailor_task_service.hold_task(
+        db, task_id, user.id, tenant_id, body, client_version=body.version
+    )
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 
@@ -474,12 +486,15 @@ async def hold_task_endpoint(
 )
 async def resume_task_endpoint(
     task_id: uuid.UUID,
-    body: TaskResumeRequest,
     user: OwnerOrTailor,
     tenant_id: TenantId,
+    body: TaskResumeRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    result = await tailor_task_service.resume_task(db, task_id, user.id, tenant_id, body)
+    body = body or TaskResumeRequest()
+    result = await tailor_task_service.resume_task(
+        db, task_id, user.id, tenant_id, body, client_version=body.version
+    )
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 
@@ -492,9 +507,13 @@ async def submit_qc_endpoint(
     task_id: uuid.UUID,
     user: OwnerOrTailor,
     tenant_id: TenantId,
+    body: TaskSubmitForQCRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    result = await tailor_task_service.submit_for_qc(db, task_id, user.id, tenant_id)
+    client_version = body.version if body else None
+    result = await tailor_task_service.submit_for_qc(
+        db, task_id, user.id, tenant_id, client_version=client_version
+    )
     return {"data": result.model_dump(mode="json"), "meta": {}}
 
 
@@ -540,9 +559,18 @@ async def complete_stage_endpoint(
     stage_order: int,
     user: OwnerOrTailor,
     tenant_id: TenantId,
+    body: StageCompleteRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    result = await tailor_task_service.complete_stage(db, task_id, stage_order, user.id, tenant_id)
+    result = await tailor_task_service.complete_stage(
+        db,
+        task_id,
+        stage_order,
+        user.id,
+        tenant_id,
+        client_version=body.version if body else None,
+        notes=body.notes if body else None,
+    )
     return {"data": result, "meta": {}}
 
 

@@ -190,6 +190,15 @@ async def _get_task_for_transition(
     return task
 
 
+def _check_client_version(task: TailorTaskDB, client_version: int | None) -> None:
+    """Reject stale client requests (optimistic locking from client-known version)."""
+    if client_version is not None and client_version != task.version:
+        raise HTTPException(
+            status_code=409,
+            detail="Task was modified by another request. Please refresh and try again.",
+        )
+
+
 async def _get_owner_for_tenant(db: AsyncSession, tenant_id: uuid.UUID) -> uuid.UUID | None:
     result = await db.execute(
         select(UserDB.id).where(
@@ -234,8 +243,10 @@ async def accept_task(
     actor_id: uuid.UUID,
     tenant_id: uuid.UUID,
     request: TaskAcceptRequest,
+    client_version: int | None = None,
 ) -> TailorTaskResponse:
     task = await _get_task_for_transition(db, task_id, tenant_id)
+    _check_client_version(task, client_version)
 
     if task.status != "assigned":
         raise HTTPException(status_code=400, detail="Chỉ có thể nhận công việc khi trạng thái là 'assigned'")
@@ -292,8 +303,10 @@ async def reject_task(
     actor_id: uuid.UUID,
     tenant_id: uuid.UUID,
     request: TaskRejectRequest,
+    client_version: int | None = None,
 ) -> TailorTaskResponse:
     task = await _get_task_for_transition(db, task_id, tenant_id)
+    _check_client_version(task, client_version)
 
     if task.status != "assigned":
         raise HTTPException(status_code=400, detail="Chỉ có thể từ chối công việc khi trạng thái là 'assigned'")
@@ -339,8 +352,10 @@ async def start_task(
     actor_id: uuid.UUID,
     tenant_id: uuid.UUID,
     request: TaskStartRequest,
+    client_version: int | None = None,
 ) -> TailorTaskResponse:
     task = await _get_task_for_transition(db, task_id, tenant_id)
+    _check_client_version(task, client_version)
 
     if task.status != "accepted":
         raise HTTPException(status_code=400, detail="Chỉ có thể bắt đầu khi trạng thái là 'accepted'")
@@ -368,8 +383,10 @@ async def hold_task(
     actor_id: uuid.UUID,
     tenant_id: uuid.UUID,
     request: TaskHoldRequest,
+    client_version: int | None = None,
 ) -> TailorTaskResponse:
     task = await _get_task_for_transition(db, task_id, tenant_id)
+    _check_client_version(task, client_version)
 
     if task.status != "in_progress":
         raise HTTPException(status_code=400, detail="Chỉ có thể tạm dừng khi đang thực hiện")
@@ -407,8 +424,10 @@ async def resume_task(
     actor_id: uuid.UUID,
     tenant_id: uuid.UUID,
     request: TaskResumeRequest,
+    client_version: int | None = None,
 ) -> TailorTaskResponse:
     task = await _get_task_for_transition(db, task_id, tenant_id)
+    _check_client_version(task, client_version)
 
     if task.status != "on_hold":
         raise HTTPException(status_code=400, detail="Chỉ có thể tiếp tục khi đang tạm dừng")
@@ -448,15 +467,17 @@ async def submit_for_qc(
     task_id: uuid.UUID,
     actor_id: uuid.UUID,
     tenant_id: uuid.UUID,
+    client_version: int | None = None,
 ) -> TailorTaskResponse:
     task = await _get_task_for_transition(db, task_id, tenant_id)
+    _check_client_version(task, client_version)
 
     if task.status != "in_progress":
         raise HTTPException(status_code=400, detail="Chỉ có thể gửi kiểm tra khi đang thực hiện")
     if task.assigned_to != actor_id:
         raise HTTPException(status_code=403, detail="Chỉ thợ may được giao mới có thể thực hiện hành động này")
 
-    # Validate all stages completed
+    # Validate all stages completed (skipped stages do not block submission)
     stage_result = await db.execute(
         select(TaskStageLogDB).where(
             TaskStageLogDB.task_id == task_id,
@@ -467,7 +488,7 @@ async def submit_for_qc(
     if not stages:
         logger.warning("Task %s submitted for QC with no stage logs (legacy path?)", task_id)
     if stages:
-        incomplete = [s for s in stages if s.status != "completed"]
+        incomplete = [s for s in stages if s.status not in ("completed", "skipped")]
         if incomplete:
             raise HTTPException(
                 status_code=400,
@@ -712,8 +733,11 @@ async def complete_stage(
     stage_order: int,
     actor_id: uuid.UUID,
     tenant_id: uuid.UUID,
+    client_version: int | None = None,
+    notes: str | None = None,
 ) -> dict:
     task = await _get_task_for_transition(db, task_id, tenant_id)
+    _check_client_version(task, client_version)
 
     if task.status != "in_progress":
         raise HTTPException(status_code=400, detail="Chỉ có thể hoàn thành bước khi đang thực hiện")
@@ -741,6 +765,8 @@ async def complete_stage(
     current_in_progress.status = "completed"
     current_in_progress.completed_at = now
     current_in_progress.updated_at = now
+    if notes:
+        current_in_progress.notes = notes
 
     next_stage = next((s for s in stages if s.stage_order > stage_order and s.status == "pending"), None)
     if next_stage:
@@ -1217,11 +1243,42 @@ async def get_task_detail(
             customer_phone=task.order.customer_phone,
             shipping_address=task.order.shipping_address,
             shipping_note=task.order.shipping_note,
+            pattern_session_id=(
+                str(task.order.pattern_session_id)
+                if task.order.pattern_session_id is not None
+                else None
+            ),
         )
 
-    # Extend base response with order info
+    # Load production stage logs (ordered by stage_order)
+    stage_result = await db.execute(
+        select(TaskStageLogDB)
+        .where(TaskStageLogDB.task_id == task_id, TaskStageLogDB.tenant_id == tenant_id)
+        .order_by(TaskStageLogDB.stage_order)
+    )
+    stage_logs = [
+        TaskStageLogResponse(
+            id=str(s.id),
+            task_id=str(s.task_id),
+            stage=s.stage,
+            stage_order=s.stage_order,
+            status=s.status,
+            started_at=s.started_at.isoformat() if s.started_at else None,
+            completed_at=s.completed_at.isoformat() if s.completed_at else None,
+            notes=s.notes,
+            created_at=s.created_at.isoformat(),
+        )
+        for s in stage_result.scalars().all()
+    ]
+
+    # Load status transition history (audit trail)
+    history = await get_task_history(db, task_id, tenant_id)
+
+    # Extend base response with order info, stage logs, and history
     detail_response_data = base_response.model_dump(mode="json")
     detail_response_data["order_info"] = order_info.model_dump(mode="json") if order_info else None
+    detail_response_data["stage_logs"] = [s.model_dump(mode="json") for s in stage_logs]
+    detail_response_data["history"] = [h.model_dump(mode="json") for h in history]
     return TailorTaskDetailResponse(**detail_response_data)
 
 

@@ -53,7 +53,7 @@ export const STATUS_BADGE: Record<TaskStatus, { label: string; className: string
 export const TERMINAL_STATUSES: readonly TaskStatus[] = ["completed", "cancelled", "rejected", "reassigning", "unassigned"];
 
 export const STAGE_LABELS: Record<string, string> = {
-  cutting: "Cắt",
+  cutting: "Cắt vải",
   body_sewing: "May thân",
   sleeve_sewing: "May tay",
   assembly: "Ráp",
@@ -61,6 +61,17 @@ export const STAGE_LABELS: Record<string, string> = {
   beading: "Đính hạt",
   finishing: "Hoàn thiện",
 };
+
+// ── Server Action Result ────────────────────────────────────────────────────
+
+/**
+ * Discriminated result for mutation server actions (Story 12.5).
+ * Errors are returned (not thrown) so messages survive the
+ * server-action boundary in production.
+ */
+export type ActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; conflict?: boolean; error: string };
 
 // ── Core Interfaces ─────────────────────────────────────────────────────────
 
@@ -233,6 +244,7 @@ export interface OrderInfoForTask {
   customer_phone: string;
   shipping_address: Record<string, unknown> | null;
   shipping_note: string | null;
+  pattern_session_id?: string | null;
 }
 
 export interface TailorTaskDetailResponse extends TailorTask {

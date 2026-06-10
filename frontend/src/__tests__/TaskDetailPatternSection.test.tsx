@@ -2,15 +2,19 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { render, screen } from "@testing-library/react";
 
 jest.mock("@/app/actions/tailor-task-actions", () => ({
-  fetchTaskDetail: jest.fn(() => Promise.resolve(null)),
-  requestTaskCancellation: jest.fn(),
-  acceptTask: jest.fn(),
-  rejectTask: jest.fn(),
-  startTask: jest.fn(),
-  holdTask: jest.fn(),
-  resumeTask: jest.fn(),
-  submitForQC: jest.fn(),
-  completeStage: jest.fn(),
+  fetchTaskDetail: jest.fn(() =>
+    Promise.resolve({ success: false, error: "Không thể tải chi tiết công việc." })
+  ),
+  requestTaskCancellation: jest.fn(() =>
+    Promise.resolve({ success: false, error: "mock" })
+  ),
+  acceptTask: jest.fn(() => Promise.resolve({ success: false, error: "mock" })),
+  rejectTask: jest.fn(() => Promise.resolve({ success: false, error: "mock" })),
+  startTask: jest.fn(() => Promise.resolve({ success: false, error: "mock" })),
+  holdTask: jest.fn(() => Promise.resolve({ success: false, error: "mock" })),
+  resumeTask: jest.fn(() => Promise.resolve({ success: false, error: "mock" })),
+  submitForQC: jest.fn(() => Promise.resolve({ success: false, error: "mock" })),
+  completeStage: jest.fn(() => Promise.resolve({ success: false, error: "mock" })),
 }));
 
 jest.mock("@/hooks/usePatternSession", () => ({
@@ -21,14 +25,14 @@ jest.mock("@/hooks/usePatternSession", () => ({
 
 jest.mock("@/components/client/design/PatternPreview", () => ({
   __esModule: true,
-  default: ({ pieces }: { pieces: unknown[] }) => (
+  PatternPreview: ({ pieces }: { pieces: unknown[] }) => (
     <div data-testid="pattern-preview">PatternPreview ({pieces.length} pieces)</div>
   ),
 }));
 
 jest.mock("@/components/client/design/PatternExportBar", () => ({
   __esModule: true,
-  default: () => <div data-testid="pattern-export-bar">PatternExportBar</div>,
+  PatternExportBar: () => <div data-testid="pattern-export-bar">PatternExportBar</div>,
 }));
 
 import TaskDetailModal from "@/components/client/tailor/TaskDetailModal";
@@ -123,6 +127,7 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
         customer_id: "customer-1",
         created_by: "owner-1",
         garment_type: "ao_dai",
+        sleeve_type: "raglan" as const,
         status: "exported" as const,
         pieces: [
           {
@@ -146,6 +151,11 @@ describe("TaskDetailModal - Pattern integration (Story 11.6)", () => {
         do_dai_tay: 55,
         vong_bap_tay: 30,
         vong_co_tay: 15,
+        ha_ben_nguc: null,
+        dang_nguc: null,
+        ha_mong: null,
+        xuoi_vai: null,
+        rong_vai: null,
         notes: null,
       },
       isLoading: false,

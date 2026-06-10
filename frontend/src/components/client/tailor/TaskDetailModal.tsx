@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type {
+  ActionResult,
   TailorTask,
   TailorTaskDetailResponse,
   TaskStageLog,
@@ -114,7 +115,7 @@ function PatternSection({ patternSessionId }: { patternSessionId: string }) {
           href={`/design-session/${patternSessionId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-[#1A2B4C] hover:underline"
+          className="inline-flex items-center min-h-[44px] text-xs text-[#1A2B4C] hover:underline"
         >
           Xem rập ↗
         </a>
@@ -145,6 +146,7 @@ export default function TaskDetailModal({
 
   const [detail, setDetail] = useState<TailorTaskDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -187,14 +189,15 @@ export default function TaskDetailModal({
   const loadDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const d = await fetchTaskDetail(initialTask.id);
-      setDetail(d);
-    } catch {
-      setError("Không thể tải chi tiết công việc.");
-    } finally {
-      setLoading(false);
+    setLoadFailed(false);
+    const result = await fetchTaskDetail(initialTask.id);
+    if (result.success) {
+      setDetail(result.data);
+    } else {
+      setError(result.error || "Không thể tải chi tiết công việc.");
+      setLoadFailed(true);
     }
+    setLoading(false);
   }, [initialTask.id]);
 
   useEffect(() => {
@@ -219,20 +222,30 @@ export default function TaskDetailModal({
     };
   }, [onClose]);
 
-  async function handleAction(fn: () => Promise<TailorTaskDetailResponse>): Promise<boolean> {
+  function closeSubForms() {
+    setShowHoldForm(false);
+    setShowSubmitConfirm(false);
+    setShowRejectForm(false);
+  }
+
+  async function handleAction(fn: () => Promise<ActionResult<unknown>>): Promise<boolean> {
     setActionLoading(true);
     setError(null);
     try {
-      const updated = await fn();
-      setDetail(updated);
-      onTaskUpdated();
-      return true;
-    } catch (e) {
-      if (e instanceof Error && e.message === "CONFLICT") {
-        showToast("Dữ liệu đã thay đổi. Đang tải lại...");
+      const result = await fn();
+      if (result.success) {
+        // Mutation responses lack stage_logs/history — always reload detail.
         await loadDetail();
+        onTaskUpdated();
+        return true;
+      }
+      if (result.conflict) {
+        showToast("Dữ liệu đã thay đổi. Đang tải lại...");
+        closeSubForms();
+        await loadDetail();
+        onTaskUpdated();
       } else {
-        setError(e instanceof Error ? e.message : "Đã có lỗi xảy ra");
+        setError(result.error || "Đã có lỗi xảy ra");
       }
       return false;
     } finally {
@@ -274,22 +287,42 @@ export default function TaskDetailModal({
   async function handleSubmitReport() {
     if (!failureCategory || failureReason.trim().length < 10) return;
     setActionLoading(true);
+    setError(null);
     try {
-      await requestTaskCancellation(initialTask.id, failureCategory, failureReason.trim());
-      onTaskUpdated();
-      onClose();
-    } catch {
-      setError("Không thể gửi yêu cầu");
+      const result = await requestTaskCancellation(
+        initialTask.id,
+        failureCategory,
+        failureReason.trim(),
+        task.version,
+      );
+      if (result.success) {
+        onTaskUpdated();
+        onClose();
+        return;
+      }
+      if (result.conflict) {
+        showToast("Dữ liệu đã thay đổi. Đang tải lại...");
+        setShowReportForm(false);
+        await loadDetail();
+        onTaskUpdated();
+      } else {
+        setError(result.error || "Không thể gửi yêu cầu");
+      }
     } finally {
       setActionLoading(false);
     }
   }
 
-  const completedStages = stageLogs.filter((s) => s.status === "completed").length;
+  // Skipped stages count as done (backend treats them as complete).
+  const completedStages = stageLogs.filter(
+    (s) => s.status === "completed" || s.status === "skipped"
+  ).length;
   const totalStages = stageLogs.length;
   const allStagesComplete = detail !== null && !loading && (totalStages === 0 || completedStages === totalStages);
   const badge = STATUS_BADGE[task.status] ?? STATUS_BADGE.assigned;
   const busy = loading || actionLoading;
+  const patternSessionId =
+    detail?.order_info?.pattern_session_id ?? task.order?.pattern_session_id ?? null;
 
   return (
     <div
@@ -326,8 +359,18 @@ export default function TaskDetailModal({
         {/* Body */}
         <div className="p-4 space-y-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
-              {error}
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 flex items-center justify-between gap-2 flex-wrap">
+              <span>{error}</span>
+              {loadFailed && (
+                <button
+                  onClick={loadDetail}
+                  disabled={loading}
+                  className="shrink-0 px-3 py-1.5 text-sm font-medium text-red-700 border border-red-300 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors min-h-[44px]"
+                  data-testid="task-detail-retry-btn"
+                >
+                  Thử lại
+                </button>
+              )}
             </div>
           )}
 
@@ -412,7 +455,7 @@ export default function TaskDetailModal({
           {task.design_id && (
             <a
               href={`/tailor/review?design_sequence_id=${task.design_id}`}
-              className="flex items-center gap-2 text-sm text-[#1A2B4C] hover:text-indigo-700 font-medium transition-colors"
+              className="inline-flex items-center gap-2 min-h-[44px] text-sm text-[#1A2B4C] hover:text-indigo-700 font-medium transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -421,10 +464,8 @@ export default function TaskDetailModal({
             </a>
           )}
 
-          {/* Pattern Preview (Story 11.6) */}
-          {task.order?.pattern_session_id && (
-            <PatternSection patternSessionId={task.order.pattern_session_id} />
-          )}
+          {/* Pattern Preview (Story 11.6) — prefer order_info from detail, fallback to prop shape */}
+          {patternSessionId && <PatternSection patternSessionId={patternSessionId} />}
 
           {/* ── Stage Checklist ─────────────────────────────────────────────── */}
           {stageLogs.length > 0 && (
@@ -617,7 +658,7 @@ export default function TaskDetailModal({
           )}
 
           {/* Hold form */}
-          {showHoldForm && (
+          {showHoldForm && task.status === "in_progress" && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
               <p className="text-sm font-medium text-yellow-800">Lý do tạm dừng</p>
               <select
@@ -661,7 +702,7 @@ export default function TaskDetailModal({
           )}
 
           {/* Submit QC confirmation */}
-          {showSubmitConfirm && (
+          {showSubmitConfirm && task.status === "in_progress" && (
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-3">
               <p className="text-sm font-medium text-purple-800">Xác nhận gửi kiểm tra chất lượng?</p>
               <p className="text-xs text-purple-600">Sau khi gửi, chủ tiệm sẽ kiểm tra sản phẩm của bạn.</p>
@@ -695,16 +736,14 @@ export default function TaskDetailModal({
             </button>
           )}
 
-          {/* Rework (failed_qc) — show start button to begin rework */}
+          {/* Rework (failed_qc) — owner triggers rework via qc-result, tailor only waits */}
           {task.status === "failed_qc" && (
-            <button
-              onClick={handleStart}
-              disabled={busy}
-              className="w-full py-3 rounded-lg text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 transition-colors min-h-[44px]"
-              data-testid="task-rework-btn"
+            <p
+              className="text-sm text-amber-700 bg-amber-50 rounded-lg p-3 text-center"
+              data-testid="task-rework-info"
             >
-              {actionLoading ? "Đang xử lý..." : "Bắt đầu sửa lại"}
-            </button>
+              Chủ tiệm sẽ chuyển việc về cho bạn khi xác nhận làm lại. Xem các lỗi cần sửa ở trên.
+            </p>
           )}
 
           {/* Submitted for QC — info */}

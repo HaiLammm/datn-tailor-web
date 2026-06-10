@@ -190,15 +190,15 @@ export default function OrderDetailDrawer({
     if (!req) return;
     setResolving(true);
     try {
-      await resolveCancellation(
+      const result = await resolveCancellation(
         req.task_id,
         decision,
         decision === "reassign" ? reassignTailorId : undefined,
         decision === "approve" ? req.failure_reason || undefined : undefined,
       );
-      onRefresh?.();
-    } catch {
-      // best-effort
+      if (result.success || result.conflict) {
+        onRefresh?.();
+      }
     } finally {
       setResolving(false);
       setShowReassign(false);

@@ -38,6 +38,9 @@ class TaskAcceptRequest(BaseModel):
     expected_finish_at: datetime | None = Field(
         default=None, description="Tailor's estimated completion date"
     )
+    version: int | None = Field(
+        default=None, description="Client-known version for optimistic locking"
+    )
 
     @field_validator("expected_finish_at")
     @classmethod
@@ -50,22 +53,37 @@ class TaskAcceptRequest(BaseModel):
 class TaskRejectRequest(BaseModel):
     rejection_reason: str = Field(min_length=5, max_length=2000)
     rejection_category: RejectionCategory
+    version: int | None = Field(
+        default=None, description="Client-known version for optimistic locking"
+    )
 
 
 class TaskStartRequest(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
+    version: int | None = Field(
+        default=None, description="Client-known version for optimistic locking"
+    )
 
 
 class TaskHoldRequest(BaseModel):
     hold_reason: str = Field(min_length=5, max_length=2000)
+    version: int | None = Field(
+        default=None, description="Client-known version for optimistic locking"
+    )
 
 
 class TaskResumeRequest(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
+    version: int | None = Field(
+        default=None, description="Client-known version for optimistic locking"
+    )
 
 
 class TaskSubmitForQCRequest(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
+    version: int | None = Field(
+        default=None, description="Client-known version for optimistic locking"
+    )
 
 
 class QCResultRequest(BaseModel):
@@ -99,6 +117,18 @@ class StageUpdateRequest(BaseModel):
     stage: str = Field(min_length=1, max_length=100)
     status: StageLogStatus = Field(default="in_progress")
     notes: str | None = Field(default=None, max_length=2000)
+    version: int | None = Field(
+        default=None, description="Client-known version for optimistic locking"
+    )
+
+
+class StageCompleteRequest(BaseModel):
+    """Optional body for stage completion (all fields optional for backward compat)."""
+
+    notes: str | None = Field(default=None, max_length=2000)
+    version: int | None = Field(
+        default=None, description="Client-known version for optimistic locking"
+    )
 
 
 # ── New Response Schemas (Story 12.1) ────────────────────────────────────────
@@ -216,6 +246,7 @@ class OrderInfoForTask(BaseModel):
     customer_phone: str
     shipping_address: dict | None = None
     shipping_note: str | None = None
+    pattern_session_id: str | None = None
 
 
 class TailorTaskDetailResponse(TailorTaskResponse):

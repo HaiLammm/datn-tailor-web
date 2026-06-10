@@ -7,6 +7,7 @@
 
 import { auth } from "@/auth";
 import type {
+  ActionResult,
   TailorIncomeResponse,
   TailorTask,
   TailorTaskDetailResponse,
@@ -253,9 +254,22 @@ export async function fetchMyIncome(
 
 /**
  * Fetch single task detail with stage_logs and history.
+ * Returns a result object — errors are returned, not thrown, so the
+ * message survives the server-action boundary in production.
  */
-export async function fetchTaskDetail(taskId: string): Promise<TailorTaskDetailResponse> {
-  const token = await getAuthToken();
+export async function fetchTaskDetail(
+  taskId: string
+): Promise<ActionResult<TailorTaskDetailResponse>> {
+  let token: string;
+  try {
+    token = await getAuthToken();
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Chưa đăng nhập. Vui lòng đăng nhập lại.",
+    };
+  }
+
   const { controller, timeoutId } = createAbortController();
 
   try {
@@ -275,24 +289,87 @@ export async function fetchTaskDetail(taskId: string): Promise<TailorTaskDetailR
     clearTimeout(timeoutId);
 
     if (response.status === 404) {
-      throw new Error("Không tìm thấy công việc.");
+      return { success: false, error: "Không tìm thấy công việc." };
     }
 
     if (!response.ok) {
-      throw new Error(`Lỗi tải chi tiết công việc (HTTP ${response.status})`);
+      return { success: false, error: `Lỗi tải chi tiết công việc (HTTP ${response.status})` };
     }
 
     const json = await response.json();
-    return json.data as TailorTaskDetailResponse;
+    return { success: true, data: json.data as TailorTaskDetailResponse };
   } catch (error) {
     clearTimeout(timeoutId);
-    if (error instanceof Error) {
-      if (error.name === "AbortError") {
-        throw new Error("Hết thời gian kết nối. Vui lòng thử lại.");
-      }
-      throw error;
+    if (error instanceof Error && error.name === "AbortError") {
+      return { success: false, error: "Hết thời gian kết nối. Vui lòng thử lại." };
     }
-    throw new Error("Lỗi không xác định khi tải chi tiết công việc.");
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Lỗi không xác định khi tải chi tiết công việc.",
+    };
+  }
+}
+
+
+// ── Mutation helper (Story 12.5) ─────────────────────────────────────────────
+
+/**
+ * POST a task mutation and return a discriminated result.
+ * 409 → { success: false, conflict: true } (optimistic-lock stale version).
+ * Never throws — error messages must survive the server-action boundary.
+ */
+async function postTaskAction<T>(
+  taskId: string,
+  action: string,
+  version?: number,
+  body?: Record<string, unknown>,
+): Promise<ActionResult<T>> {
+  let token: string;
+  try {
+    token = await getAuthToken();
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Chưa đăng nhập. Vui lòng đăng nhập lại.",
+    };
+  }
+
+  const { controller, timeoutId } = createAbortController();
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/v1/tailor-tasks/${taskId}/${action}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...(version !== undefined ? { version } : {}), ...body }),
+        signal: controller.signal,
+      },
+    );
+    clearTimeout(timeoutId);
+    if (response.status === 409) {
+      return {
+        success: false,
+        conflict: true,
+        error: "Dữ liệu đã thay đổi bởi người khác. Vui lòng tải lại.",
+      };
+    }
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: typeof err?.detail === "string" ? err.detail : `Lỗi ${response.status}`,
+      };
+    }
+    return { success: true, data: (await response.json()).data as T };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      return { success: false, error: "Hết thời gian kết nối. Vui lòng thử lại." };
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Lỗi không xác định.",
+    };
   }
 }
 
@@ -304,21 +381,12 @@ export async function requestTaskCancellation(
   taskId: string,
   failureCategory: string,
   failureReason: string,
-): Promise<TailorTask> {
-  const token = await getAuthToken();
-  const response = await fetch(
-    `${BACKEND_URL}/api/v1/tailor-tasks/${taskId}/request-cancellation`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ failure_category: failureCategory, failure_reason: failureReason }),
-    },
-  );
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.detail || `Lỗi ${response.status}`);
-  }
-  return (await response.json()).data as TailorTask;
+  version?: number,
+): Promise<ActionResult<TailorTask>> {
+  return postTaskAction<TailorTask>(taskId, "request-cancellation", version, {
+    failure_category: failureCategory,
+    failure_reason: failureReason,
+  });
 }
 
 
@@ -327,91 +395,38 @@ export async function resolveCancellation(
   decision: "approve" | "reject" | "reassign",
   newTailorId?: string,
   cancellationReason?: string,
-): Promise<Record<string, string>> {
-  const token = await getAuthToken();
-  const body: Record<string, string | undefined> = { decision };
+): Promise<ActionResult<Record<string, string>>> {
+  const body: Record<string, unknown> = { decision };
   if (newTailorId) body.new_tailor_id = newTailorId;
   if (cancellationReason) body.cancellation_reason = cancellationReason;
-
-  const response = await fetch(
-    `${BACKEND_URL}/api/v1/tailor-tasks/${taskId}/resolve-cancellation`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
-    },
-  );
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.detail || `Lỗi ${response.status}`);
-  }
-  return (await response.json()).data as Record<string, string>;
+  return postTaskAction<Record<string, string>>(taskId, "resolve-cancellation", undefined, body);
 }
 
 
 // ── 11-State Machine Actions (Story 12.5) ───────────────────────────────────
 
-async function postTaskAction(
-  taskId: string,
-  action: string,
-  version: number,
-  body?: Record<string, unknown>,
-): Promise<TailorTaskDetailResponse> {
-  const token = await getAuthToken();
-  const { controller, timeoutId } = createAbortController();
-  try {
-    const response = await fetch(
-      `${BACKEND_URL}/api/v1/tailor-tasks/${taskId}/${action}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ version, ...body }),
-        signal: controller.signal,
-      },
-    );
-    clearTimeout(timeoutId);
-    if (response.status === 409) {
-      throw new Error("CONFLICT");
-    }
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err?.detail || `Lỗi ${response.status}`);
-    }
-    return (await response.json()).data as TailorTaskDetailResponse;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error) {
-      if (error.name === "AbortError") {
-        throw new Error("Hết thời gian kết nối. Vui lòng thử lại.");
-      }
-      throw error;
-    }
-    throw new Error("Lỗi không xác định.");
-  }
+export async function acceptTask(taskId: string, version: number): Promise<ActionResult<TailorTask>> {
+  return postTaskAction<TailorTask>(taskId, "accept", version);
 }
 
-export async function acceptTask(taskId: string, version: number): Promise<TailorTaskDetailResponse> {
-  return postTaskAction(taskId, "accept", version);
+export async function rejectTask(taskId: string, version: number, body: TaskRejectRequest): Promise<ActionResult<TailorTask>> {
+  return postTaskAction<TailorTask>(taskId, "reject", version, body as unknown as Record<string, unknown>);
 }
 
-export async function rejectTask(taskId: string, version: number, body: TaskRejectRequest): Promise<TailorTaskDetailResponse> {
-  return postTaskAction(taskId, "reject", version, body as unknown as Record<string, unknown>);
+export async function startTask(taskId: string, version: number): Promise<ActionResult<TailorTask>> {
+  return postTaskAction<TailorTask>(taskId, "start", version);
 }
 
-export async function startTask(taskId: string, version: number): Promise<TailorTaskDetailResponse> {
-  return postTaskAction(taskId, "start", version);
+export async function holdTask(taskId: string, version: number, body: TaskHoldRequest): Promise<ActionResult<TailorTask>> {
+  return postTaskAction<TailorTask>(taskId, "hold", version, body as unknown as Record<string, unknown>);
 }
 
-export async function holdTask(taskId: string, version: number, body: TaskHoldRequest): Promise<TailorTaskDetailResponse> {
-  return postTaskAction(taskId, "hold", version, body as unknown as Record<string, unknown>);
+export async function resumeTask(taskId: string, version: number): Promise<ActionResult<TailorTask>> {
+  return postTaskAction<TailorTask>(taskId, "resume", version);
 }
 
-export async function resumeTask(taskId: string, version: number): Promise<TailorTaskDetailResponse> {
-  return postTaskAction(taskId, "resume", version);
-}
-
-export async function submitForQC(taskId: string, version: number): Promise<TailorTaskDetailResponse> {
-  return postTaskAction(taskId, "submit-qc", version);
+export async function submitForQC(taskId: string, version: number): Promise<ActionResult<TailorTask>> {
+  return postTaskAction<TailorTask>(taskId, "submit-qc", version);
 }
 
 export async function completeStage(
@@ -419,6 +434,6 @@ export async function completeStage(
   stageOrder: number,
   version: number,
   notes?: string,
-): Promise<TailorTaskDetailResponse> {
-  return postTaskAction(taskId, `stages/${stageOrder}/complete`, version, notes ? { notes } : undefined);
+): Promise<ActionResult<Record<string, unknown>>> {
+  return postTaskAction<Record<string, unknown>>(taskId, `stages/${stageOrder}/complete`, version, notes ? { notes } : undefined);
 }

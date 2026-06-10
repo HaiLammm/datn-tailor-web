@@ -1,6 +1,7 @@
 "use client";
 
 import type { TaskFilters } from "@/types/tailor-task";
+import { STATUS_BADGE } from "@/types/tailor-task";
 import { useState } from "react";
 
 interface TaskFiltersProps {
@@ -8,16 +9,21 @@ interface TaskFiltersProps {
   onFiltersChange: (filters: TaskFilters) => void;
 }
 
+// Labels come from STATUS_BADGE so dashboard links (?status=...) always match.
 const STATUS_OPTIONS = [
   { value: "", label: "Tất cả trạng thái" },
-  { value: "assigned", label: "Chờ nhận" },
-  { value: "accepted", label: "Đã nhận" },
-  { value: "in_progress", label: "Đang may" },
-  { value: "on_hold", label: "Tạm dừng" },
-  { value: "submitted_for_qc", label: "Chờ kiểm tra" },
-  { value: "completed", label: "Hoàn thành" },
-  { value: "failed_qc", label: "Không đạt QC" },
-  { value: "cancelled", label: "Đã huỷ" },
+  { value: "unassigned", label: STATUS_BADGE.unassigned.label },
+  { value: "assigned", label: STATUS_BADGE.assigned.label },
+  { value: "accepted", label: STATUS_BADGE.accepted.label },
+  { value: "rejected", label: STATUS_BADGE.rejected.label },
+  { value: "in_progress", label: STATUS_BADGE.in_progress.label },
+  { value: "on_hold", label: STATUS_BADGE.on_hold.label },
+  { value: "reassigning", label: STATUS_BADGE.reassigning.label },
+  { value: "submitted_for_qc", label: STATUS_BADGE.submitted_for_qc.label },
+  { value: "completed", label: STATUS_BADGE.completed.label },
+  { value: "failed_qc", label: STATUS_BADGE.failed_qc.label },
+  { value: "cancellation_requested", label: STATUS_BADGE.cancellation_requested.label },
+  { value: "cancelled", label: STATUS_BADGE.cancelled.label },
 ];
 
 const MONTH_OPTIONS = [

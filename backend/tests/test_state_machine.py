@@ -643,3 +643,186 @@ class TestFullWorkflow:
         assert ("accepted", "in_progress") in transitions
         assert ("in_progress", "submitted_for_qc") in transitions
         assert ("submitted_for_qc", "completed") in transitions
+
+
+# ── Story 12.5 review fixes ─────────────────────────────────────────────────
+
+
+class TestTaskDetailIncludesStagesAndHistory:
+    @pytest.mark.asyncio
+    async def test_get_task_detail_returns_stage_logs_and_history(self, db):
+        """B1: detail view must include populated stage_logs and history."""
+        task = _make_task(status="assigned")
+        db.add(task)
+        await db.flush()
+
+        await tailor_task_service.accept_task(
+            db, task.id, TAILOR_ID, TENANT_ID, TaskAcceptRequest()
+        )
+        await tailor_task_service.start_task(
+            db, task.id, TAILOR_ID, TENANT_ID, TaskStartRequest()
+        )
+
+        detail = await tailor_task_service.get_task_detail(db, task.id, TAILOR_ID, TENANT_ID)
+
+        # Stage logs created by start_task ("Ao dai" → 6 stages, ordered)
+        assert len(detail.stage_logs) == 6
+        assert detail.stage_logs[0].stage == "cutting"
+        assert detail.stage_logs[0].status == "in_progress"
+        assert detail.stage_logs[0].started_at is not None
+        assert [s.stage_order for s in detail.stage_logs] == list(range(6))
+
+        # History contains both transitions
+        transitions = [(h.from_status, h.to_status) for h in detail.history]
+        assert ("assigned", "accepted") in transitions
+        assert ("accepted", "in_progress") in transitions
+
+        # B2: order info exposes pattern_session_id (None for this order)
+        assert detail.order_info is not None
+        assert detail.order_info.pattern_session_id is None
+
+
+class TestClientVersionOptimisticLocking:
+    @pytest.mark.asyncio
+    async def test_stale_client_version_raises_409(self, db):
+        """B3: stale client-known version must be rejected with 409."""
+        task = _make_task(status="assigned", version=1)
+        db.add(task)
+        await db.flush()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await tailor_task_service.accept_task(
+                db, task.id, TAILOR_ID, TENANT_ID, TaskAcceptRequest(), client_version=999
+            )
+        assert exc_info.value.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_matching_client_version_succeeds(self, db):
+        task = _make_task(status="assigned", version=1)
+        db.add(task)
+        await db.flush()
+
+        result = await tailor_task_service.accept_task(
+            db, task.id, TAILOR_ID, TENANT_ID, TaskAcceptRequest(), client_version=1
+        )
+        assert result.status == "accepted"
+        assert result.version == 2
+
+    @pytest.mark.asyncio
+    async def test_stale_version_rejected_on_submit_qc(self, db):
+        task = _make_task(status="in_progress", version=3)
+        db.add(task)
+        await db.flush()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await tailor_task_service.submit_for_qc(
+                db, task.id, TAILOR_ID, TENANT_ID, client_version=2
+            )
+        assert exc_info.value.status_code == 409
+
+
+class TestSkippedStagesSubmitQC:
+    @pytest.mark.asyncio
+    async def test_submit_qc_succeeds_with_completed_and_skipped_mix(self, db):
+        """B4: skipped stages must not block QC submission."""
+        task = _make_task(status="in_progress")
+        db.add(task)
+        await db.flush()
+
+        now = datetime.now(timezone.utc)
+        stage_specs = [
+            ("cutting", 0, "completed"),
+            ("body_sewing", 1, "completed"),
+            ("embroidery", 2, "skipped"),
+            ("finishing", 3, "completed"),
+        ]
+        for stage_name, order, stage_status in stage_specs:
+            db.add(TaskStageLogDB(
+                task_id=task.id, tenant_id=TENANT_ID,
+                stage=stage_name, stage_order=order, status=stage_status,
+                started_at=now if stage_status == "completed" else None,
+                completed_at=now if stage_status == "completed" else None,
+            ))
+        await db.flush()
+
+        result = await tailor_task_service.submit_for_qc(db, task.id, TAILOR_ID, TENANT_ID)
+        assert result.status == "submitted_for_qc"
+        assert result.submitted_at is not None
+
+    @pytest.mark.asyncio
+    async def test_submit_qc_still_blocked_by_pending_stage(self, db):
+        task = _make_task(status="in_progress")
+        db.add(task)
+        await db.flush()
+
+        db.add(TaskStageLogDB(
+            task_id=task.id, tenant_id=TENANT_ID,
+            stage="cutting", stage_order=0, status="skipped",
+        ))
+        db.add(TaskStageLogDB(
+            task_id=task.id, tenant_id=TENANT_ID,
+            stage="finishing", stage_order=1, status="pending",
+        ))
+        await db.flush()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await tailor_task_service.submit_for_qc(db, task.id, TAILOR_ID, TENANT_ID)
+        assert exc_info.value.status_code == 400
+        assert "chưa hoàn thành" in exc_info.value.detail
+
+
+class TestCompleteStageNotes:
+    @pytest.mark.asyncio
+    async def test_complete_stage_persists_notes(self, db):
+        """B3: notes provided on completion are stored on the stage log row."""
+        from sqlalchemy import select
+
+        task = _make_task(status="in_progress")
+        db.add(task)
+        await db.flush()
+
+        stage0 = TaskStageLogDB(
+            task_id=task.id, tenant_id=TENANT_ID,
+            stage="cutting", stage_order=0, status="in_progress",
+            started_at=datetime.now(timezone.utc),
+        )
+        stage1 = TaskStageLogDB(
+            task_id=task.id, tenant_id=TENANT_ID,
+            stage="finishing", stage_order=1, status="pending",
+        )
+        db.add_all([stage0, stage1])
+        await db.flush()
+
+        result = await tailor_task_service.complete_stage(
+            db, task.id, 0, TAILOR_ID, TENANT_ID, notes="Cắt xong, vải hơi co"
+        )
+        assert result["stage_completed"] == "cutting"
+
+        row = await db.execute(
+            select(TaskStageLogDB).where(
+                TaskStageLogDB.task_id == task.id,
+                TaskStageLogDB.stage_order == 0,
+            )
+        )
+        stage = row.scalar_one()
+        assert stage.status == "completed"
+        assert stage.notes == "Cắt xong, vải hơi co"
+
+    @pytest.mark.asyncio
+    async def test_complete_stage_stale_version_raises_409(self, db):
+        task = _make_task(status="in_progress", version=2)
+        db.add(task)
+        await db.flush()
+
+        db.add(TaskStageLogDB(
+            task_id=task.id, tenant_id=TENANT_ID,
+            stage="cutting", stage_order=0, status="in_progress",
+            started_at=datetime.now(timezone.utc),
+        ))
+        await db.flush()
+
+        with pytest.raises(HTTPException) as exc_info:
+            await tailor_task_service.complete_stage(
+                db, task.id, 0, TAILOR_ID, TENANT_ID, client_version=1
+            )
+        assert exc_info.value.status_code == 409
