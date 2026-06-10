@@ -19,6 +19,7 @@ import type {
   IncomePeriod,
   TailorIncomeDetailResponse,
 } from "@/types/tailor-task";
+import type { FittingOutcome, FittingRound } from "@/types/order";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 const FETCH_TIMEOUT = 10000;
@@ -314,13 +315,12 @@ export async function fetchTaskDetail(
 // ── Mutation helper (Story 12.5) ─────────────────────────────────────────────
 
 /**
- * POST a task mutation and return a discriminated result.
+ * POST a mutation to an API path and return a discriminated result.
  * 409 → { success: false, conflict: true } (optimistic-lock stale version).
  * Never throws — error messages must survive the server-action boundary.
  */
-async function postTaskAction<T>(
-  taskId: string,
-  action: string,
+async function postMutation<T>(
+  path: string,
   version?: number,
   body?: Record<string, unknown>,
 ): Promise<ActionResult<T>> {
@@ -337,7 +337,7 @@ async function postTaskAction<T>(
   const { controller, timeoutId } = createAbortController();
   try {
     const response = await fetch(
-      `${BACKEND_URL}/api/v1/tailor-tasks/${taskId}/${action}`,
+      `${BACKEND_URL}${path}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -371,6 +371,16 @@ async function postTaskAction<T>(
       error: error instanceof Error ? error.message : "Lỗi không xác định.",
     };
   }
+}
+
+/** POST a tailor-task mutation (12.5 helper, now delegating to postMutation). */
+async function postTaskAction<T>(
+  taskId: string,
+  action: string,
+  version?: number,
+  body?: Record<string, unknown>,
+): Promise<ActionResult<T>> {
+  return postMutation<T>(`/api/v1/tailor-tasks/${taskId}/${action}`, version, body);
 }
 
 
@@ -436,4 +446,24 @@ export async function completeStage(
   notes?: string,
 ): Promise<ActionResult<Record<string, unknown>>> {
   return postTaskAction<Record<string, unknown>>(taskId, `stages/${stageOrder}/complete`, version, notes ? { notes } : undefined);
+}
+
+// ── Story 12.6: Fitting round recorder ───────────────────────────────────────
+
+/**
+ * Record a fitting round outcome for a bespoke order in production.
+ * Owner or the assigned Tailor only. outcome="passed" also completes the
+ * fitting stage server-side and starts the next stage.
+ */
+export async function recordFittingRound(
+  orderId: string,
+  outcome: FittingOutcome,
+  version: number,
+  notes?: string,
+): Promise<ActionResult<FittingRound>> {
+  return postMutation<FittingRound>(
+    `/api/v1/orders/${orderId}/fitting-rounds`,
+    version,
+    { outcome, ...(notes ? { notes } : {}) },
+  );
 }

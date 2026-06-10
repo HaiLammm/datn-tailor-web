@@ -5,9 +5,14 @@
  * Displays full order detail: items, delivery info, status timeline, invoice download.
  */
 
-import { useState } from "react";
-import { downloadOrderInvoice, payRemaining } from "@/app/actions/order-actions";
-import type { CustomerOrderDetail, RentalCondition, TailorInfoForCustomer } from "@/types/order";
+import { useEffect, useState } from "react";
+import { downloadOrderInvoice, fetchFittingRounds, payRemaining } from "@/app/actions/order-actions";
+import type {
+  CustomerOrderDetail,
+  FittingRoundsData,
+  RentalCondition,
+  TailorInfoForCustomer,
+} from "@/types/order";
 import { RENTAL_CONDITION_LABELS } from "@/types/order";
 import { OrderStatusBadge, OrderTypeBadge } from "./OrderStatusBadge";
 import { formatCurrency, formatDate, formatDateOnly } from "@/utils/order-formatters";
@@ -50,6 +55,39 @@ const RENTAL_STATUS_LABELS: Record<string, { label: string; className: string }>
   returned: { label: "Đã trả", className: "text-gray-600" },
 };
 
+// Story 12.6: customer fitting strip — plain Vietnamese only (Boutique Mode)
+type FittingStripState = "waiting" | "altering" | "passed";
+
+const FITTING_STRIP_LABELS: Record<FittingStripState, { label: string; className: string }> = {
+  waiting: { label: "Chờ bạn tới thử", className: "bg-amber-50 border-amber-200 text-amber-800" },
+  altering: {
+    label: "Đang chỉnh sửa theo góp ý của bạn",
+    className: "bg-indigo-50 border-indigo-200 text-indigo-800",
+  },
+  passed: {
+    label: "Thử đạt — đang hoàn thiện",
+    className: "bg-emerald-50 border-emerald-200 text-emerald-800",
+  },
+};
+
+// Stage-status-primary: fitting_rounds are immutable across QC-rework cycles,
+// so a passed round from an old cycle must not show "passed" while a new
+// fitting cycle is in progress — the current stage log status decides.
+function deriveFittingStripState(fitting: FittingRoundsData | null): FittingStripState | null {
+  if (!fitting) return null;
+  const lastRound = fitting.rounds.length > 0 ? fitting.rounds[fitting.rounds.length - 1] : null;
+  switch (fitting.fitting_stage_status) {
+    case "completed":
+      return "passed";
+    case "in_progress":
+      return lastRound?.outcome === "needs_alteration" ? "altering" : "waiting";
+    case "pending":
+      return "waiting";
+    default:
+      return null;
+  }
+}
+
 export default function OrderDetailModal({
   order,
   isOpen,
@@ -59,7 +97,34 @@ export default function OrderDetailModal({
   const [paying, setPaying] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  // Story 12.6: fitting rounds for bespoke orders in production.
+  // "in_progress" (task created) and "in_production" (task accepted) are both
+  // live production states.
+  const [fitting, setFitting] = useState<FittingRoundsData | null>(null);
+  const orderId = order?.id ?? null;
+  const isBespokeInProduction =
+    order?.service_type === "bespoke" &&
+    (order?.status === "in_production" || order?.status === "in_progress");
+
+  useEffect(() => {
+    if (!isOpen || !orderId || !isBespokeInProduction) {
+      setFitting(null);
+      return;
+    }
+    let cancelled = false;
+    fetchFittingRounds(orderId).then((result) => {
+      if (!cancelled && result.success) setFitting(result.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, orderId, isBespokeInProduction]);
+
   if (!isOpen || !order) return null;
+
+  const fittingStripState = deriveFittingStripState(fitting);
+  const showFittingSection =
+    fittingStripState !== null || (fitting !== null && fitting.rounds.length > 0);
 
   const subtotal = order.items.reduce((sum, item) => sum + item.total_price, 0);
 
@@ -469,6 +534,60 @@ export default function OrderDetailModal({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Story 12.6: Fitting progress (bespoke) — plain Vietnamese */}
+          {showFittingSection && (
+            <div data-testid="fitting-section">
+              <h3 className="font-semibold text-gray-800 text-sm mb-3">Thử đồ</h3>
+              <div className="space-y-3">
+                {fittingStripState && (
+                  <div
+                    className={`rounded-lg border px-4 py-3 text-sm font-medium ${FITTING_STRIP_LABELS[fittingStripState].className}`}
+                    data-testid="fitting-strip"
+                  >
+                    {FITTING_STRIP_LABELS[fittingStripState].label}
+                  </div>
+                )}
+
+                {fitting && fitting.rounds.length > 0 && (
+                  <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                    {fitting.rounds.map((round) => (
+                      <div key={round.id} className="px-4 py-2.5 text-sm" data-testid="fitting-round-item">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-gray-900">
+                            Vòng thử {round.round_number}
+                          </span>
+                          <span
+                            className={`text-xs font-medium ${
+                              round.outcome === "passed" ? "text-emerald-700" : "text-indigo-700"
+                            }`}
+                          >
+                            {round.outcome === "passed" ? "Vừa vặn" : "Cần chỉnh thêm"}
+                          </span>
+                        </div>
+                        {round.notes && (
+                          <p className="text-xs text-gray-500 mt-1">{round.notes}</p>
+                        )}
+                        {round.fitted_at && (
+                          <p className="text-xs text-gray-400 mt-0.5">{formatDate(round.fitted_at)}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {fittingStripState !== "passed" && (
+                  <a
+                    href="/booking"
+                    className="inline-flex items-center justify-center w-full min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                    data-testid="fitting-booking-cta"
+                  >
+                    Đặt lịch thử đồ
+                  </a>
+                )}
               </div>
             </div>
           )}

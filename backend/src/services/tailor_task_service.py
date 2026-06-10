@@ -16,6 +16,7 @@ from sqlalchemy.orm import joinedload, selectinload
 import logging
 
 from src.models.db_models import (
+    FittingRoundDB,
     OrderDB,
     OrderItemDB,
     TailorTaskDB,
@@ -75,6 +76,7 @@ from src.services.notification_creator import (
     ORDER_READY_SHIP_MESSAGE,
     ORDER_READY_PICKUP_MESSAGE,
     TASK_ASSIGNED_TAILOR,
+    FITTING_READY,
     create_notification,
 )
 
@@ -102,10 +104,12 @@ VALID_TRANSITIONS = {"assigned": "in_progress", "in_progress": "completed"}
 PRODUCTION_STEPS = ["pending", "cutting", "sewing", "finishing", "quality_check", "done"]
 
 # Stage definitions per garment type
+# Story 12.6: "fitting" inserted after "assembly" in all sets — the fitting ⇄
+# alteration loop (FR100) lives at this stage via fitting_rounds rows.
 GARMENT_STAGES: dict[str, list[str]] = {
-    "default": ["cutting", "body_sewing", "sleeve_sewing", "assembly", "finishing"],
-    "ao_dai": ["cutting", "body_sewing", "sleeve_sewing", "assembly", "embroidery", "finishing"],
-    "wedding": ["cutting", "body_sewing", "sleeve_sewing", "assembly", "embroidery", "beading", "finishing"],
+    "default": ["cutting", "body_sewing", "sleeve_sewing", "assembly", "fitting", "finishing"],
+    "ao_dai": ["cutting", "body_sewing", "sleeve_sewing", "assembly", "fitting", "embroidery", "finishing"],
+    "wedding": ["cutting", "body_sewing", "sleeve_sewing", "assembly", "fitting", "embroidery", "beading", "finishing"],
 }
 
 
@@ -215,9 +219,14 @@ def _create_stage_logs(
     task_id: uuid.UUID,
     tenant_id: uuid.UUID,
     garment_type: str | None = None,
+    service_type: str | None = None,
 ) -> list[TaskStageLogDB]:
     stage_key = garment_type if garment_type in GARMENT_STAGES else "default"
     stages = GARMENT_STAGES[stage_key]
+    # Story 12.6 review: only bespoke orders have a fitting ⇄ alteration loop —
+    # buy/rent tasks must not get a 'fitting' stage they can never complete.
+    if service_type != "bespoke":
+        stages = [s for s in stages if s != "fitting"]
     now = datetime.now(timezone.utc)
     logs = []
     for i, stage_name in enumerate(stages):
@@ -232,6 +241,13 @@ def _create_stage_logs(
         db.add(log)
         logs.append(log)
     return logs
+
+
+async def _get_order_service_type(db: AsyncSession, order_id: uuid.UUID) -> str | None:
+    result = await db.execute(
+        select(OrderDB.service_type).where(OrderDB.id == order_id)
+    )
+    return result.scalar_one_or_none()
 
 
 # ── New workflow service functions (Story 12.2) ─────────────────────────────
@@ -369,7 +385,10 @@ async def start_task(
         task.notes = request.notes
 
     await db.execute(sa_delete(TaskStageLogDB).where(TaskStageLogDB.task_id == task_id))
-    _create_stage_logs(db, task.id, tenant_id, _resolve_stage_key(task.garment_name))
+    service_type = await _get_order_service_type(db, task.order_id)
+    _create_stage_logs(
+        db, task.id, tenant_id, _resolve_stage_key(task.garment_name), service_type
+    )
 
     await db.flush()
     await db.commit()
@@ -597,7 +616,10 @@ async def process_qc_result(
 
         # Reset stage logs for rework cycle
         await db.execute(sa_delete(TaskStageLogDB).where(TaskStageLogDB.task_id == task_id))
-        _create_stage_logs(db, task_id, tenant_id, _resolve_stage_key(task.garment_name))
+        service_type = await _get_order_service_type(db, task.order_id)
+        _create_stage_logs(
+            db, task_id, tenant_id, _resolve_stage_key(task.garment_name), service_type
+        )
 
         await db.flush()
         await db.commit()
@@ -727,24 +749,23 @@ async def reassign_task(
     return _task_to_response(task, datetime.now(timezone.utc))
 
 
-async def complete_stage(
+async def _advance_current_stage(
     db: AsyncSession,
-    task_id: uuid.UUID,
+    task: TailorTaskDB,
     stage_order: int,
-    actor_id: uuid.UUID,
     tenant_id: uuid.UUID,
-    client_version: int | None = None,
     notes: str | None = None,
 ) -> dict:
-    task = await _get_task_for_transition(db, task_id, tenant_id)
-    _check_client_version(task, client_version)
+    """Complete the current in_progress stage and start the next one.
 
-    if task.status != "in_progress":
-        raise HTTPException(status_code=400, detail="Chỉ có thể hoàn thành bước khi đang thực hiện")
-
+    Shared by complete_stage and fitting_service.record_fitting_round
+    (Story 12.6) — mutates stage logs but does NOT flush/commit.
+    Enforces the fitting gate (AC5): a 'fitting' stage only completes when
+    a fitting round with outcome='passed' exists for the task.
+    """
     result = await db.execute(
         select(TaskStageLogDB)
-        .where(TaskStageLogDB.task_id == task_id, TaskStageLogDB.tenant_id == tenant_id)
+        .where(TaskStageLogDB.task_id == task.id, TaskStageLogDB.tenant_id == tenant_id)
         .order_by(TaskStageLogDB.stage_order)
     )
     stages = result.scalars().all()
@@ -760,6 +781,25 @@ async def complete_stage(
             status_code=400,
             detail=f"Phải hoàn thành bước {current_in_progress.stage_order} ('{current_in_progress.stage}') trước",
         )
+
+    # Story 12.6 (AC5): fitting stage gate — requires a recorded passed round.
+    # Scoped to the current cycle: stage logs are recreated on QC rework while
+    # fitting_rounds are immutable, so a passed round from a pre-rework cycle
+    # (created before this stage log row) must not open the gate again.
+    if current_in_progress.stage == "fitting":
+        passed_count = await db.execute(
+            select(func.count(FittingRoundDB.id)).where(
+                FittingRoundDB.task_id == task.id,
+                FittingRoundDB.tenant_id == tenant_id,
+                FittingRoundDB.outcome == "passed",
+                FittingRoundDB.created_at >= current_in_progress.created_at,
+            )
+        )
+        if passed_count.scalar_one() == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Cần ghi nhận kết quả thử đồ đạt (qua Vòng thử) trước khi hoàn thành bước Thử đồ",
+            )
 
     now = datetime.now(timezone.utc)
     current_in_progress.status = "completed"
@@ -778,11 +818,8 @@ async def complete_stage(
     total_count = len(stages)
     progress_percent = round((completed_count / total_count) * 100, 1) if total_count > 0 else 0
 
-    await db.flush()
-    await db.commit()
-
     return {
-        "task_id": str(task_id),
+        "task_id": str(task.id),
         "stage_completed": current_in_progress.stage,
         "stage_order": stage_order,
         "next_stage": next_stage.stage if next_stage else None,
@@ -790,6 +827,57 @@ async def complete_stage(
         "total_stages": total_count,
         "completed_stages": completed_count,
     }
+
+
+async def notify_fitting_stage_started(
+    db: AsyncSession, task: TailorTaskDB, tenant_id: uuid.UUID
+) -> None:
+    """Story 12.6 (AC3): invite the customer to book a fitting appointment.
+
+    Called after commit when the 'fitting' stage transitions to in_progress.
+    Orders without a linked customer are skipped silently.
+    """
+    order = await db.get(OrderDB, task.order_id)
+    if order is None or order.customer_id is None:
+        return
+    try:
+        title, msg_tpl = FITTING_READY
+        await create_notification(
+            db=db, user_id=order.customer_id, tenant_id=tenant_id,
+            notification_type="fitting_ready",
+            title=title,
+            message=msg_tpl.format(garment_name=task.garment_name),
+            data={"order_id": str(task.order_id), "booking_url": "/booking"},
+        )
+    except Exception:
+        logger.warning("Failed to notify customer about fitting ready for task %s", task.id)
+
+
+async def complete_stage(
+    db: AsyncSession,
+    task_id: uuid.UUID,
+    stage_order: int,
+    actor_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    client_version: int | None = None,
+    notes: str | None = None,
+) -> dict:
+    task = await _get_task_for_transition(db, task_id, tenant_id)
+    _check_client_version(task, client_version)
+
+    if task.status != "in_progress":
+        raise HTTPException(status_code=400, detail="Chỉ có thể hoàn thành bước khi đang thực hiện")
+
+    result = await _advance_current_stage(db, task, stage_order, tenant_id, notes=notes)
+
+    await db.flush()
+    await db.commit()
+
+    # Story 12.6 (AC3): fitting stage just started → invite customer to book
+    if result["next_stage"] == "fitting":
+        await notify_fitting_stage_started(db, task, tenant_id)
+
+    return result
 
 
 async def get_matching_scores(

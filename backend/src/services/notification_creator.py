@@ -212,6 +212,22 @@ CUSTOMER_QC_PASSED = (
     "Sản phẩm '{garment_name}' đã hoàn thành và đạt kiểm tra chất lượng.",
 )
 
+# Story 12.6: Fitting round notifications (customer-facing — plain Vietnamese)
+FITTING_READY = (
+    "Mời bạn tới thử đồ",
+    "Sản phẩm '{garment_name}' đã sẵn sàng để thử. Mời bạn đặt lịch hẹn tới tiệm thử đồ.",
+)
+
+FITTING_ALTERATION = (
+    "Đang chỉnh sửa theo góp ý của bạn",
+    "Sản phẩm '{garment_name}' đang được chỉnh sửa theo góp ý của bạn ở vòng thử {round_number}.",
+)
+
+FITTING_PASSED = (
+    "Thử đạt — đang hoàn thiện",
+    "Bạn đã thử sản phẩm '{garment_name}' vừa vặn. Tiệm đang hoàn thiện những bước cuối cùng.",
+)
+
 
 async def create_notification(
     db: AsyncSession,

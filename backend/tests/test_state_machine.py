@@ -84,6 +84,8 @@ async def db(engine):
             subtotal_amount=Decimal("500000"),
             total_amount=Decimal("500000"),
             status="confirmed",
+            # Story 12.6: only bespoke orders get the "fitting" stage
+            service_type="bespoke",
         )
         session.add(order)
         await session.flush()
@@ -402,10 +404,12 @@ class TestStageLifecycle:
             .order_by(TaskStageLogDB.stage_order)
         )
         stages = result.scalars().all()
-        assert len(stages) == 6  # "Ao dai" matches ao_dai stage set (includes embroidery)
+        # Story 12.6: ao_dai stage set gained "fitting" after "assembly" → 7 stages
+        assert len(stages) == 7
         assert stages[0].stage == "cutting"
         assert stages[0].status == "in_progress"
         assert stages[1].status == "pending"
+        assert stages[4].stage == "fitting"
 
     @pytest.mark.asyncio
     async def test_complete_stage_sequential(self, db):
@@ -620,6 +624,19 @@ class TestFullWorkflow:
         )
         stages = stage_result.scalars().all()
         for stage in stages:
+            # Story 12.6 (AC5): the fitting stage only completes after a
+            # passed fitting round is recorded — seed one directly here.
+            if stage.stage == "fitting":
+                from src.models.db_models import FittingRoundDB
+
+                db.add(FittingRoundDB(
+                    tenant_id=TENANT_ID,
+                    order_id=ORDER_ID,
+                    task_id=task.id,
+                    round_number=1,
+                    outcome="passed",
+                ))
+                await db.flush()
             await tailor_task_service.complete_stage(
                 db, task.id, stage.stage_order, TAILOR_ID, TENANT_ID
             )
@@ -665,12 +682,13 @@ class TestTaskDetailIncludesStagesAndHistory:
 
         detail = await tailor_task_service.get_task_detail(db, task.id, TAILOR_ID, TENANT_ID)
 
-        # Stage logs created by start_task ("Ao dai" → 6 stages, ordered)
-        assert len(detail.stage_logs) == 6
+        # Stage logs created by start_task ("Ao dai" → 7 stages since Story
+        # 12.6 added "fitting" after "assembly", ordered)
+        assert len(detail.stage_logs) == 7
         assert detail.stage_logs[0].stage == "cutting"
         assert detail.stage_logs[0].status == "in_progress"
         assert detail.stage_logs[0].started_at is not None
-        assert [s.stage_order for s in detail.stage_logs] == list(range(6))
+        assert [s.stage_order for s in detail.stage_logs] == list(range(7))
 
         # History contains both transitions
         transitions = [(h.from_status, h.to_status) for h in detail.history]

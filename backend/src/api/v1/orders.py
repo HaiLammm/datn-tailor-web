@@ -11,8 +11,15 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import CurrentUser, OptionalCurrentUser, OwnerOnly, TenantId
+from src.api.dependencies import (
+    CurrentUser,
+    OptionalCurrentUser,
+    OwnerOnly,
+    OwnerOrTailor,
+    TenantId,
+)
 from src.core.database import get_db
+from src.models.fitting import FittingRoundCreate
 from src.models.order import (
     ApproveOrderRequest,
     InternalOrderCreate,
@@ -27,7 +34,7 @@ from src.models.order import (
     RentalCheckoutFields,
     UpdatePreparationStepRequest,
 )
-from src.services import order_service
+from src.services import fitting_service, order_service
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 
@@ -293,6 +300,53 @@ async def refund_security_endpoint(
     """
     result = await order_service.refund_security(db, order_id, tenant_id, request)
     return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+# ---------------------------------------------------------------------------
+# Story 12.6: Fitting rounds (bespoke fitting ⇄ alteration loop, FR100)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{order_id}/fitting-rounds",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Ghi nhận vòng thử đồ (Owner/Tailor, Story 12.6)",
+    description="Record a fitting round outcome (passed / needs_alteration) for a bespoke order in production. Outcome 'passed' completes the fitting stage and starts the next one.",
+)
+async def record_fitting_round_endpoint(
+    order_id: uuid.UUID,
+    body: FittingRoundCreate,
+    user: OwnerOrTailor,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Record one fitting round — Owner or the assigned Tailor only.
+
+    round_number is computed server-side (Authoritative Server Pattern).
+    Stale `version` → 409 (optimistic locking).
+    """
+    result = await fitting_service.record_fitting_round(db, order_id, user, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.get(
+    "/{order_id}/fitting-rounds",
+    response_model=dict,
+    summary="Lịch sử vòng thử đồ (Owner / Tailor được giao / Khách của đơn, Story 12.6)",
+    description="Fitting round history ordered by round_number asc. Accessible to Owner, the assigned Tailor, and the order's own Customer.",
+)
+async def list_fitting_rounds_endpoint(
+    order_id: uuid.UUID,
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """List fitting rounds with the fitting stage status in meta."""
+    rounds, fitting_stage_status = await fitting_service.list_fitting_rounds(db, order_id, user)
+    return {
+        "data": [r.model_dump(mode="json") for r in rounds],
+        "meta": {"fitting_stage_status": fitting_stage_status},
+    }
 
 
 @router.get(

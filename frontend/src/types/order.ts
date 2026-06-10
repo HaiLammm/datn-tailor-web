@@ -398,3 +398,27 @@ export interface CustomerOrderFilter {
   date_to?: string;
   search?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Story 12.6: Fitting rounds (bespoke fitting ⇄ alteration loop)
+// ---------------------------------------------------------------------------
+
+export type FittingOutcome = "passed" | "needs_alteration";
+
+export interface FittingRound {
+  id: string;
+  order_id: string;
+  task_id: string;
+  round_number: number;
+  appointment_id: string | null;
+  outcome: FittingOutcome;
+  notes: string | null;
+  fitted_at: string | null;
+  created_at: string;
+}
+
+export interface FittingRoundsData {
+  rounds: FittingRound[];
+  /** Status of the task's fitting stage log (pending/in_progress/completed) or null. */
+  fitting_stage_status: string | null;
+}

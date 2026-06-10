@@ -57,6 +57,7 @@ export const STAGE_LABELS: Record<string, string> = {
   body_sewing: "May thân",
   sleeve_sewing: "May tay",
   assembly: "Ráp",
+  fitting: "Thử đồ",
   embroidery: "Thêu",
   beading: "Đính hạt",
   finishing: "Hoàn thiện",

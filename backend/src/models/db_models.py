@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
@@ -787,6 +788,52 @@ class TaskHistoryDB(Base):
     task: Mapped["TailorTaskDB"] = relationship(
         "TailorTaskDB", back_populates="history"
     )
+
+
+class FittingRoundDB(Base):
+    """ORM model for the `fitting_rounds` table (Story 12.6, SCP 2026-06-10).
+
+    One immutable row per fitting round of a bespoke production task.
+    `appointment_id` is informational only — appointments are guest-booked
+    and unlinked, so no FK constraint (matches migration 044).
+    """
+
+    __tablename__ = "fitting_rounds"
+    __table_args__ = (
+        CheckConstraint(
+            "outcome IN ('passed', 'needs_alteration')",
+            name="chk_fitting_round_outcome",
+        ),
+        UniqueConstraint(
+            "order_id", "round_number", name="uq_fitting_round_order_number"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("tailor_tasks.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    round_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    appointment_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    outcome: Mapped[str] = mapped_column(String(20), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    task: Mapped["TailorTaskDB"] = relationship("TailorTaskDB")
+    order: Mapped["OrderDB"] = relationship("OrderDB")
 
 
 class RentalReturnDB(Base):

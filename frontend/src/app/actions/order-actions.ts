@@ -14,6 +14,8 @@ import type {
   CustomerOrderDetail,
   CustomerOrderFilter,
   CustomerOrderListResponse,
+  FittingRound,
+  FittingRoundsData,
   InternalOrderInput,
   OrderDetailResponse,
   OrderListParams,
@@ -27,6 +29,7 @@ import type {
   UpdatePreparationStepRequest,
   UpdatePreparationStepResponse,
 } from "@/types/order";
+import type { ActionResult } from "@/types/tailor-task";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 const FETCH_TIMEOUT = 10000;
@@ -547,6 +550,62 @@ export async function getCustomerOrderDetail(
 
     const json = await resp.json();
     return { success: true, data: json.data as CustomerOrderDetail };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+/**
+ * Story 12.6: Fetch fitting rounds of an order (bespoke fitting loop).
+ * Backend authorizes: Owner, the assigned Tailor, or the order's own Customer.
+ * Returns a discriminated result (12.5 pattern) — never throws across the
+ * server-action boundary.
+ */
+export async function fetchFittingRounds(
+  orderId: string
+): Promise<ActionResult<FittingRoundsData>> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) return { success: false, error: "Chưa đăng nhập. Vui lòng đăng nhập lại." };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/orders/${orderId}/fitting-rounds`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: controller.signal,
+        cache: "no-store",
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      const errJson = await resp.json().catch(() => ({}));
+      return {
+        success: false,
+        error: extractErrorMsg(errJson, "Không thể tải thông tin thử đồ"),
+      };
+    }
+
+    const json = await resp.json();
+    return {
+      success: true,
+      data: {
+        rounds: (json.data ?? []) as FittingRound[],
+        fitting_stage_status: (json.meta?.fitting_stage_status ?? null) as string | null,
+      },
+    };
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === "AbortError") {

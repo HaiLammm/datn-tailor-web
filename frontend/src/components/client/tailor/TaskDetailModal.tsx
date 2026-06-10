@@ -20,7 +20,10 @@ import {
   resumeTask,
   submitForQC,
   completeStage,
+  recordFittingRound,
 } from "@/app/actions/tailor-task-actions";
+import { fetchFittingRounds } from "@/app/actions/order-actions";
+import type { FittingOutcome, FittingRound } from "@/types/order";
 import { usePatternSession, useExportPiece, useExportSession } from "@/hooks/usePatternSession";
 import { PatternPreview } from "@/components/client/design/PatternPreview";
 import { PatternExportBar } from "@/components/client/design/PatternExportBar";
@@ -177,6 +180,11 @@ export default function TaskDetailModal({
   const [failureCategory, setFailureCategory] = useState<FailureCategory | "">("");
   const [failureReason, setFailureReason] = useState("");
 
+  // Story 12.6: fitting round recorder state
+  const [fittingRounds, setFittingRounds] = useState<FittingRound[]>([]);
+  const [fittingOutcome, setFittingOutcome] = useState<FittingOutcome | null>(null);
+  const [fittingNotes, setFittingNotes] = useState("");
+
   const task = detail ?? initialTask;
   const stageLogs = detail?.stage_logs ?? [];
 
@@ -203,6 +211,23 @@ export default function TaskDetailModal({
   useEffect(() => {
     loadDetail();
   }, [loadDetail]);
+
+  // Story 12.6: load fitting rounds whenever the detail (incl. stage list)
+  // refreshes and the task has a fitting stage.
+  useEffect(() => {
+    const hasFittingStage = detail?.stage_logs?.some((s) => s.stage === "fitting") ?? false;
+    if (!detail || !hasFittingStage) {
+      setFittingRounds([]);
+      return;
+    }
+    let cancelled = false;
+    fetchFittingRounds(detail.order_id).then((result) => {
+      if (!cancelled && result.success) setFittingRounds(result.data.rounds);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [detail]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -282,6 +307,23 @@ export default function TaskDetailModal({
 
   async function handleCompleteStage(stageOrder: number) {
     await handleAction(() => completeStage(initialTask.id, stageOrder, task.version));
+  }
+
+  // Story 12.6: record a fitting round (Đạt / Cần chỉnh sửa + notes)
+  async function handleRecordFitting() {
+    if (!fittingOutcome) return;
+    const ok = await handleAction(() =>
+      recordFittingRound(
+        task.order_id,
+        fittingOutcome,
+        task.version,
+        fittingNotes.trim() || undefined,
+      )
+    );
+    if (ok) {
+      setFittingOutcome(null);
+      setFittingNotes("");
+    }
   }
 
   async function handleSubmitReport() {
@@ -487,53 +529,125 @@ export default function TaskDetailModal({
                   .sort((a, b) => a.stage_order - b.stage_order)
                   .map((stage: TaskStageLog) => {
                     const isCurrentStage = stage.status === "in_progress";
+                    const isFittingRecorder =
+                      stage.stage === "fitting" &&
+                      isCurrentStage &&
+                      task.status === "in_progress";
+                    // Story 12.6: the fitting stage completes via the round
+                    // recorder (AC5 gate) — no direct "Hoàn thành" button.
                     const canComplete =
                       isCurrentStage &&
                       task.status === "in_progress" &&
+                      stage.stage !== "fitting" &&
                       !busy;
 
                     return (
-                      <div
-                        key={stage.id}
-                        className={`flex items-center gap-3 p-2.5 rounded-lg border ${
-                          isCurrentStage
-                            ? "border-indigo-300 bg-indigo-50"
-                            : stage.status === "completed"
-                            ? "border-emerald-200 bg-emerald-50"
-                            : stage.status === "skipped"
-                            ? "border-gray-200 bg-gray-50"
-                            : "border-gray-200 bg-white"
-                        }`}
-                      >
-                        {/* Status indicator */}
-                        <div className="shrink-0">
-                          {stage.status === "completed" ? (
-                            <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                          ) : stage.status === "skipped" ? (
-                            <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                            </svg>
-                          ) : isCurrentStage ? (
-                            <div className="w-5 h-5 rounded-full border-2 border-indigo-500 bg-indigo-100" />
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
+                      <div key={stage.id} className="space-y-2">
+                        <div
+                          className={`flex items-center gap-3 p-2.5 rounded-lg border ${
+                            isCurrentStage
+                              ? "border-indigo-300 bg-indigo-50"
+                              : stage.status === "completed"
+                              ? "border-emerald-200 bg-emerald-50"
+                              : stage.status === "skipped"
+                              ? "border-gray-200 bg-gray-50"
+                              : "border-gray-200 bg-white"
+                          }`}
+                        >
+                          {/* Status indicator */}
+                          <div className="shrink-0">
+                            {stage.status === "completed" ? (
+                              <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            ) : stage.status === "skipped" ? (
+                              <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                              </svg>
+                            ) : isCurrentStage ? (
+                              <div className="w-5 h-5 rounded-full border-2 border-indigo-500 bg-indigo-100" />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full border-2 border-gray-300" />
+                            )}
+                          </div>
+
+                          <span className={`flex-1 text-sm ${isCurrentStage ? "font-medium text-indigo-800" : stage.status === "completed" ? "text-emerald-700" : stage.status === "skipped" ? "line-through text-gray-400" : "text-gray-500"}`}>
+                            {STAGE_LABELS[stage.stage] ?? stage.stage}
+                          </span>
+
+                          {canComplete && (
+                            <button
+                              onClick={() => handleCompleteStage(stage.stage_order)}
+                              disabled={actionLoading}
+                              className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors min-h-[44px]"
+                            >
+                              Hoàn thành
+                            </button>
                           )}
                         </div>
 
-                        <span className={`flex-1 text-sm ${isCurrentStage ? "font-medium text-indigo-800" : stage.status === "completed" ? "text-emerald-700" : stage.status === "skipped" ? "line-through text-gray-400" : "text-gray-500"}`}>
-                          {STAGE_LABELS[stage.stage] ?? stage.stage}
-                        </span>
-
-                        {canComplete && (
-                          <button
-                            onClick={() => handleCompleteStage(stage.stage_order)}
-                            disabled={actionLoading}
-                            className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors min-h-[44px]"
+                        {/* Story 12.6: fitting round recorder */}
+                        {isFittingRecorder && (
+                          <div
+                            className="ml-8 p-3 bg-indigo-50/60 border border-indigo-200 rounded-lg space-y-2.5"
+                            data-testid="fitting-recorder"
                           >
-                            Hoàn thành
-                          </button>
+                            {fittingRounds.length > 0 && (
+                              <div className="space-y-1">
+                                {fittingRounds.map((round) => (
+                                  <p key={round.id} className="text-xs text-gray-600" data-testid="fitting-recorder-round">
+                                    Vòng thử {round.round_number}:{" "}
+                                    {round.outcome === "passed" ? "Đạt" : "Cần chỉnh sửa"}
+                                    {round.notes ? ` — ${round.notes}` : ""}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+
+                            <p className="text-xs font-medium text-indigo-900">Kết quả thử đồ</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setFittingOutcome("passed")}
+                                disabled={busy}
+                                className={`flex-1 text-sm px-3 py-2 rounded-lg font-medium border transition-colors min-h-[44px] ${
+                                  fittingOutcome === "passed"
+                                    ? "bg-emerald-600 border-emerald-600 text-white"
+                                    : "bg-white border-gray-300 text-gray-700 hover:bg-emerald-50"
+                                }`}
+                                data-testid="fitting-outcome-passed"
+                              >
+                                Đạt
+                              </button>
+                              <button
+                                onClick={() => setFittingOutcome("needs_alteration")}
+                                disabled={busy}
+                                className={`flex-1 text-sm px-3 py-2 rounded-lg font-medium border transition-colors min-h-[44px] ${
+                                  fittingOutcome === "needs_alteration"
+                                    ? "bg-amber-600 border-amber-600 text-white"
+                                    : "bg-white border-gray-300 text-gray-700 hover:bg-amber-50"
+                                }`}
+                                data-testid="fitting-outcome-alteration"
+                              >
+                                Cần chỉnh sửa
+                              </button>
+                            </div>
+                            <textarea
+                              value={fittingNotes}
+                              onChange={(e) => setFittingNotes(e.target.value)}
+                              placeholder="Ghi chú chỉnh sửa (vd: nới eo 1cm)..."
+                              rows={2}
+                              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-300 outline-none resize-none"
+                              data-testid="fitting-notes-input"
+                            />
+                            <button
+                              onClick={handleRecordFitting}
+                              disabled={!fittingOutcome || busy}
+                              className="w-full py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors min-h-[44px]"
+                              data-testid="fitting-record-btn"
+                            >
+                              {actionLoading ? "Đang ghi nhận..." : "Ghi nhận vòng thử"}
+                            </button>
+                          </div>
                         )}
                       </div>
                     );
