@@ -13,7 +13,7 @@ export function ShowroomEditorial() {
         className="text-xl md:text-2xl italic text-[#1A2B4C]"
         style={{ fontFamily: "Cormorant Garamond, serif" }}
       >
-        Mỗi tà áo là một câu chuyện — chọn câu chuyện của riêng bạn.
+        Mỗi tà áo là một câu chuyện
       </p>
     </div>
   );

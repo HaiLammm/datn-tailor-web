@@ -116,7 +116,7 @@ export default async function HomePage() {
             vẹn cả dáng hình.
           </>
         }
-        subline="Nơi mỗi đường kim kể một câu chuyện riêng — để tà áo không chỉ ôm trọn dáng người, mà còn chạm khẽ vào lòng bạn ngay từ cái nhìn đầu tiên."
+        subline="Mỗi đường kim kể một câu chuyện — Mỗi tà áo kể tiếp ước mơ"
       >
         <Link href="/showroom" className={ctaPrimary}>
           Dạo xem bộ sưu tập
