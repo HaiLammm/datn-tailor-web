@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 
 import { HeroBanner } from "@/components/client/brand/HeroBanner";
 import { FeatureTriad, type FeatureItem } from "@/components/client/brand/FeatureTriad";
@@ -24,6 +25,15 @@ const PROCESS_STEPS: { title: string; description: string }[] = [
   { title: "Lên mẫu", description: "Tạo mẫu áo chính xác theo số đo của bạn." },
   { title: "May tay", description: "Thợ may lành nghề chăm chút từng đường kim." },
   { title: "Vừa lần đầu", description: "Vừa vặn ngay lần thử đầu tiên." },
+];
+
+const GALLERY: { src: string; alt: string }[] = [
+  { src: "/shop/storefront.jpg", alt: "Mặt tiền tiệm Áo Dài Thanh Lộc" },
+  { src: "/shop/display-embroidered.jpg", alt: "Áo dài thêu hạc, phượng rực rỡ trưng bày tại tiệm" },
+  { src: "/shop/window-display.jpg", alt: "Tủ kính trưng bày áo dài đủ sắc màu" },
+  { src: "/shop/wedding-couple.jpg", alt: "Bộ áo dài cưới đỏ thêu chữ song hỷ cho cô dâu chú rể" },
+  { src: "/shop/group-aodai.jpg", alt: "Nhóm khách trong tà áo dài đồng phục do tiệm may" },
+  { src: "/shop/white-rack.jpg", alt: "Những tà áo dài trắng vừa may xong trên sào" },
 ];
 
 const FEATURES: FeatureItem[] = [
@@ -125,10 +135,15 @@ export default function AboutPage() {
                 — để cái hồn xưa vẫn còn, mà tà áo thì vừa in từng đường nét.
               </p>
             </div>
-            <div
-              aria-hidden="true"
-              className="aspect-[4/5] rounded-2xl bg-[radial-gradient(120%_90%_at_30%_0%,rgba(212,175,55,0.22),transparent_55%),linear-gradient(140deg,#22335a,#1A2B4C_45%,#101b33)]"
-            />
+            <div className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-lg">
+              <Image
+                src="/shop/interior-colorful.jpg"
+                alt="Không gian tiệm Nhà May Thanh Lộc với những tà áo dài đủ sắc màu"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -186,6 +201,41 @@ export default function AboutPage() {
           heading="Được hàng trăm khách thương gửi trọn niềm tin"
           items={TESTIMONIALS}
         />
+      </section>
+
+      {/* Pillar 5 — Cửa tiệm & sản phẩm (gallery) */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37] mb-2">
+              Ghé thăm
+            </span>
+            <h2
+              className="text-3xl md:text-4xl font-serif font-semibold text-[#1A2B4C]"
+              style={CORMORANT}
+            >
+              Không gian tiệm & những tà áo
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+            {GALLERY.map((g, i) => (
+              <div
+                key={g.src}
+                className={`relative overflow-hidden rounded-xl shadow-sm ${
+                  i === 0 ? "col-span-2 md:row-span-2 aspect-[4/3] md:aspect-auto" : "aspect-[3/4]"
+                }`}
+              >
+                <Image
+                  src={g.src}
+                  alt={g.alt}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-500 hover:scale-105"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Closing CTA band */}

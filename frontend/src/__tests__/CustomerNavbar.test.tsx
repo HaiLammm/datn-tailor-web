@@ -94,12 +94,13 @@ describe("CustomerNavbar", () => {
     mockPathname = "/showroom";
   });
 
-  it("renders the 5 real nav links with correct hrefs (no redirect loop)", () => {
+  it("renders the 6 real nav links with correct hrefs (no redirect loop)", () => {
     render(<CustomerNavbar userName={null} />);
     const nav = screen.getByRole("navigation", { name: "Điều hướng chính" });
     expect(within(nav).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
     expect(within(nav).getByRole("link", { name: "Showroom" })).toHaveAttribute("href", "/showroom");
     expect(within(nav).getByRole("link", { name: "Giới thiệu" })).toHaveAttribute("href", "/about");
+    expect(within(nav).getByRole("link", { name: "Bài viết" })).toHaveAttribute("href", "/blog");
     expect(within(nav).getByRole("link", { name: "Liên hệ" })).toHaveAttribute("href", "/contact");
     expect(within(nav).getByRole("link", { name: "Đặt lịch" })).toHaveAttribute("href", "/booking");
   });

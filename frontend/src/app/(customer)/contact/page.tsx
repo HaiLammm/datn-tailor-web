@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Image from "next/image";
 
 import { HeroBanner } from "@/components/client/brand/HeroBanner";
 import ContactForm from "@/components/client/brand/ContactForm";
@@ -35,6 +36,15 @@ export default function ContactPage() {
           <div className="grid items-start gap-10 md:grid-cols-2 lg:gap-16">
             {/* Info side */}
             <div className="space-y-8">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl shadow-sm">
+                <Image
+                  src="/shop/storefront.jpg"
+                  alt={`Mặt tiền ${STORE.name}`}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover"
+                />
+              </div>
               <div>
                 <h2
                   className="text-2xl font-serif font-semibold text-[#1A2B4C]"
@@ -101,7 +111,7 @@ export default function ContactPage() {
                 </ul>
                 <div className="mt-4 flex items-center gap-2">
                   <a
-                    href="https://facebook.com"
+                    href="https://facebook.com/dangloc"
                     aria-label="Facebook"
                     target="_blank"
                     rel="noopener noreferrer"

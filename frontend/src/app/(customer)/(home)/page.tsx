@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 
 import { HeroBanner } from "@/components/client/brand/HeroBanner";
 import { FeatureTriad, type FeatureItem } from "@/components/client/brand/FeatureTriad";
@@ -9,8 +10,10 @@ import {
 } from "@/components/client/brand/TestimonialStrip";
 import { RevealOnScroll } from "@/components/client/brand/RevealOnScroll";
 import { GarmentCard } from "@/components/client/showroom/GarmentCard";
+import { BlogCard } from "@/components/client/blog/BlogCard";
 import { fetchGarments } from "@/app/actions/garment-actions";
 import { GarmentStatus } from "@/types/garment";
+import { getAllPosts } from "@/lib/blog";
 
 /**
  * Story 15.5: Homepage Landing "CV" — the boutique's persuasive front door.
@@ -96,11 +99,15 @@ export default async function HomePage() {
   const res = await fetchGarments({ status: GarmentStatus.AVAILABLE, page_size: 4 });
   const featured = Array.isArray(res?.data?.items) ? res.data.items : [];
 
+  // Latest blog posts (file-based, read at build time); section hidden when empty.
+  const latestPosts = getAllPosts().slice(0, 3);
+
   return (
     <div className="bg-[#F9F7F2]">
       {/* Section 1 — Full-bleed hero */}
       <HeroBanner
         variant="home"
+        imageSrc="/shop/interior-wide.jpg"
         eyebrow="Áo dài may riêng · Giữ trọn nét Việt"
         title={
           <>
@@ -190,10 +197,15 @@ export default async function HomePage() {
                   Nghe trọn câu chuyện →
                 </Link>
               </div>
-              <div
-                aria-hidden="true"
-                className="aspect-[4/5] rounded-2xl bg-[radial-gradient(120%_90%_at_30%_0%,rgba(212,175,55,0.22),transparent_55%),linear-gradient(140deg,#22335a,#1A2B4C_45%,#101b33)]"
-              />
+              <div className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-lg">
+                <Image
+                  src="/shop/handwork.jpg"
+                  alt="Bàn tay người thợ tỉ mỉ đính từng cánh hoa vải lên tà áo dài"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover"
+                />
+              </div>
             </div>
           </div>
         </RevealOnScroll>
@@ -209,6 +221,39 @@ export default async function HomePage() {
           />
         </RevealOnScroll>
       </section>
+
+      {/* Section 5.5 — Latest journal posts (hidden when empty) */}
+      {latestPosts.length > 0 && (
+        <section className="py-20">
+          <RevealOnScroll>
+            <div className="container mx-auto px-4">
+              <div className="flex items-end justify-between flex-wrap gap-3 mb-10">
+                <div>
+                  <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37] mb-2">
+                    Nhật ký
+                  </span>
+                  <h2
+                    className="text-3xl md:text-4xl font-serif font-semibold text-[#1A2B4C]"
+                    style={CORMORANT}
+                  >
+                    Chuyện tà áo dài
+                  </h2>
+                </div>
+                <Link href="/blog" className={linkDark}>
+                  Xem tất cả →
+                </Link>
+              </div>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {latestPosts.map((post) => (
+                  <li key={post.slug} className="h-full">
+                    <BlogCard post={post} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </RevealOnScroll>
+        </section>
+      )}
 
       {/* Section 6 — Closing CTA band */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#1A2B4C] to-[#0f1b33] text-[#F9F7F2] text-center py-20">

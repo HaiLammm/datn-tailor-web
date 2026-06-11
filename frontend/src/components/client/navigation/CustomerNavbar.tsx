@@ -28,6 +28,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/", label: "Trang chủ" },
   { href: "/showroom", label: "Showroom" },
   { href: "/about", label: "Giới thiệu" },
+  { href: "/blog", label: "Bài viết" },
   { href: "/contact", label: "Liên hệ" },
   { href: "/booking", label: "Đặt lịch" },
 ];

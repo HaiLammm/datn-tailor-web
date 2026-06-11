@@ -8,8 +8,8 @@
 export const STORE = {
   name: "Nhà May Thanh Lộc",
   address: "187B/1 Mai Hắc Đế, Phường Tân Thành, TP. Buôn Ma Thuột, tỉnh Đắk Lắk",
-  phone: "0901 234 567",
-  zalo: "0901 234 567",
+  phone: "0947 516 861",
+  zalo: "0947 516 861",
   email: "lienhe@nhamaythanhloc.vn",
   hours: "Thứ 2–CN: 8:00 – 20:00",
 } as const;
