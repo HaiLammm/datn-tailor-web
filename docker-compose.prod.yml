@@ -1,0 +1,42 @@
+# Production overlay cho aodaithanhloc.com (home server + Cloudflare Tunnel).
+#
+# Dùng kèm file gốc:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Chỉ cloudflared là đường ra Internet (không cần mở cổng / IP tĩnh). Map hostname
+# aodaithanhloc.com -> http://frontend:3000 cấu hình trong Cloudflare Zero Trust
+# dashboard (không đặt ở đây). Token đọc từ .env (CLOUDFLARE_TUNNEL_TOKEN).
+services:
+  backend:
+    environment:
+      # Cho phép trình duyệt trên domain prod gọi API (qua proxy same-origin của Next).
+      CORS_ORIGINS: https://aodaithanhloc.com
+      # Đổi sang secret thật cho production (mặc định giữ giá trị cũ để không vỡ).
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # NEXT_PUBLIC_* nhúng lúc build → phải là domain prod.
+        NEXT_PUBLIC_API_URL: https://aodaithanhloc.com
+        NEXT_PUBLIC_APP_URL: https://aodaithanhloc.com
+        NEXT_PUBLIC_SITE_URL: https://aodaithanhloc.com
+    environment:
+      # SSR/route-handler dùng các biến này lúc chạy.
+      BACKEND_URL: http://backend:8000
+      NEXT_PUBLIC_API_URL: https://aodaithanhloc.com
+      NEXT_PUBLIC_APP_URL: https://aodaithanhloc.com
+      NEXT_PUBLIC_SITE_URL: https://aodaithanhloc.com
+      AUTH_URL: https://aodaithanhloc.com
+      AUTH_TRUST_HOST: "true"
+      AUTH_SECRET: ${AUTH_SECRET:-cVzrKg2qiJG1cyyrZKY0wGNARTnOXcUaEKgZWA3QfUw=}
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      - frontend
