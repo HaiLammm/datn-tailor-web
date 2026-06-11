@@ -33,6 +33,10 @@ class NotificationType(str, Enum):
     FITTING_READY = "fitting_ready"
     FITTING_ALTERATION = "fitting_alteration"
     FITTING_PASSED = "fitting_passed"
+    # Alteration warranty (Story 12.7)
+    ALTERATION_REQUESTED = "alteration_requested"
+    ALTERATION_APPROVED = "alteration_approved"
+    ALTERATION_DONE = "alteration_done"
 
 
 class NotificationResponse(BaseModel):

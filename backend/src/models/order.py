@@ -228,6 +228,11 @@ class OrderResponse(BaseModel):
     preparation_step: str | None = None
     # Cancellation tracking
     cancellation_reason: str | None = None
+    # Story 12.7: pending alteration-warranty request marker (owner drawer panel)
+    alteration_requested_at: datetime | None = None
+    # Story 12.7 (review round 1): the customer's description, shown directly
+    # in the owner approve panel (the notification is only a courtesy copy)
+    alteration_request_note: str | None = None
     # Active tailor task cancellation request info (for owner drawer)
     active_cancellation_request: dict | None = None
     tailor_task_info: TailorTaskInfoDetail | None = None
@@ -294,6 +299,8 @@ class OrderListItem(BaseModel):
     rental_condition: str | None = None
     security_type: str | None = None
     security_value: str | None = None
+    # Story 12.7: pending alteration-warranty request marker (board badge)
+    alteration_requested_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

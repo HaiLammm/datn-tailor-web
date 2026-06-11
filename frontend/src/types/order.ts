@@ -122,6 +122,11 @@ export interface OrderResponse {
   pickup_date?: string | null;
   return_date?: string | null;
   cancellation_reason?: string | null;
+  // Story 12.7: pending alteration-warranty request marker (owner drawer panel)
+  alteration_requested_at?: string | null;
+  // Story 12.7 (review round 1): the customer's description, shown directly
+  // in the owner approve panel
+  alteration_request_note?: string | null;
   active_cancellation_request?: {
     task_id: string;
     tailor_name: string;
@@ -191,6 +196,8 @@ export interface OrderListItem {
   rental_condition?: RentalCondition | null;
   security_type?: string | null;
   security_value?: string | null;
+  // Story 12.7: pending alteration-warranty request marker (board badge)
+  alteration_requested_at?: string | null;
   // Tailor task info for bespoke orders
   tailor_task_info?: {
     tailor_name: string;
@@ -377,6 +384,8 @@ export interface CustomerOrderDetail extends CustomerOrderSummary {
   return_date?: string | null;
   rental_condition?: RentalCondition | null;
   security_refund_amount?: number | null;
+  // Story 12.7: alteration warranty window (bespoke delivered/completed only)
+  alteration?: AlterationInfo | null;
 }
 
 export interface CustomerOrderListMeta {
@@ -421,4 +430,27 @@ export interface FittingRoundsData {
   rounds: FittingRound[];
   /** Status of the task's fitting stage log (pending/in_progress/completed) or null. */
   fitting_stage_status: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Story 12.7: Post-delivery alteration warranty (FR101)
+// ---------------------------------------------------------------------------
+
+/** Server-computed warranty window state — the FE renders this verbatim and
+ * never derives warranty math from raw dates. */
+export type AlterationState = "available" | "pending" | "in_alteration" | "expired";
+
+export interface AlterationInfo {
+  state: AlterationState;
+  warranty_days: number;
+  /** Whole days left in the window, rounded up (0 when expired). */
+  remaining_days: number;
+  requested_at: string | null;
+  /** The customer's own submitted description (pending state only). */
+  request_note?: string | null;
+}
+
+export interface AlterationRequestResult {
+  order_id: string;
+  alteration_requested_at: string;
 }

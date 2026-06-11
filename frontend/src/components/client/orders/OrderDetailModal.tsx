@@ -6,8 +6,15 @@
  */
 
 import { useEffect, useState } from "react";
-import { downloadOrderInvoice, fetchFittingRounds, payRemaining } from "@/app/actions/order-actions";
+import { z } from "zod";
+import {
+  downloadOrderInvoice,
+  fetchFittingRounds,
+  payRemaining,
+  requestAlteration,
+} from "@/app/actions/order-actions";
 import type {
+  AlterationState,
   CustomerOrderDetail,
   FittingRoundsData,
   RentalCondition,
@@ -88,6 +95,14 @@ function deriveFittingStripState(fitting: FittingRoundsData | null): FittingStri
   }
 }
 
+// Story 12.7: alteration warranty form — plain Vietnamese validation message
+const alterationFormSchema = z.object({
+  description: z
+    .string()
+    .trim()
+    .min(10, "Vui lòng mô tả chỗ chưa vừa (ít nhất 10 ký tự)"),
+});
+
 export default function OrderDetailModal({
   order,
   isOpen,
@@ -96,6 +111,14 @@ export default function OrderDetailModal({
   const [downloading, setDownloading] = useState(false);
   const [paying, setPaying] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Story 12.7: alteration warranty request (state computed server-side —
+  // order.alteration; locally flips to "pending" after a successful request)
+  const [alterationFormOpen, setAlterationFormOpen] = useState(false);
+  const [alterationDescription, setAlterationDescription] = useState("");
+  const [alterationError, setAlterationError] = useState<string | null>(null);
+  const [alterationSubmitting, setAlterationSubmitting] = useState(false);
+  const [alterationJustRequested, setAlterationJustRequested] = useState(false);
 
   // Story 12.6: fitting rounds for bespoke orders in production.
   // "in_progress" (task created) and "in_production" (task accepted) are both
@@ -120,7 +143,22 @@ export default function OrderDetailModal({
     };
   }, [isOpen, orderId, isBespokeInProduction]);
 
+  // Story 12.7: reset the alteration form whenever another order is opened
+  useEffect(() => {
+    setAlterationFormOpen(false);
+    setAlterationDescription("");
+    setAlterationError(null);
+    setAlterationJustRequested(false);
+  }, [orderId, isOpen]);
+
   if (!isOpen || !order) return null;
+
+  // Story 12.7: server-authoritative warranty state (null = no section)
+  const alterationState: AlterationState | null = order.alteration
+    ? alterationJustRequested
+      ? "pending"
+      : order.alteration.state
+    : null;
 
   const fittingStripState = deriveFittingStripState(fitting);
   const showFittingSection =
@@ -131,6 +169,30 @@ export default function OrderDetailModal({
   function showToast(msg: string) {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
+  }
+
+  // Story 12.7: submit the alteration request (Zod min 10 chars client-side;
+  // the backend re-validates window/status/duplicates authoritatively)
+  async function handleAlterationSubmit() {
+    const parsed = alterationFormSchema.safeParse({ description: alterationDescription });
+    if (!parsed.success) {
+      setAlterationError(parsed.error.issues[0]?.message ?? "Nội dung chưa hợp lệ");
+      return;
+    }
+    setAlterationError(null);
+    setAlterationSubmitting(true);
+    try {
+      const result = await requestAlteration(order!.id, parsed.data.description);
+      if (result.success) {
+        setAlterationJustRequested(true);
+        setAlterationFormOpen(false);
+        showToast("Đã gửi yêu cầu chỉnh sửa cho tiệm");
+      } else {
+        setAlterationError(result.error);
+      }
+    } finally {
+      setAlterationSubmitting(false);
+    }
   }
 
   async function handleDownloadInvoice() {
@@ -587,6 +649,119 @@ export default function OrderDetailModal({
                   >
                     Đặt lịch thử đồ
                   </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Story 12.7: Free alteration warranty (bespoke, after handover) — plain Vietnamese */}
+          {alterationState && order.alteration && (
+            <div data-testid="alteration-section">
+              <h3 className="font-semibold text-gray-800 text-sm mb-3">Chỉnh sửa miễn phí</h3>
+              <div className="space-y-3">
+                {alterationState === "available" && (
+                  <>
+                    <div
+                      className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
+                      data-testid="alteration-window-strip"
+                    >
+                      Còn {order.alteration.remaining_days} ngày để yêu cầu chỉnh sửa miễn phí
+                    </div>
+                    {!alterationFormOpen ? (
+                      <button
+                        onClick={() => setAlterationFormOpen(true)}
+                        className="inline-flex items-center justify-center w-full min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                        data-testid="alteration-request-btn"
+                      >
+                        Yêu cầu chỉnh sửa
+                      </button>
+                    ) : (
+                      <div className="space-y-2" data-testid="alteration-form">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Chỗ nào chưa vừa? Mô tả giúp tiệm nhé
+                        </label>
+                        <textarea
+                          value={alterationDescription}
+                          onChange={(e) => setAlterationDescription(e.target.value)}
+                          rows={3}
+                          placeholder="Ví dụ: phần eo hơi rộng, tay áo hơi dài..."
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          data-testid="alteration-desc-input"
+                        />
+                        {alterationError && (
+                          <p className="text-xs text-red-600" data-testid="alteration-error">
+                            {alterationError}
+                          </p>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleAlterationSubmit}
+                            disabled={alterationSubmitting}
+                            className="flex-1 min-h-[44px] bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                            data-testid="alteration-submit-btn"
+                          >
+                            {alterationSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setAlterationFormOpen(false);
+                              setAlterationError(null);
+                            }}
+                            disabled={alterationSubmitting}
+                            className="min-h-[44px] px-4 py-2.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            Huỷ
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {alterationState === "pending" && (
+                  <div
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800"
+                    data-testid="alteration-pending-strip"
+                  >
+                    Đã gửi yêu cầu — chờ tiệm xác nhận
+                    {(alterationJustRequested
+                      ? alterationDescription.trim()
+                      : order.alteration.request_note) && (
+                      <p
+                        className="mt-1.5 text-xs font-normal text-amber-700 whitespace-pre-wrap"
+                        data-testid="alteration-pending-note"
+                      >
+                        Bạn đã mô tả: {alterationJustRequested
+                          ? alterationDescription.trim()
+                          : order.alteration.request_note}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {alterationState === "in_alteration" && (
+                  <div
+                    className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-800"
+                    data-testid="alteration-in-progress-strip"
+                  >
+                    Tiệm đang chỉnh sửa áo cho bạn — sẽ báo khi xong
+                  </div>
+                )}
+
+                {alterationState === "expired" && (
+                  <div className="space-y-3" data-testid="alteration-expired">
+                    <p className="text-sm text-gray-600">
+                      Đã quá thời hạn chỉnh sửa miễn phí ({order.alteration.warranty_days} ngày).
+                      Nếu áo chưa vừa, mời bạn liên hệ tiệm để được hỗ trợ.
+                    </p>
+                    <a
+                      href="/contact"
+                      className="inline-flex items-center justify-center w-full min-h-[44px] border border-indigo-600 text-indigo-700 hover:bg-indigo-50 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
+                      data-testid="alteration-contact-cta"
+                    >
+                      Liên hệ tiệm
+                    </a>
+                  </div>
                 )}
               </div>
             </div>

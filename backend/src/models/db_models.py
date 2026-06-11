@@ -41,6 +41,9 @@ class TenantDB(Base):
         String(100), unique=True, nullable=False, index=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Story 12.7: per-tenant settings bag (e.g. {"alteration_warranty_days": 30}).
+    # Read via get_tenant_setting(tenant, key, default) — never index directly.
+    settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -375,6 +378,14 @@ class OrderDB(Base):
         DateTime(timezone=True), nullable=True
     )
     cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Story 12.7: pending alteration-warranty request marker (set on customer
+    # request, cleared on owner approval — no new orders.status value)
+    alteration_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Story 12.7 (review round 1): the customer's alteration description —
+    # persisted with the marker, copied to the task's notes on approval.
+    alteration_request_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -619,6 +630,12 @@ class TailorTaskDB(Base):
     """
 
     __tablename__ = "tailor_tasks"
+    __table_args__ = (
+        CheckConstraint(
+            "task_type IN ('production', 'alteration')",
+            name="chk_tailor_task_type",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
@@ -640,6 +657,11 @@ class TailorTaskDB(Base):
     customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="unassigned", index=True
+    )
+    # Story 12.7: 'production' (default) | 'alteration' (post-delivery warranty
+    # rework — reduced stage list, excluded from QC-pass order-sync)
+    task_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="production", index=True
     )
     production_step: Mapped[str] = mapped_column(
         String(50), nullable=False, default="pending"

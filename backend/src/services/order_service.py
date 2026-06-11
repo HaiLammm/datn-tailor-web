@@ -768,6 +768,7 @@ async def list_orders(
             # Never ship the raw CCCD number in the (multi-order) list payload — the board
             # only needs the cash amount; CCCD just needs the type. (PII minimization.)
             security_value=o.security_value if o.security_type != "cccd" else None,
+            alteration_requested_at=o.alteration_requested_at,
         )
         for o in orders
     ]
@@ -980,6 +981,14 @@ async def update_order_status(
     if new_status == "cancelled" and order.applied_voucher_ids:
         await refund_vouchers_for_order(db, order.id, tenant_id=order.tenant_id)
 
+    # Story 12.7 (review round 1): stamp the handover timestamp exactly once —
+    # it anchors the alteration warranty window (resolve_window_anchor), so it
+    # must never move on later transitions (e.g. delivered → completed).
+    # "completed" also stamps it, for paths that legitimately skip delivered
+    # (rent: returned → completed); never overwrite an existing value.
+    if new_status in ("delivered", "completed") and order.delivery_date is None:
+        order.delivery_date = datetime.now(timezone.utc)
+
     order.status = new_status
     order.updated_at = datetime.now(timezone.utc)
     # Capture fields before commit (for notification, since session may expire objects)
@@ -1178,6 +1187,8 @@ async def get_order_with_transactions(
         pickup_date=order.pickup_date,
         return_date=order.return_date,
         cancellation_reason=order.cancellation_reason,
+        alteration_requested_at=order.alteration_requested_at,
+        alteration_request_note=order.alteration_request_note,
         active_cancellation_request=active_cancel_req,
         tailor_task_info=tailor_task_detail_info,
     )

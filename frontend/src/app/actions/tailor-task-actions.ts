@@ -318,11 +318,17 @@ export async function fetchTaskDetail(
  * POST a mutation to an API path and return a discriminated result.
  * 409 → { success: false, conflict: true } (optimistic-lock stale version).
  * Never throws — error messages must survive the server-action boundary.
+ *
+ * opts.verbatim409: surface the backend's own 409 detail instead of the
+ * generic optimistic-lock copy — for endpoints whose 409 is a business
+ * conflict with specific Vietnamese copy (e.g. approve-alteration duplicate
+ * task), not a stale version. Default false: other callers are unchanged.
  */
 async function postMutation<T>(
   path: string,
   version?: number,
   body?: Record<string, unknown>,
+  opts?: { verbatim409?: boolean },
 ): Promise<ActionResult<T>> {
   let token: string;
   try {
@@ -347,10 +353,16 @@ async function postMutation<T>(
     );
     clearTimeout(timeoutId);
     if (response.status === 409) {
+      const err = opts?.verbatim409
+        ? await response.json().catch(() => ({}))
+        : null;
       return {
         success: false,
         conflict: true,
-        error: "Dữ liệu đã thay đổi bởi người khác. Vui lòng tải lại.",
+        error:
+          typeof err?.detail === "string"
+            ? err.detail
+            : "Dữ liệu đã thay đổi bởi người khác. Vui lòng tải lại.",
       };
     }
     if (!response.ok) {
@@ -465,5 +477,26 @@ export async function recordFittingRound(
     `/api/v1/orders/${orderId}/fitting-rounds`,
     version,
     { outcome, ...(notes ? { notes } : {}) },
+  );
+}
+
+// ── Story 12.7: Owner approves a post-delivery alteration request ─────────────
+
+/**
+ * Approve a pending alteration request: the backend creates a TailorTask with
+ * task_type="alteration" (reduced stage list), clears the pending marker and
+ * notifies the customer (+ the assigned tailor when tailor_id is given).
+ * verbatim409: the backend's duplicate-open-task 409 copy must reach the
+ * owner as-is (it is a business conflict, not an optimistic-lock retry).
+ */
+export async function approveAlteration(
+  orderId: string,
+  body: { tailor_id?: string; deadline?: string; notes?: string },
+): Promise<ActionResult<TailorTask>> {
+  return postMutation<TailorTask>(
+    `/api/v1/orders/${orderId}/approve-alteration`,
+    undefined,
+    body as Record<string, unknown>,
+    { verbatim409: true },
   );
 }

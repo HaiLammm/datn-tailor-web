@@ -184,6 +184,8 @@ class TailorTaskResponse(BaseModel):
     garment_name: str
     customer_name: str
     status: str = Field(description="Task status (11-state machine)")
+    # Story 12.7: 'production' | 'alteration' (post-delivery warranty rework)
+    task_type: str = Field(default="production", description="production | alteration")
     production_step: str = Field(default="pending", description="pending | cutting | sewing | finishing | quality_check | done")
     deadline: str | None = None
     notes: str | None = None

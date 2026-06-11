@@ -332,6 +332,15 @@ export default function OrderTable({
                         <RentalConditionBadge condition={order.rental_condition} />
                       </div>
                     )}
+                    {/* Story 12.7: pending post-delivery alteration request */}
+                    {order.alteration_requested_at && (
+                      <span
+                        className="mt-1 inline-block text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium"
+                        data-testid="alteration-request-badge"
+                      >
+                        Yêu cầu chỉnh sửa
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <PaymentStatusBadge status={order.payment_status} />

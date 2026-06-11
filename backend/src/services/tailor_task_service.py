@@ -77,6 +77,7 @@ from src.services.notification_creator import (
     ORDER_READY_PICKUP_MESSAGE,
     TASK_ASSIGNED_TAILOR,
     FITTING_READY,
+    ALTERATION_DONE_CUSTOMER,
     create_notification,
 )
 
@@ -106,10 +107,13 @@ PRODUCTION_STEPS = ["pending", "cutting", "sewing", "finishing", "quality_check"
 # Stage definitions per garment type
 # Story 12.6: "fitting" inserted after "assembly" in all sets — the fitting ⇄
 # alteration loop (FR100) lives at this stage via fitting_rounds rows.
+# Story 12.7: "alteration" is the reduced stage list for task_type='alteration'
+# (post-delivery warranty rework) — keyed by task_type, not garment name.
 GARMENT_STAGES: dict[str, list[str]] = {
     "default": ["cutting", "body_sewing", "sleeve_sewing", "assembly", "fitting", "finishing"],
     "ao_dai": ["cutting", "body_sewing", "sleeve_sewing", "assembly", "fitting", "embroidery", "finishing"],
     "wedding": ["cutting", "body_sewing", "sleeve_sewing", "assembly", "fitting", "embroidery", "beading", "finishing"],
+    "alteration": ["alteration", "finishing"],
 }
 
 
@@ -122,6 +126,19 @@ def _resolve_stage_key(garment_name: str | None) -> str:
     if "áo dài" in name_lower or "ao dai" in name_lower:
         return "ao_dai"
     return "default"
+
+
+def _resolve_stage_key_for_task(task: TailorTaskDB) -> str:
+    """Stage-set key for a task — MUST be derivable from the persisted task.
+
+    Alteration tasks (Story 12.7) bypass garment-name resolution: their stage
+    list is the reduced ["alteration", "finishing"] set both at start_task and
+    at the QC-rework reset (so a failed-QC alteration never regains the full
+    garment production stages).
+    """
+    if task.task_type == "alteration":
+        return "alteration"
+    return _resolve_stage_key(task.garment_name)
 
 
 async def _transition_task(
@@ -387,7 +404,7 @@ async def start_task(
     await db.execute(sa_delete(TaskStageLogDB).where(TaskStageLogDB.task_id == task_id))
     service_type = await _get_order_service_type(db, task.order_id)
     _create_stage_logs(
-        db, task.id, tenant_id, _resolve_stage_key(task.garment_name), service_type
+        db, task.id, tenant_id, _resolve_stage_key_for_task(task), service_type
     )
 
     await db.flush()
@@ -559,6 +576,31 @@ async def process_qc_result(
         await _transition_task(db, task, "completed", actor_id, "Owner")
         task.completed_at = now
 
+        # Story 12.7 (AC4): alteration tasks NEVER re-enter the order pipeline.
+        # Their order is already delivered/completed — skip the order-sync
+        # entirely (no re-transition) and notify the customer to pick up.
+        if task.task_type == "alteration":
+            order = await db.get(OrderDB, task.order_id)
+            customer_id = order.customer_id if order else None
+
+            await db.flush()
+            await db.commit()
+
+            if customer_id:
+                try:
+                    title, msg_tpl = ALTERATION_DONE_CUSTOMER
+                    await create_notification(
+                        db=db, user_id=customer_id, tenant_id=tenant_id,
+                        notification_type="alteration_done",
+                        title=title,
+                        message=msg_tpl.format(garment_name=task.garment_name),
+                        data={"task_id": str(task.id), "order_id": str(task.order_id)},
+                    )
+                except Exception:
+                    logger.warning("Failed to notify customer about alteration done %s", task.id)
+
+            return _task_to_response(task, datetime.now(timezone.utc))
+
         order_result = await db.execute(
             select(OrderDB).where(OrderDB.id == task.order_id).with_for_update()
         )
@@ -614,11 +656,12 @@ async def process_qc_result(
         task.rework_count += 1
         task.qc_issues = request.qc_issues
 
-        # Reset stage logs for rework cycle
+        # Reset stage logs for rework cycle (alteration tasks reset to the
+        # reduced alteration list, not the garment production list — 12.7)
         await db.execute(sa_delete(TaskStageLogDB).where(TaskStageLogDB.task_id == task_id))
         service_type = await _get_order_service_type(db, task.order_id)
         _create_stage_logs(
-            db, task_id, tenant_id, _resolve_stage_key(task.garment_name), service_type
+            db, task_id, tenant_id, _resolve_stage_key_for_task(task), service_type
         )
 
         await db.flush()
@@ -1031,6 +1074,7 @@ def _task_to_response(task: TailorTaskDB, now: datetime) -> TailorTaskResponse:
         garment_name=task.garment_name,
         customer_name=task.customer_name,
         status=task.status,
+        task_type=task.task_type,
         production_step=task.production_step,
         deadline=task.deadline.isoformat() if task.deadline else None,
         notes=task.notes,
@@ -1517,10 +1561,14 @@ async def _create_task_no_commit(
     notes: str | None = None,
     piece_rate: Decimal | None = None,
     order_item_id: uuid.UUID | None = None,
+    task_type: str = "production",
 ) -> TailorTaskDB:
     """Internal helper: create a TailorTask and flush (no commit).
 
-    Used by resolve_cancellation_request for atomic reassign.
+    Used by resolve_cancellation_request for atomic reassign. task_type must
+    be propagated from the old task — an alteration task reassigned to another
+    tailor must stay an alteration task (Story 12.7: it would otherwise rejoin
+    the production order-sync and re-transition a delivered/completed order).
     """
     new_task = TailorTaskDB(
         tenant_id=tenant_id,
@@ -1534,6 +1582,7 @@ async def _create_task_no_commit(
         deadline=deadline,
         notes=notes,
         piece_rate=piece_rate,
+        task_type=task_type,
     )
     db.add(new_task)
     await db.flush()
@@ -1655,11 +1704,22 @@ async def resolve_cancellation_request(
         task.cancellation_resolved_at = datetime.now(timezone.utc)
         task.updated_at = datetime.now(timezone.utc)
 
-        # Cancel order with reason
-        cancel_reason = input_data.cancellation_reason or task.failure_reason or "Thợ may yêu cầu huỷ"
-        order.status = "cancelled"
-        order.cancellation_reason = cancel_reason
-        order.updated_at = datetime.now(timezone.utc)
+        if task.task_type == "alteration":
+            # Story 12.7 (review round 1): an alteration task belongs to an
+            # already delivered/completed (and paid) order — cancelling the
+            # task must NOT cancel the order. Leave order.status /
+            # cancellation_reason / updated_at untouched and restore the
+            # pending marker (+ the customer's description from the task's
+            # notes) so the owner can re-approve with another tailor.
+            order.alteration_requested_at = datetime.now(timezone.utc)
+            if task.notes:
+                order.alteration_request_note = task.notes
+        else:
+            # Cancel order with reason (production tasks only)
+            cancel_reason = input_data.cancellation_reason or task.failure_reason or "Thợ may yêu cầu huỷ"
+            order.status = "cancelled"
+            order.cancellation_reason = cancel_reason
+            order.updated_at = datetime.now(timezone.utc)
         await db.flush()
         await db.commit()
 
@@ -1676,7 +1736,7 @@ async def resolve_cancellation_request(
         except Exception:
             logger.warning("Failed to notify tailor about approved cancellation for task %s", task.id)
 
-        return {"decision": "approve", "task_id": str(task.id), "order_status": "cancelled"}
+        return {"decision": "approve", "task_id": str(task.id), "order_status": order.status}
 
     elif decision == "reject":
         previous_status = "in_progress" if task.production_step != "pending" else "assigned"
@@ -1730,6 +1790,7 @@ async def resolve_cancellation_request(
             notes=task.notes,
             piece_rate=task.piece_rate,
             order_item_id=task.order_item_id,
+            task_type=task.task_type,
         )
 
         await db.commit()

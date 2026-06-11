@@ -228,6 +228,23 @@ FITTING_PASSED = (
     "Bạn đã thử sản phẩm '{garment_name}' vừa vặn. Tiệm đang hoàn thiện những bước cuối cùng.",
 )
 
+# Story 12.7: Alteration warranty notifications
+# (owner-facing first, then customer-facing — plain Vietnamese)
+ALTERATION_REQUESTED_OWNER = (
+    "Khách yêu cầu chỉnh sửa",
+    "Khách {customer_name} yêu cầu chỉnh sửa đơn {order_code}: {description}",
+)
+
+ALTERATION_APPROVED_CUSTOMER = (
+    "Yêu cầu chỉnh sửa đã được tiếp nhận",
+    "Tiệm đã nhận yêu cầu chỉnh sửa sản phẩm '{garment_name}'. Mời bạn mang áo tới tiệm để được chỉnh lại cho vừa.",
+)
+
+ALTERATION_DONE_CUSTOMER = (
+    "Áo đã chỉnh xong — mời bạn tới nhận",
+    "Sản phẩm '{garment_name}' đã được chỉnh sửa xong. Mời bạn tới tiệm nhận lại áo.",
+)
+
 
 async def create_notification(
     db: AsyncSession,

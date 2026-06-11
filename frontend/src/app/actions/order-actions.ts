@@ -8,6 +8,7 @@
 
 import { auth } from "@/auth";
 import type {
+  AlterationRequestResult,
   ApproveOrderRequest,
   ApproveOrderResponse,
   CreateOrderInput,
@@ -606,6 +607,59 @@ export async function fetchFittingRounds(
         fitting_stage_status: (json.meta?.fitting_stage_status ?? null) as string | null,
       },
     };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      return { success: false, error: "Yêu cầu quá hạn, vui lòng thử lại" };
+    }
+    return { success: false, error: "Lỗi kết nối" };
+  }
+}
+
+/**
+ * Story 12.7: Customer requests a free post-delivery alteration on their own
+ * bespoke order. Discriminated result (12.5 pattern) — the backend's plain
+ * Vietnamese messages (422 outside window, 409 duplicate, 400 wrong order)
+ * are returned verbatim so the customer sees exactly what the server said.
+ */
+export async function requestAlteration(
+  orderId: string,
+  description: string
+): Promise<ActionResult<AlterationRequestResult>> {
+  const session = await auth();
+  const token = session?.accessToken;
+  if (!token) return { success: false, error: "Chưa đăng nhập. Vui lòng đăng nhập lại." };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+  try {
+    const resp = await fetch(
+      `${BACKEND_URL}/api/v1/orders/${orderId}/request-alteration`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ description }),
+        signal: controller.signal,
+        cache: "no-store",
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      const errJson = await resp.json().catch(() => ({}));
+      return {
+        success: false,
+        conflict: resp.status === 409 ? true : undefined,
+        error: extractErrorMsg(errJson, "Không thể gửi yêu cầu chỉnh sửa"),
+      };
+    }
+
+    const json = await resp.json();
+    return { success: true, data: json.data as AlterationRequestResult };
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === "AbortError") {

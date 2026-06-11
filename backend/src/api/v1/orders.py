@@ -19,6 +19,7 @@ from src.api.dependencies import (
     TenantId,
 )
 from src.core.database import get_db
+from src.models.alteration import AlterationRequestCreate, ApproveAlterationRequest
 from src.models.fitting import FittingRoundCreate
 from src.models.order import (
     ApproveOrderRequest,
@@ -34,7 +35,7 @@ from src.models.order import (
     RentalCheckoutFields,
     UpdatePreparationStepRequest,
 )
-from src.services import fitting_service, order_service
+from src.services import alteration_service, fitting_service, order_service
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 
@@ -347,6 +348,53 @@ async def list_fitting_rounds_endpoint(
         "data": [r.model_dump(mode="json") for r in rounds],
         "meta": {"fitting_stage_status": fitting_stage_status},
     }
+
+
+# ---------------------------------------------------------------------------
+# Story 12.7: Post-delivery alteration warranty (FR101)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{order_id}/request-alteration",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Yêu cầu chỉnh sửa miễn phí sau giao (Customer, Story 12.7)",
+    description="Customer requests a free fit alteration on their own delivered/completed bespoke order, within the tenant's warranty window. 400 non-bespoke/wrong status, 409 duplicate open request, 422 outside the window.",
+)
+async def request_alteration_endpoint(
+    order_id: uuid.UUID,
+    body: AlterationRequestCreate,
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Store the alteration request (pending marker + owner notification).
+
+    Customer auth required — the order must belong to the authenticated user.
+    No task is created here: owner approval is the gate (AC3).
+    """
+    tenant_id = get_default_tenant_id()
+    result = await alteration_service.request_alteration(db, order_id, user, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
+
+
+@router.post(
+    "/{order_id}/approve-alteration",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Duyệt yêu cầu chỉnh sửa (Owner, Story 12.7)",
+    description="Owner approves a pending alteration request: creates a TailorTask with task_type='alteration' and the reduced stage list, clears the pending marker, and notifies the customer (+ assigned tailor).",
+)
+async def approve_alteration_endpoint(
+    order_id: uuid.UUID,
+    body: ApproveAlterationRequest,
+    user: OwnerOnly,
+    tenant_id: TenantId,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Approve a pending alteration request — Owner only, tenant-scoped."""
+    result = await alteration_service.approve_alteration(db, order_id, user.id, tenant_id, body)
+    return {"data": result.model_dump(mode="json"), "meta": {}}
 
 
 @router.get(

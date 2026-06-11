@@ -145,7 +145,7 @@ development_status:
   12-4-frontend-types-production-board: done  # Code Review 2026-05-25: 9/9 items fixed (1I/3H/5M) — I1 backend qc-result accepts failed_qc
   12-5-tailor-mobile-order-integration: done  # 2026-06-10 review round 3 (3-layer adversarial): 14 findings fixed (2C/4H incl. backend stage_logs gap + prod-safe ActionResult); BE 87/87, FE 1006/1006 green
   12-6-fitting-rounds-alteration-loop: done  # 2026-06-11 dev→review (3-layer): 8 findings fixed (1C/3H/2M/2L incl. notification CHECK/enum repair, bespoke-only fitting stage, rework-cycle gate scoping); BE 137 targeted + baseline-equal full suite, FE 1016 green; migration 044 applied to dev DB
-  12-7-post-delivery-alteration-warranty: ready-for-dev  # SCP 2026-06-10 gap #2; story file created 2026-06-10
+  12-7-post-delivery-alteration-warranty: done  # 2026-06-11 dev→review (3-layer): 8 findings fixed (1C/1H/2M/4L incl. order-cancel leak via alteration task, stable delivery_date warranty anchor, persisted request note); BE 207 targeted + baseline-equal full suite, FE 1035 green; migration 045 applied to dev DB
   epic-12-retrospective: optional
 
   epic-15: done  # UX Rev 4: Customer Brand Presence — all 5 stories done (2026-05-30); retrospective optional

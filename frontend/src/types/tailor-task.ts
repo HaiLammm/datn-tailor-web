@@ -60,8 +60,12 @@ export const STAGE_LABELS: Record<string, string> = {
   fitting: "Thử đồ",
   embroidery: "Thêu",
   beading: "Đính hạt",
+  alteration: "Chỉnh sửa",
   finishing: "Hoàn thiện",
 };
+
+// Story 12.7: production task vs post-delivery warranty alteration task
+export type TaskType = "production" | "alteration";
 
 // ── Server Action Result ────────────────────────────────────────────────────
 
@@ -86,6 +90,8 @@ export interface TailorTask {
   garment_name: string;
   customer_name: string;
   status: TaskStatus;
+  // Story 12.7 (optional for older fixtures/payloads; backend defaults to "production")
+  task_type?: TaskType;
   production_step: string;
   deadline: string | null;
   notes: string | null;

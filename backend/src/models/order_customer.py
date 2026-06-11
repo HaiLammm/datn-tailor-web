@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from src.models.alteration import AlterationInfo
+
 
 class CustomerOrderItemResponse(BaseModel):
     """Order item in customer view with rental-specific fields."""
@@ -98,6 +100,9 @@ class CustomerOrderDetail(BaseModel):
     return_date: datetime | None = None
     rental_condition: str | None = None
     security_refund_amount: Decimal | None = None  # set once the deposit is refunded
+    # Story 12.7: alteration warranty window (bespoke delivered/completed only;
+    # None otherwise) — computed server-side, FE renders verbatim
+    alteration: AlterationInfo | None = None
 
     model_config = {"from_attributes": True}
 

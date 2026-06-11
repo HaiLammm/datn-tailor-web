@@ -191,16 +191,23 @@ class TestMigrationOrmConsistency:
             for c in uniques
         )
 
-    def test_migration_044_notification_check_covers_all_sent_types(self):
-        # Migration 016's CHECK only allowed the original five types; 044
-        # re-creates it with the full union of every type the codebase sends.
-        sql = (
-            Path(__file__).resolve().parents[1] / "migrations" / "044_add_fitting_rounds.sql"
-        ).read_text(encoding="utf-8")
-        assert "DROP CONSTRAINT IF EXISTS chk_notification_type" in sql
+    def test_latest_notification_check_rebuild_covers_all_sent_types(self):
+        # Migration 016's CHECK only allowed the original five types; 044 (and
+        # any later migration that rebuilds the constraint, e.g. 045) must
+        # re-create it with the full union of every type the codebase sends.
+        # The LIVE constraint comes from the latest rebuild — assert against it
+        # so each new notification type forces a new constraint rebuild.
+        migrations_dir = Path(__file__).resolve().parents[1] / "migrations"
+        rebuilds = sorted(
+            p for p in migrations_dir.glob("*.sql")
+            if "DROP CONSTRAINT IF EXISTS chk_notification_type" in p.read_text(encoding="utf-8")
+        )
+        assert rebuilds, "No migration rebuilds chk_notification_type"
+        sql = rebuilds[-1].read_text(encoding="utf-8")
         for notification_type in NotificationType:
             assert f"'{notification_type.value}'" in sql, (
-                f"Migration 044 CHECK missing notification type: {notification_type.value}"
+                f"Latest chk_notification_type rebuild ({rebuilds[-1].name}) "
+                f"missing notification type: {notification_type.value}"
             )
 
 

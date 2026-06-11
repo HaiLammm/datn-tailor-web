@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from src.models.db_models import GarmentDB, OrderDB, OrderItemDB, OrderPaymentDB, TailorTaskDB, UserDB
 from src.models.order import OrderStatus
+from src.services import alteration_service
 from src.models.order_customer import (
     CustomerOrderDeliveryInfo,
     CustomerOrderDetail,
@@ -357,6 +358,10 @@ async def get_order_detail(
     timeline = _build_timeline(order.status, order.created_at, order.updated_at, order.service_type)
     delivery_info = _build_delivery_info(order)
 
+    # Story 12.7: alteration warranty window — server-authoritative; None for
+    # non-bespoke or not-yet-delivered orders
+    alteration_info = await alteration_service.compute_alteration_info(db, order)
+
     # Story 10.7b: surface the refunded security amount (cash-only) if it has been processed.
     # .first() (not scalar_one_or_none) defends against any legacy/duplicate refund rows.
     security_refund_amount = None
@@ -419,4 +424,5 @@ async def get_order_detail(
         return_date=order.return_date,
         rental_condition=order.rental_condition,
         security_refund_amount=security_refund_amount,
+        alteration=alteration_info,
     )

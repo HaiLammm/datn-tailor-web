@@ -113,6 +113,15 @@ export default function ProductionTaskTable({
                         Sửa lại #{task.rework_count}
                       </span>
                     )}
+                    {/* Story 12.7: post-delivery warranty alteration task */}
+                    {task.task_type === "alteration" && (
+                      <span
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800"
+                        data-testid="task-type-alteration-badge"
+                      >
+                        Sửa đồ
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="py-3 px-3 text-gray-700">

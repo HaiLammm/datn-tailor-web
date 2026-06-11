@@ -7,7 +7,7 @@ import type { OrderDetailResponse, OrderStatus, TailorInfoForCustomer } from "@/
 import { FAILURE_CATEGORY_LABELS, type FailureCategory } from "@/types/tailor-task";
 import { OrderStatusBadge, PaymentStatusBadge } from "./StatusBadge";
 import { formatMoney, formatDateTime } from "@/utils/format";
-import { resolveCancellation } from "@/app/actions/tailor-task-actions";
+import { approveAlteration, resolveCancellation } from "@/app/actions/tailor-task-actions";
 import Avatar from "@/components/ui/Avatar";
 import { PatternAttachDialog } from "@/components/client/design/PatternAttachDialog";
 import { useDetachPattern, usePatternSession } from "@/hooks/usePatternSession";
@@ -175,6 +175,21 @@ export default function OrderDetailDrawer({
   const [attachDialogOpen, setAttachDialogOpen] = useState(false);
   const [showDetachConfirm, setShowDetachConfirm] = useState(false);
 
+  // Story 12.7: post-delivery alteration approve panel state
+  const [alterationTailorId, setAlterationTailorId] = useState("");
+  const [alterationDeadline, setAlterationDeadline] = useState("");
+  const [approvingAlteration, setApprovingAlteration] = useState(false);
+  const [alterationApproveError, setAlterationApproveError] = useState<string | null>(null);
+
+  // Reset the approve-panel form whenever another order is shown (mirrors the
+  // OrderDetailModal reset effect) — fields must not leak between orders.
+  const orderId = detail?.order?.id ?? null;
+  useEffect(() => {
+    setAlterationTailorId("");
+    setAlterationDeadline("");
+    setAlterationApproveError(null);
+  }, [orderId]);
+
   const detachMutation = useDetachPattern({
     onSuccess: () => {
       setShowDetachConfirm(false);
@@ -202,6 +217,33 @@ export default function OrderDetailDrawer({
     } finally {
       setResolving(false);
       setShowReassign(false);
+    }
+  }
+
+  // Story 12.7: approve a pending alteration request (10.7b mutation pattern:
+  // discriminated result; success/conflict both refresh the board + detail)
+  async function handleApproveAlteration() {
+    const currentOrder = detail?.order;
+    if (!currentOrder) return;
+    setApprovingAlteration(true);
+    setAlterationApproveError(null);
+    try {
+      const result = await approveAlteration(currentOrder.id, {
+        ...(alterationTailorId ? { tailor_id: alterationTailorId } : {}),
+        ...(alterationDeadline
+          ? { deadline: new Date(`${alterationDeadline}T23:59:59`).toISOString() }
+          : {}),
+      });
+      if (result.success) {
+        onRefresh?.();
+      } else {
+        // 12.5 convention: surface the message (verbatim backend 409 copy for
+        // conflicts) — and on conflict ALSO refresh so the stale panel updates.
+        setAlterationApproveError(result.error);
+        if (result.conflict) onRefresh?.();
+      }
+    } finally {
+      setApprovingAlteration(false);
     }
   }
 
@@ -413,6 +455,68 @@ export default function OrderDetailDrawer({
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Story 12.7: pending alteration request — approve panel */}
+              {order.alteration_requested_at && (
+                <div
+                  className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3"
+                  data-testid="alteration-approve-panel"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-600 text-lg leading-none">✚</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-amber-800">
+                        Khách yêu cầu chỉnh sửa sau giao
+                      </p>
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        Gửi lúc {formatDateTime(order.alteration_requested_at)}
+                      </p>
+                      {order.alteration_request_note && (
+                        <p
+                          className="text-xs text-amber-900 mt-1 whitespace-pre-wrap rounded bg-amber-100/60 px-2 py-1.5"
+                          data-testid="alteration-request-note"
+                        >
+                          {order.alteration_request_note}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <select
+                      value={alterationTailorId}
+                      onChange={(e) => setAlterationTailorId(e.target.value)}
+                      className="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-indigo-300 outline-none"
+                      data-testid="alteration-tailor-select"
+                    >
+                      <option value="">Chưa giao thợ (giao sau)</option>
+                      {tailorStaff.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="date"
+                      value={alterationDeadline}
+                      onChange={(e) => setAlterationDeadline(e.target.value)}
+                      className="w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-indigo-300 outline-none"
+                      aria-label="Hạn hoàn thành chỉnh sửa"
+                      data-testid="alteration-deadline-input"
+                    />
+                    {alterationApproveError && (
+                      <p className="text-xs text-red-600" data-testid="alteration-approve-error">
+                        {alterationApproveError}
+                      </p>
+                    )}
+                    <button
+                      onClick={handleApproveAlteration}
+                      disabled={approvingAlteration}
+                      className="w-full px-3 py-2 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                      data-testid="alteration-approve-btn"
+                    >
+                      {approvingAlteration ? "Đang xử lý..." : "Tiếp nhận chỉnh sửa"}
+                    </button>
+                  </div>
                 </div>
               )}
 
