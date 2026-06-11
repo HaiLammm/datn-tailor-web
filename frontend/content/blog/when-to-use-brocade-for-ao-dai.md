@@ -3,8 +3,8 @@ title: "Khi Nào Nên Sử Dụng Vải Gấm Để May Áo Dài? Gợi Ý Dịp
 description: "Bài viết này giải thích những dịp lý tưởng để mặc áo dài làm từ vải gấm. Bài viết giới thiệu cách mặc và phối phụ kiện để tôn lên vẻ đẹp truyền thống của nó, hoàn hảo cho các sự kiện như Tết Nguyên đán, đám cưới và các buổi gặp gỡ văn hóa."
 excerpt: "Nếu bạn đang tìm mua một chiếc áo dài truyền thống Việt Nam làm từ gấm, nó sẽ thực sự tỏa sáng trong những dịp đặc biệt. Chúng tôi đã tổng hợp những lời khuyên về lựa chọn màu sắc và phụ kiện cho các sự kiện khác nhau."
 publishedDate: 2026-06-11
-category: water
-subcategory: "アオザイ"
+category: cam-nang
+subcategory: "gam"
 image: /blog/when-to-use-brocade-for-ao-dai/thumbnail.jpg
 imageAlt: "ao-dai-gam-den"
 ---
