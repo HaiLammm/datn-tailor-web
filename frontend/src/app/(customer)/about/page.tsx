@@ -32,8 +32,8 @@ const GALLERY: { src: string; alt: string }[] = [
   { src: "/shop/display-embroidered.jpg", alt: "Áo dài thêu hạc, phượng rực rỡ trưng bày tại tiệm" },
   { src: "/shop/window-display.jpg", alt: "Tủ kính trưng bày áo dài đủ sắc màu" },
   { src: "/shop/wedding-couple.jpg", alt: "Bộ áo dài cưới đỏ thêu chữ song hỷ cho cô dâu chú rể" },
-  { src: "/shop/group-aodai.jpg", alt: "Nhóm khách trong tà áo dài đồng phục do tiệm may" },
   { src: "/shop/white-rack.jpg", alt: "Những tà áo dài trắng vừa may xong trên sào" },
+  { src: "/shop/hanging-fabrics.jpg", alt: "Những tà áo dài xanh, kem treo tại tiệm" },
 ];
 
 const FEATURES: FeatureItem[] = [
@@ -218,12 +218,10 @@ export default function AboutPage() {
             </h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-            {GALLERY.map((g, i) => (
+            {GALLERY.map((g) => (
               <div
                 key={g.src}
-                className={`relative overflow-hidden rounded-xl shadow-sm ${
-                  i === 0 ? "col-span-2 md:row-span-2 aspect-[4/3] md:aspect-auto" : "aspect-[3/4]"
-                }`}
+                className="relative aspect-square overflow-hidden rounded-xl shadow-sm"
               >
                 <Image
                   src={g.src}
