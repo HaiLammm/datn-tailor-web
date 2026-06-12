@@ -92,8 +92,8 @@ Như vậy, có thể thấy vải gấm không chỉ dành cho một vài dịp
 Nếu bạn đang ấp ủ ý định sở hữu một chiếc áo dài gấm ưng ý, hãy để **Nhà May Thanh Lộc** đồng hành cùng bạn. Với đội ngũ thợ lành nghề, am hiểu sâu về chất liệu và kiểu dáng truyền thống lẫn cách tân, chúng tôi cam kết mang đến cho bạn những thiết kế vừa vặn, tôn dáng và đậm chất riêng.
 
 👉 **Liên hệ ngay với Nhà May Thanh Lộc để được tư vấn và đặt may áo dài gấm theo yêu cầu:**
-- Địa chỉ: [địa chỉ cửa hàng]
-- Hotline: [số điện thoại]
-- Facebook/Website: [đường dẫn]
+- Địa chỉ: 187b/1 Mai Hắc Đế , phường Tân Thành , tp Buôn Ma Thuột
+- Hotline: 0947516881
+- Facebook/Website: https://web.facebook.com/angloc.425581
 
 Đừng chần chừ, hãy để mỗi dịp quan trọng trở nên đáng nhớ hơn với chiếc áo dài gấm lộng lẫy từ Nhà May Thanh Lộc!
