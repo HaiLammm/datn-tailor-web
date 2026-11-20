@@ -11,7 +11,7 @@ export const STORE = {
   phone: "0947 516 881",
   zalo: "0947 516 881",
   email: "lienhe@nhamaythanhloc.vn",
-  hours: "Thứ 2–CN: 8:00 – 20:00",
+  hours: "Thứ 2–CN: 7:00 – 19:00",
 } as const;
 
 /** Google Maps embed URL for the store address (no API key needed). */
