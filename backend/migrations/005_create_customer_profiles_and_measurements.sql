@@ -2,12 +2,11 @@
 -- Story: 1.3 - Quản lý Hồ sơ & Số đo
 -- Date: 2026-03-02
 
--- Drop old tables if they exist (backwards compatibility)
-DROP TABLE IF EXISTS measurements CASCADE;
-DROP TABLE IF EXISTS customers CASCADE;
+-- LƯU Ý: KHÔNG được DROP TABLE ở đây. migrate.py chạy lại mọi file khi backend
+-- khởi động, DROP sẽ xoá sạch dữ liệu thật (sự cố mất số đo ngày 12/06/2026).
 
 -- Create customer_profiles table
-CREATE TABLE customer_profiles (
+CREATE TABLE IF NOT EXISTS customer_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -25,7 +24,7 @@ CREATE TABLE customer_profiles (
 );
 
 -- Create measurements table
-CREATE TABLE measurements (
+CREATE TABLE IF NOT EXISTS measurements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_profile_id UUID NOT NULL REFERENCES customer_profiles(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL,
@@ -48,15 +47,15 @@ CREATE TABLE measurements (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_customer_profiles_phone ON customer_profiles(phone);
-CREATE INDEX idx_customer_profiles_email ON customer_profiles(email);
-CREATE INDEX idx_customer_profiles_tenant ON customer_profiles(tenant_id);
-CREATE INDEX idx_customer_profiles_user ON customer_profiles(user_id);
-CREATE INDEX idx_customer_profiles_is_deleted ON customer_profiles(is_deleted);
-CREATE INDEX idx_measurements_customer ON measurements(customer_profile_id);
-CREATE INDEX idx_measurements_tenant ON measurements(tenant_id);
-CREATE INDEX idx_measurements_default ON measurements(customer_profile_id, is_default);
-CREATE INDEX idx_measurements_date ON measurements(measured_date);
+CREATE INDEX IF NOT EXISTS idx_customer_profiles_phone ON customer_profiles(phone);
+CREATE INDEX IF NOT EXISTS idx_customer_profiles_email ON customer_profiles(email);
+CREATE INDEX IF NOT EXISTS idx_customer_profiles_tenant ON customer_profiles(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_customer_profiles_user ON customer_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_customer_profiles_is_deleted ON customer_profiles(is_deleted);
+CREATE INDEX IF NOT EXISTS idx_measurements_customer ON measurements(customer_profile_id);
+CREATE INDEX IF NOT EXISTS idx_measurements_tenant ON measurements(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_measurements_default ON measurements(customer_profile_id, is_default);
+CREATE INDEX IF NOT EXISTS idx_measurements_date ON measurements(measured_date);
 
 -- Trigger to auto-update updated_at column
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -74,12 +74,27 @@ async def run_migrations():
         sql_files = sorted(list(migrations_dir.glob("*.sql")))
         
         async with engine.connect() as conn:
+            # Bảng theo dõi migration: mỗi file chỉ được chạy đúng MỘT lần.
+            # Trước đây mọi file chạy lại mỗi lần khởi động — migration có DROP TABLE
+            # đã xoá sạch dữ liệu thật (sự cố mất số đo ngày 12/06/2026).
+            async with conn.begin():
+                await conn.execute(text(
+                    "CREATE TABLE IF NOT EXISTS schema_migrations ("
+                    "filename TEXT PRIMARY KEY, "
+                    "applied_at TIMESTAMPTZ NOT NULL DEFAULT now())"
+                ))
+            result = await conn.execute(text("SELECT filename FROM schema_migrations"))
+            applied = {row[0] for row in result}
+
             for sql_file in sql_files:
+                if sql_file.name in applied:
+                    print(f"⏭️  Bỏ qua {sql_file.name} (đã áp dụng trước đó)")
+                    continue
                 print(f"📄 Đang xử lý {sql_file.name}...")
                 with open(sql_file, "r", encoding="utf-8") as f:
                     sql_content = f.read()
                     statements = split_sql_statements(sql_content)
-                    
+
                     for statement in statements:
                         if not statement:
                             continue
@@ -91,6 +106,11 @@ async def run_migrations():
                                 pass
                             else:
                                 raise e
+                async with conn.begin():
+                    await conn.execute(
+                        text("INSERT INTO schema_migrations (filename) VALUES (:f) ON CONFLICT DO NOTHING"),
+                        {"f": sql_file.name},
+                    )
                 print(f"✅ Đã xong {sql_file.name}")
 
         print(f"\n✨ XÁC NHẬN: Toàn bộ migration đã được áp dụng vào '{db_url.split('/')[-1]}'.")
