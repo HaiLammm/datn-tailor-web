@@ -3,7 +3,7 @@
 # commit mới thì git pull (ff-only) + rebuild Docker. Xem DEPLOY-aodaithanhloc.md.
 set -euo pipefail
 
-REPO=/home/luonghailam/Projects/tailor_project
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
 LOCK=/tmp/tailor_auto_deploy.lock
 LOG="$REPO/logs/auto_deploy.log"
 
@@ -32,7 +32,13 @@ git merge-base --is-ancestor "$REMOTE" "$LOCAL" && exit 0
     exit 1
   fi
 
-  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+  # Server đặt COMPOSE_FILE trong .env (thêm overlay docker-compose.server.yml);
+  # docker compose chỉ đọc biến đó khi không truyền -f.
+  if grep -q '^COMPOSE_FILE=' .env 2>/dev/null; then
+    docker compose up -d --build
+  else
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+  fi
 
   echo "=== $(date '+%Y-%m-%d %H:%M:%S') deploy xong tại $(git rev-parse --short HEAD)"
 } >>"$LOG" 2>&1

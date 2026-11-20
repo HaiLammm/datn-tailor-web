@@ -1,0 +1,16 @@
+# Overlay cho server tool-sale (chạy chung máy với tool_sales/japanreach).
+#
+# Không publish cổng nào ra host: cloudflared nằm cùng network compose và gọi thẳng
+# http://frontend:3000, nên cổng 3000/8000/5434 của file gốc chỉ gây trùng cổng
+# (tool_sales dùng 3000). Trên Mint (dev) không dùng file này.
+#
+# Trên server đặt trong .env:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml:docker-compose.server.yml
+# rồi chỉ cần `docker compose up -d --build`.
+services:
+  db:
+    ports: !reset []
+  backend:
+    ports: !reset []
+  frontend:
+    ports: !reset []
