@@ -15,7 +15,7 @@ import { SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Nhà May Thanh Lộc — May áo dài riêng tại Buôn Ma Thuột",
+  title: "Áo Dài Thanh Lộc — May áo dài riêng tại Buôn Ma Thuột",
   description:
     "Tiệm may áo dài Thanh Lộc ở Buôn Ma Thuột, Đắk Lắk: may áo dài riêng vừa dáng, áo dài cưới và cho thuê áo dài.",
   // Ảnh đại diện (OpenGraph) khi chia sẻ link — mặt tiền tiệm Áo Dài Thanh Lộc.
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "vi_VN",
-    siteName: "Nhà May Thanh Lộc",
+    siteName: "Áo Dài Thanh Lộc",
     images: [
       {
         url: "/shop/storefront.jpg",

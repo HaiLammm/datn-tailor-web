@@ -24,7 +24,7 @@ import { jsonLdString, storeJsonLd } from "@/lib/seo";
  */
 
 export const metadata: Metadata = {
-  title: "Nhà May Thanh Lộc — May áo dài riêng, giữ trọn nét Việt",
+  title: "Áo Dài Thanh Lộc — May áo dài riêng, giữ trọn nét Việt",
   description:
     "Áo dài may riêng vừa vặn từng dáng người. Khám phá bộ sưu tập, nghe câu chuyện nghề và hẹn một buổi trò chuyện cùng chúng tôi.",
   alternates: { canonical: "/" },

@@ -82,7 +82,7 @@ export default function RegisterPage() {
                     Đăng ký tài khoản
                 </h1>
                 <p className="text-gray-600 text-sm">
-                    Tạo tài khoản mới để bắt đầu sử dụng Nhà May Thanh Lộc
+                    Tạo tài khoản mới để bắt đầu sử dụng Áo Dài Thanh Lộc
                 </p>
             </div>
 

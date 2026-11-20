@@ -10,7 +10,7 @@ tags:
   - lụa
 image: /blog/cach-chon-vai-ao-dai/cover.jpg
 imageAlt: "Những tà áo dài nhiều màu sắc thêu hoa văn trưng bày tại tiệm"
-author: "Nhà May Thanh Lộc"
+author: "Áo Dài Thanh Lộc"
 draft: false
 ---
 

@@ -10,7 +10,7 @@ tags:
   - lụa
 image: /blog/giu-gin-ao-dai-ben-lau/cover.jpg
 imageAlt: "Những tà áo dài trắng treo ngay ngắn trên sào"
-author: "Nhà May Thanh Lộc"
+author: "Áo Dài Thanh Lộc"
 draft: false
 ---
 

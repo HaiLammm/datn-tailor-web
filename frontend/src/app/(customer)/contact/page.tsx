@@ -13,9 +13,9 @@ import { STORE, STORE_MAP_EMBED_URL, telHref, zaloHref } from "@/lib/store-info"
  */
 
 export const metadata: Metadata = {
-  title: "Liên hệ - Nhà May Thanh Lộc",
+  title: "Liên hệ - Áo Dài Thanh Lộc",
   description:
-    "Địa chỉ, số điện thoại, Zalo và giờ mở cửa của Nhà May Thanh Lộc — 187B/1 Mai Hắc Đế, Buôn Ma Thuột, Đắk Lắk.",
+    "Địa chỉ, số điện thoại, Zalo và giờ mở cửa của Áo Dài Thanh Lộc — 187B/1 Mai Hắc Đế, Buôn Ma Thuột, Đắk Lắk.",
   alternates: { canonical: "/contact" },
 };
 
@@ -57,7 +57,7 @@ export default function ContactPage() {
                 <p className="mt-2 leading-relaxed text-[#6B7280]">{STORE.address}</p>
                 <div className="mt-4 overflow-hidden rounded-xl border border-[#E5E1D8]">
                   <iframe
-                    title="Bản đồ tới Nhà May Thanh Lộc"
+                    title="Bản đồ tới Áo Dài Thanh Lộc"
                     src={STORE_MAP_EMBED_URL}
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"

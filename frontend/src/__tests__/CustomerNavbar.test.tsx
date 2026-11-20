@@ -115,7 +115,7 @@ describe("CustomerNavbar", () => {
 
   it("logo links to / (loop removed)", () => {
     render(<CustomerNavbar userName={null} />);
-    const logo = screen.getByRole("link", { name: /Nhà May Thanh Lộc/ });
+    const logo = screen.getByRole("link", { name: /Áo Dài Thanh Lộc/ });
     expect(logo).toHaveAttribute("href", "/");
   });
 

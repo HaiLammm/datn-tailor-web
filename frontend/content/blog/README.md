@@ -17,7 +17,7 @@ category: cam-nang                    # slug; xem bảng nhãn bên dưới
 tags: ["áo dài", "chọn vải"]          # tùy chọn
 image: /blog/<slug>/cover.jpg         # tùy chọn; đường dẫn dưới /public hoặc URL ngoài
 imageAlt: "Mô tả ảnh"                 # tùy chọn (mặc định = title)
-author: "Nhà May Thanh Lộc"           # tùy chọn
+author: "Áo Dài Thanh Lộc"           # tùy chọn
 draft: false                          # true → ẩn ở production
 ---
 

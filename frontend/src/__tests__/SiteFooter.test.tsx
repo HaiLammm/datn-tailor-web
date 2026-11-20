@@ -58,7 +58,7 @@ describe("SiteFooter", () => {
 
   it("renders the copyright line", () => {
     render(<SiteFooter />);
-    expect(screen.getByText(/© 2026 Nhà May Thanh Lộc/)).toBeInTheDocument();
+    expect(screen.getByText(/© 2026 Áo Dài Thanh Lộc/)).toBeInTheDocument();
   });
 
   it("renders social links with accessible labels", () => {

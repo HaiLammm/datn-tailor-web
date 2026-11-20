@@ -11,12 +11,12 @@ import { getAllPosts } from "@/lib/blog";
  */
 
 export const metadata: Metadata = {
-  title: "Nhật ký áo dài — Nhà May Thanh Lộc",
+  title: "Nhật ký áo dài — Áo Dài Thanh Lộc",
   description:
-    "Cẩm nang chọn và giữ gìn áo dài, câu chuyện nghề may và những nét duyên Việt — góp nhặt từ Nhà May Thanh Lộc.",
+    "Cẩm nang chọn và giữ gìn áo dài, câu chuyện nghề may và những nét duyên Việt — góp nhặt từ Áo Dài Thanh Lộc.",
   alternates: { canonical: "/blog" },
   openGraph: {
-    title: "Nhật ký áo dài — Nhà May Thanh Lộc",
+    title: "Nhật ký áo dài — Áo Dài Thanh Lộc",
     description:
       "Cẩm nang chọn và giữ gìn áo dài, câu chuyện nghề may và những nét duyên Việt.",
     type: "website",
@@ -31,7 +31,7 @@ export default function BlogIndexPage() {
     <div className="bg-[#F9F7F2] min-h-screen">
       <HeroBanner
         variant="showroom-compact"
-        eyebrow="Nhật ký · Nhà May Thanh Lộc"
+        eyebrow="Nhật ký · Áo Dài Thanh Lộc"
         title="Chuyện tà áo dài"
         subline="Cẩm nang chọn vải, giữ dáng áo, và những câu chuyện nghề được góp nhặt qua bao mùa."
       />

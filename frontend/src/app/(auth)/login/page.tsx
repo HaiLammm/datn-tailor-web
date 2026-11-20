@@ -78,7 +78,7 @@ function LoginForm() {
                     Chào mừng trở lại
                 </h1>
                 <p className="text-gray-600 text-sm">
-                    Đăng nhập để tiếp tục vào Nhà May Thanh Lộc
+                    Đăng nhập để tiếp tục vào Áo Dài Thanh Lộc
                 </p>
             </div>
 

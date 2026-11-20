@@ -12,7 +12,7 @@ import { TestimonialStrip, type TestimonialItem } from "@/components/client/bran
  */
 
 export const metadata: Metadata = {
-  title: "Giới thiệu - Nhà May Thanh Lộc",
+  title: "Giới thiệu - Áo Dài Thanh Lộc",
   description:
     "Câu chuyện tiệm may áo dài Thanh Lộc ở Buôn Ma Thuột: nghề may tay truyền thống và lời cảm nhận của khách hàng.",
   alternates: { canonical: "/about" },
@@ -139,7 +139,7 @@ export default function AboutPage() {
             <div className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-lg">
               <Image
                 src="/shop/interior-colorful.jpg"
-                alt="Không gian tiệm Nhà May Thanh Lộc với những tà áo dài đủ sắc màu"
+                alt="Không gian tiệm Áo Dài Thanh Lộc với những tà áo dài đủ sắc màu"
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover"

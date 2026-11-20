@@ -27,7 +27,7 @@ export async function generateMetadata(
   const url = `/blog/${post.slug}`;
   const images = post.image ? [{ url: post.image, alt: post.imageAlt }] : undefined;
   return {
-    title: `${post.title} — Nhà May Thanh Lộc`,
+    title: `${post.title} — Áo Dài Thanh Lộc`,
     description: post.description || post.excerpt,
     alternates: { canonical: url },
     openGraph: {
@@ -69,7 +69,7 @@ export default async function BlogPostPage(
     description: post.description || post.excerpt,
     datePublished: post.publishedDate || undefined,
     author: { "@type": "Organization", name: post.author },
-    publisher: { "@type": "Organization", name: "Nhà May Thanh Lộc" },
+    publisher: { "@type": "Organization", name: "Áo Dài Thanh Lộc" },
     image: absolute(post.image),
     mainEntityOfPage: SITE_URL ? `${SITE_URL}/blog/${post.slug}` : `/blog/${post.slug}`,
     articleSection: post.categoryLabel,

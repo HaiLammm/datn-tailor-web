@@ -46,7 +46,7 @@ export default async function BookingPage() {
 }
 
 export const metadata = {
-  title: "Đặt lịch hẹn may áo dài | Nhà May Thanh Lộc",
+  title: "Đặt lịch hẹn may áo dài | Áo Dài Thanh Lộc",
   description:
     "Đặt lịch hẹn đo và tư vấn may áo dài tại tiệm Thanh Lộc, Buôn Ma Thuột. Chọn ngày và khung giờ phù hợp.",
   alternates: { canonical: "/booking" },

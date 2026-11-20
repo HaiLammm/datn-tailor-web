@@ -234,7 +234,7 @@ export default function WorkplaceSidebar({ role, shopName }: WorkplaceSidebarPro
         {/* Logo / Brand */}
         <div className="p-4 border-b border-white/10">
           <h2 className="text-lg font-serif font-bold text-white">
-            {shopName || "Nhà May Thanh Lộc"}
+            {shopName || "Áo Dài Thanh Lộc"}
           </h2>
           <p className="text-xs text-indigo-200 mt-1">{roleLabel}</p>
         </div>

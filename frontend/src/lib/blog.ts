@@ -93,7 +93,7 @@ function readPost(slug: string): BlogPost | null {
     tags,
     image: data.image ? String(data.image).trim() : null,
     imageAlt: String(data.imageAlt ?? title).trim(),
-    author: String(data.author ?? "Nhà May Thanh Lộc").trim(),
+    author: String(data.author ?? "Áo Dài Thanh Lộc").trim(),
     readingMinutes: Math.max(1, Math.round(readingTime(content).minutes)),
     draft: data.draft === true,
     body: content.trim(),

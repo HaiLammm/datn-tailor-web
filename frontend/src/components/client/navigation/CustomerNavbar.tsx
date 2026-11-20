@@ -56,7 +56,7 @@ export function CustomerNavbar({ userName }: CustomerNavbarProps) {
             className={`flex items-center gap-2 hover:opacity-80 transition-opacity ${focusRing}`}
           >
             <span className="text-xl font-serif font-bold text-[#1A2B4C]">
-              Nhà May Thanh Lộc
+              Áo Dài Thanh Lộc
             </span>
           </Link>
 

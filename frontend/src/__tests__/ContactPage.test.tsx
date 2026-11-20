@@ -16,7 +16,7 @@ describe("ContactPage", () => {
   it("renders a titled map iframe, tel/mailto links, and the contact form", () => {
     render(<ContactPage />);
 
-    const iframe = screen.getByTitle("Bản đồ tới Nhà May Thanh Lộc");
+    const iframe = screen.getByTitle("Bản đồ tới Áo Dài Thanh Lộc");
     expect(iframe).toBeInTheDocument();
     expect(iframe.getAttribute("title")).toBeTruthy();
 

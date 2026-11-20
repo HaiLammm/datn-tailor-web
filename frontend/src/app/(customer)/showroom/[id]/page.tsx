@@ -29,7 +29,7 @@ export async function generateMetadata({
 
   if (!garment) {
     return {
-      title: "Không tìm thấy sản phẩm — Nhà May Thanh Lộc",
+      title: "Không tìm thấy sản phẩm — Áo Dài Thanh Lộc",
       robots: { index: false },
     };
   }
@@ -37,11 +37,11 @@ export async function generateMetadata({
   const path = garmentPath(garment);
   const description =
     garment.description ??
-    `${garment.name} — áo dài tại Nhà May Thanh Lộc, Buôn Ma Thuột. Xem ảnh, bảng size và đặt thuê hoặc mua.`;
+    `${garment.name} — áo dài tại Áo Dài Thanh Lộc, Buôn Ma Thuột. Xem ảnh, bảng size và đặt thuê hoặc mua.`;
   const image = garment.image_urls?.[0] ?? garment.image_url ?? undefined;
 
   return {
-    title: `${garment.name} — Nhà May Thanh Lộc`,
+    title: `${garment.name} — Áo Dài Thanh Lộc`,
     description,
     alternates: { canonical: path },
     openGraph: {
@@ -81,7 +81,7 @@ export default async function GarmentDetailPage({
     image: images.map((u) => (u.startsWith("http") ? u : `${SITE_URL}${u}`)),
     url: `${SITE_URL}${canonicalPath}`,
     category: CATEGORY_LABEL[garment.category] ?? garment.category,
-    brand: { "@type": "Brand", name: "Nhà May Thanh Lộc" },
+    brand: { "@type": "Brand", name: "Áo Dài Thanh Lộc" },
     ...(garment.sale_price
       ? {
           offers: {

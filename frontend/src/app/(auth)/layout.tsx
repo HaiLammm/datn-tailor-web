@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Đăng nhập | Nhà May Thanh Lộc",
-    description: "Đăng nhập vào hệ thống may đo Nhà May Thanh Lộc",
+    title: "Đăng nhập | Áo Dài Thanh Lộc",
+    description: "Đăng nhập vào hệ thống may đo Áo Dài Thanh Lộc",
 };
 
 /**
