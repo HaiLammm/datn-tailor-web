@@ -11,8 +11,7 @@ services:
     environment:
       # Cho phép trình duyệt trên domain prod gọi API (qua proxy same-origin của Next).
       CORS_ORIGINS: https://aodaithanhloc.com
-      # Đổi sang secret thật cho production (mặc định giữ giá trị cũ để không vỡ).
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
 
   frontend:
     build:
@@ -30,7 +29,7 @@ services:
       NEXT_PUBLIC_SITE_URL: https://aodaithanhloc.com
       AUTH_URL: https://aodaithanhloc.com
       AUTH_TRUST_HOST: "true"
-      AUTH_SECRET: ${AUTH_SECRET:-cVzrKg2qiJG1cyyrZKY0wGNARTnOXcUaEKgZWA3QfUw=}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
 
   cloudflared:
     image: cloudflare/cloudflared:latest

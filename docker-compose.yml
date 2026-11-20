@@ -5,9 +5,9 @@ services:
     environment:
       POSTGRES_DB: tailor_db
       POSTGRES_USER: luonghailam
-      POSTGRES_PASSWORD: 12070123a
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,8 +25,8 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://luonghailam:12070123a@db:5432/tailor_db
-      JWT_SECRET_KEY: dev-secret-key-change-in-production
+      DATABASE_URL: postgresql://luonghailam:${POSTGRES_PASSWORD:?}@db:5432/tailor_db
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
       JWT_EXPIRE_MINUTES: 60
       CORS_ORIGINS: http://localhost:3000
       LOG_LEVEL: INFO
@@ -34,7 +34,7 @@ services:
       SMTP_HOST: smtp.gmail.com
       SMTP_PORT: 587
       SMTP_USER: luonghaimal@gmail.com
-      SMTP_PASSWORD: svvc evrf tnnm pqed
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?set SMTP_PASSWORD in .env}
       FROM_EMAIL: noreply.thanhloc.tailor@gmail.com
       OTP_EXPIRY_MINUTES: 10
     volumes:
@@ -50,7 +50,7 @@ services:
     environment:
       BACKEND_URL: http://backend:8000
       NEXT_PUBLIC_API_URL: http://localhost:8000
-      AUTH_SECRET: cVzrKg2qiJG1cyyrZKY0wGNARTnOXcUaEKgZWA3QfUw=
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
       AUTH_URL: http://localhost:3000
       AUTH_TRUST_HOST: "true"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
