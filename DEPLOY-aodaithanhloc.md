@@ -1,5 +1,15 @@
 # Triển khai aodaithanhloc.com (home server + Cloudflare Tunnel)
 
+> **Từ 21/11/2026 site chạy trên VM `tool-sale`** (`ssh tool-sale`, `~/Projects/tailor_project`),
+> không còn chạy trên Mint. Trên server, `.env` có
+> `COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml:docker-compose.server.yml`, nên chỉ cần
+> gõ `docker compose up -d --build` / `docker compose ps`. Overlay `docker-compose.server.yml` bỏ mọi
+> cổng publish ra host, vì tool-sale đã dùng `:3000` cho app khác. Cron mỗi phút chạy
+> `scripts/auto_deploy.sh`, tự deploy khi `origin/main` có commit mới (log: `logs/auto_deploy.log`).
+> Cron `30 2 * * *` chạy `~/backups/tailor/backup.sh` (pg_dump + uploads, giữ 14 ngày).
+> **Không bật stack prod ở hai máy cùng lúc:** cùng một tunnel token thì Cloudflare chia request
+> cho cả hai, và dữ liệu sẽ ghi vào hai DB khác nhau.
+
 Stack đã đóng gói Docker sẵn (`db` + `backend` + `frontend`). Phần production thêm
 `cloudflared` để đưa domain ra Internet — **không cần mở cổng router hay IP tĩnh**,
 Cloudflare tự lo HTTPS. Tất cả service đặt `restart: unless-stopped` và Docker đã
