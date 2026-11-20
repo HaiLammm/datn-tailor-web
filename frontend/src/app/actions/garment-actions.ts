@@ -272,7 +272,7 @@ export async function updateGarment(
     const result: GarmentDetailApiResponse = await response.json();
     revalidatePath("/owner/products");
     revalidatePath("/showroom");
-    revalidatePath(`/showroom/${id}`);
+    revalidatePath("/showroom/[id]", "page");
     return { success: true, garment: result.data };
   } catch (error) {
     if (error instanceof Error) {
@@ -408,7 +408,7 @@ export async function updateGarmentStatus(
 
     revalidatePath("/(workplace)/owner/inventory");
     revalidatePath("/(customer)/showroom");
-    revalidatePath(`/(customer)/showroom/${id}`);
+    revalidatePath("/showroom/[id]", "page");
 
     return { success: true, data: json.data };
   } catch (error) {

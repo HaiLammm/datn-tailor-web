@@ -14,7 +14,9 @@ import { STORE, STORE_MAP_EMBED_URL, telHref, zaloHref } from "@/lib/store-info"
 
 export const metadata: Metadata = {
   title: "Liên hệ - Nhà May Thanh Lộc",
-  description: "Thông tin liên hệ và gửi lời nhắn tới Nhà May Thanh Lộc.",
+  description:
+    "Địa chỉ, số điện thoại, Zalo và giờ mở cửa của Nhà May Thanh Lộc — 187B/1 Mai Hắc Đế, Buôn Ma Thuột, Đắk Lắk.",
+  alternates: { canonical: "/contact" },
 };
 
 const CORMORANT = { fontFamily: "Cormorant Garamond, serif" } as const;

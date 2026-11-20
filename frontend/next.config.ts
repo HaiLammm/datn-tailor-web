@@ -25,6 +25,17 @@ const nextConfig: NextConfig = {
 
   trailingSlash: false,
   skipTrailingSlashRedirect: true,
+  async redirects() {
+    // www.aodaithanhloc.com → aodaithanhloc.com (tránh nội dung trùng lặp trên Google).
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.aodaithanhloc.com" }],
+        destination: "https://aodaithanhloc.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
     return [

@@ -21,9 +21,10 @@ import { auth } from "@/auth";
  */
 
 export const metadata: Metadata = {
-  title: "Showroom - Áo Dài Cho Thuê",
-  description: "Khám phá bộ sưu tập áo dài cho thuê với đa dạng màu sắc và phong cách, phù hợp với mọi dịp lễ.",
-  keywords: ["áo dài", "cho thuê", "lễ cưới", "khai trương", "tết"],
+  title: "Bộ sưu tập áo dài — may riêng & cho thuê | Nhà May Thanh Lộc",
+  description:
+    "Xem bộ sưu tập áo dài của Nhà May Thanh Lộc ở Buôn Ma Thuột: áo dài cưới, áo dài truyền thống, may riêng theo số đo hoặc thuê cho ngày lễ.",
+  alternates: { canonical: "/showroom" },
 };
 
 interface ShowroomPageProps {

@@ -58,12 +58,12 @@ export function ProductDetailClient({ garment }: ProductDetailClientProps) {
           <section aria-label="Thông tin sản phẩm" className="flex flex-col gap-5">
 
             {/* Tên sản phẩm */}
-            <h1
+            <h2
               className="text-2xl md:text-3xl font-semibold text-[#1A1A2E] leading-snug"
               style={{ fontFamily: "Cormorant Garamond, serif" }}
             >
               {garment.name}
-            </h1>
+            </h2>
 
             {/* Return Timeline (Story 5.2 — tái dùng) */}
             <ReturnTimeline garment={garment} />

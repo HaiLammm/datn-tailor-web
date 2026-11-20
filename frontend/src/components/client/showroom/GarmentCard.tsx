@@ -8,6 +8,7 @@
  */
 
 import Image from "next/image";
+import { garmentPath } from "@/lib/seo";
 import Link from "next/link";
 import { Garment } from "@/types/garment";
 import { StatusBadge } from "./StatusBadge";
@@ -200,7 +201,7 @@ export function GarmentCard({ garment, bestVouchers }: GarmentCardProps) {
               })()}
             </div>
             <Link
-              href={`/showroom/${garment.id}`}
+              href={garmentPath(garment)}
               className="px-3 py-2 bg-[#1A2B4C] text-white text-sm font-medium rounded hover:bg-[#2A3B5C] transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center"
               aria-label={`Xem chi tiết ${garment.name}`}
             >

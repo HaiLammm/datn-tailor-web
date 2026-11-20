@@ -17,6 +17,7 @@ import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 import { GarmentCard } from "@/components/client/showroom/GarmentCard";
+import { garmentPath } from "@/lib/seo";
 import type { Garment } from "@/types/garment";
 
 const mockGarment: Garment = {
@@ -96,7 +97,7 @@ describe("GarmentCard (Story 5.1 & 5.2)", () => {
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute(
       "href",
-      `/showroom/${mockGarment.id}`
+      garmentPath(mockGarment)
     );
   });
 

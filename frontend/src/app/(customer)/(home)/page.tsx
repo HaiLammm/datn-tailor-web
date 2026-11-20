@@ -14,6 +14,7 @@ import { BlogCard } from "@/components/client/blog/BlogCard";
 import { fetchGarments } from "@/app/actions/garment-actions";
 import { GarmentStatus } from "@/types/garment";
 import { getAllPosts } from "@/lib/blog";
+import { jsonLdString, storeJsonLd } from "@/lib/seo";
 
 /**
  * Story 15.5: Homepage Landing "CV" — the boutique's persuasive front door.
@@ -26,6 +27,7 @@ export const metadata: Metadata = {
   title: "Nhà May Thanh Lộc — May áo dài riêng, giữ trọn nét Việt",
   description:
     "Áo dài may riêng vừa vặn từng dáng người. Khám phá bộ sưu tập, nghe câu chuyện nghề và hẹn một buổi trò chuyện cùng chúng tôi.",
+  alternates: { canonical: "/" },
 };
 
 const CORMORANT = { fontFamily: "Cormorant Garamond, serif" } as const;
@@ -104,6 +106,10 @@ export default async function HomePage() {
 
   return (
     <div className="bg-[#F9F7F2]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(storeJsonLd()) }}
+      />
       {/* Section 1 — Full-bleed hero */}
       <HeroBanner
         variant="home"

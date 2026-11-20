@@ -14,7 +14,8 @@ import { TestimonialStrip, type TestimonialItem } from "@/components/client/bran
 export const metadata: Metadata = {
   title: "Giới thiệu - Nhà May Thanh Lộc",
   description:
-    "Câu chuyện thương hiệu, nghề thủ công và lời cảm nhận của khách hàng tại Nhà May Thanh Lộc.",
+    "Câu chuyện tiệm may áo dài Thanh Lộc ở Buôn Ma Thuột: nghề may tay truyền thống và lời cảm nhận của khách hàng.",
+  alternates: { canonical: "/about" },
 };
 
 const CORMORANT = { fontFamily: "Cormorant Garamond, serif" } as const;

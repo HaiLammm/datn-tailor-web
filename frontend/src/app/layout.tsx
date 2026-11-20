@@ -11,12 +11,13 @@ const cormorant = Cormorant_Garamond({
   display: 'swap',
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nhamaythanhloc.vn";
+import { SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Nhà May Thanh Lộc - Hệ thống May Đo Thông Minh",
-  description: "Nền tảng quản lý đơn hàng và sản xuất cho xưởng may đo cao cấp",
+  title: "Nhà May Thanh Lộc — May áo dài riêng tại Buôn Ma Thuột",
+  description:
+    "Tiệm may áo dài Thanh Lộc ở Buôn Ma Thuột, Đắk Lắk: may áo dài riêng vừa dáng, áo dài cưới và cho thuê áo dài.",
   // Ảnh đại diện (OpenGraph) khi chia sẻ link — mặt tiền tiệm Áo Dài Thanh Lộc.
   // Các trang có openGraph riêng (vd bài blog) sẽ tự ghi đè ảnh này.
   openGraph: {
