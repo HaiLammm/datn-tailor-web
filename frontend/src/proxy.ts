@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { garmentPath } from "@/lib/seo";
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendAccessToken } from "@/lib/backend-access-token";
 
@@ -35,6 +36,25 @@ export default async function proxy(request: NextRequest): Promise<Response | Ne
         pathname.includes(".") || // favicon.ico, images, etc.
         publicRoutes.includes(pathname)
     ) {
+        return undefined;
+    }
+
+    // Link sản phẩm cũ /showroom/<uuid> → 301 sang /showroom/<slug>-<uuid> (SEO).
+    const legacyGarment = pathname.match(/^\/showroom\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i);
+    if (legacyGarment) {
+        try {
+            const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+            const res = await fetch(`${backendUrl}/api/v1/garments/${legacyGarment[1]}`);
+            if (res.ok) {
+                const json = await res.json();
+                const garment = json?.data ?? json;
+                if (garment?.id && garment?.name) {
+                    return NextResponse.redirect(new URL(garmentPath(garment), request.url), 301);
+                }
+            }
+        } catch {
+            // Lỗi backend → để trang tự xử lý (vẫn chuyển hướng phía client).
+        }
         return undefined;
     }
 

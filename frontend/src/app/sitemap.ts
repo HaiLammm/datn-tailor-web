@@ -3,8 +3,9 @@ import type { MetadataRoute } from "next";
 import { getAllPosts } from "@/lib/blog";
 import { SITE_URL, garmentPath } from "@/lib/seo";
 
-// Danh sách sản phẩm lấy từ backend → tạo lại mỗi giờ (lúc build Docker backend chưa chạy).
-export const revalidate = 3600;
+// Tạo lúc có request (lúc build Docker backend chưa chạy → không được đóng băng bản rỗng);
+// dữ liệu sản phẩm vẫn được cache 1 giờ qua fetch revalidate.
+export const dynamic = "force-dynamic";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
