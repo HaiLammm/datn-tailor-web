@@ -21,6 +21,8 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse origin/main)
 
 [ "$LOCAL" = "$REMOTE" ] && exit 0
+# Local đi trước origin (commit chưa push) → không có gì mới để deploy.
+git merge-base --is-ancestor "$REMOTE" "$LOCAL" && exit 0
 
 {
   echo "=== $(date '+%Y-%m-%d %H:%M:%S') phát hiện commit mới: ${LOCAL:0:7} -> ${REMOTE:0:7}"
