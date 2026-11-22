@@ -94,11 +94,11 @@ describe("CustomerNavbar", () => {
     mockPathname = "/showroom";
   });
 
-  it("renders the 6 real nav links with correct hrefs (no redirect loop)", () => {
+  it("renders the real nav links with correct hrefs (Showroom hidden while SHOWROOM_ENABLED=false)", () => {
     render(<CustomerNavbar userName={null} />);
     const nav = screen.getByRole("navigation", { name: "Điều hướng chính" });
     expect(within(nav).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
-    expect(within(nav).getByRole("link", { name: "Showroom" })).toHaveAttribute("href", "/showroom");
+    expect(within(nav).queryByRole("link", { name: "Showroom" })).not.toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Giới thiệu" })).toHaveAttribute("href", "/about");
     expect(within(nav).getByRole("link", { name: "Bài viết" })).toHaveAttribute("href", "/blog");
     expect(within(nav).getByRole("link", { name: "Liên hệ" })).toHaveAttribute("href", "/contact");
@@ -120,10 +120,10 @@ describe("CustomerNavbar", () => {
   });
 
   it("marks the active route with aria-current", () => {
-    mockPathname = "/showroom";
+    mockPathname = "/blog/cach-chon-vai";
     render(<CustomerNavbar userName={null} />);
     const nav = screen.getByRole("navigation", { name: "Điều hướng chính" });
-    expect(within(nav).getByRole("link", { name: "Showroom" })).toHaveAttribute(
+    expect(within(nav).getByRole("link", { name: "Bài viết" })).toHaveAttribute(
       "aria-current",
       "page"
     );
@@ -135,7 +135,16 @@ describe("CustomerNavbar", () => {
     expect(screen.queryByTestId("notification-bell")).not.toBeInTheDocument();
     expect(screen.queryByTestId("logout-button")).not.toBeInTheDocument();
     expect(screen.getByTestId("profile-icon")).toHaveTextContent("guest");
-    expect(screen.getByTestId("cart-badge")).toBeInTheDocument();
+    // Giỏ hàng ẩn khi showroom online đang tắt
+    expect(screen.queryByTestId("cart-badge")).not.toBeInTheDocument();
+  });
+
+  it("shows the store phone as a tel: link in the header", () => {
+    render(<CustomerNavbar userName={null} />);
+    expect(screen.getByRole("link", { name: /0947 516 881/ })).toHaveAttribute(
+      "href",
+      "tel:0947516881"
+    );
   });
 
   it("shows notification bell and logout for authenticated users", () => {
@@ -161,7 +170,20 @@ describe("CustomerNavbar", () => {
     render(<CustomerNavbar userName={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Mở menu" }));
     const drawerNav = screen.getByRole("navigation", { name: "Menu di động" });
-    fireEvent.click(within(drawerNav).getByRole("link", { name: "Showroom" }));
+    fireEvent.click(within(drawerNav).getByRole("link", { name: "Bài viết" }));
     expect(screen.queryByRole("navigation", { name: "Menu di động" })).not.toBeInTheDocument();
+  });
+
+  it("offers call and Zalo buttons inside the mobile drawer", () => {
+    render(<CustomerNavbar userName={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Mở menu" }));
+    expect(screen.getByRole("link", { name: "Nhắn Zalo" })).toHaveAttribute(
+      "href",
+      "https://zalo.me/0947516881"
+    );
+    expect(screen.getByRole("link", { name: "Gọi 0947 516 881" })).toHaveAttribute(
+      "href",
+      "tel:0947516881"
+    );
   });
 });

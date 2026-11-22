@@ -171,16 +171,17 @@ async def cancel_appointment(
     await db.commit()
     await db.refresh(appointment)
 
-    # Send cancellation email (non-blocking)
+    # Send cancellation email (non-blocking) — bỏ qua nếu khách không để lại email
     try:
         from src.services.email_service import send_appointment_cancellation_email
 
-        await send_appointment_cancellation_email(
-            email=customer_email,
-            customer_name=customer_name,
-            appointment_date=appt_date,
-            slot=appt_slot,
-        )
+        if customer_email:
+            await send_appointment_cancellation_email(
+                email=customer_email,
+                customer_name=customer_name,
+                appointment_date=appt_date,
+                slot=appt_slot,
+            )
     except Exception:
         logger.warning("Failed to send cancellation email for appointment %s", appointment_id)
 

@@ -19,9 +19,25 @@ export function ProfileIcon({ userName }: ProfileIconProps) {
     return (
       <button
         onClick={() => router.push("/login")}
-        className="px-3 py-2 text-sm font-medium text-[#1A2B4C] hover:text-[#D4AF37] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+        aria-label="Đăng nhập"
+        className="px-2 sm:px-3 py-2 text-sm font-medium text-[#1A2B4C] hover:text-[#D4AF37] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center whitespace-nowrap"
       >
-        Đăng nhập
+        {/* Điện thoại: chỉ icon để header không rớt dòng */}
+        <svg
+          className="w-6 h-6 sm:hidden"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+          />
+        </svg>
+        <span className="hidden sm:inline">Đăng nhập</span>
       </button>
     );
   }

@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { auth } from "@/auth";
 import { CustomerNavbar } from "@/components/client/navigation/CustomerNavbar";
 import { SiteFooter } from "@/components/client/navigation/SiteFooter";
+import { FloatingContact } from "@/components/client/navigation/FloatingContact";
 
 interface CustomerLayoutProps {
   children: ReactNode;
@@ -21,10 +22,12 @@ export default async function CustomerLayout({ children }: CustomerLayoutProps) 
   const userName = session?.user?.name ?? null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    // pb-14 trên điện thoại: chừa chỗ cho thanh Gọi/Zalo cố định đáy màn hình.
+    <div className="min-h-screen flex flex-col bg-gray-50 pb-14 md:pb-0">
       <CustomerNavbar userName={userName} />
       <main className="flex-1">{children}</main>
       <SiteFooter />
+      <FloatingContact />
     </div>
   );
 }

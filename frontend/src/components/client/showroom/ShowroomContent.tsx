@@ -7,7 +7,7 @@
  */
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { GarmentListResponse } from "@/types/garment";
 import { GarmentGrid } from "./GarmentGrid";
 import { GarmentGridSkeleton } from "./GarmentGridSkeleton";
@@ -16,6 +16,9 @@ import { Pagination } from "./Pagination";
 import { useGarments } from "./useGarments";
 import type { VoucherItem } from "@/types/voucher";
 import { getMyVouchers } from "@/app/actions/profile-actions";
+import { STORE, zaloHref } from "@/lib/store-info";
+
+const FILTER_KEYS = ["color", "occasion", "material", "category", "status", "size"];
 
 interface ShowroomContentProps {
   initialData?: GarmentListResponse;
@@ -48,6 +51,8 @@ function selectBestVouchers(vouchers: VoucherItem[]): { percent?: VoucherItem; f
 
 function ShowroomContentInner({ initialData, isAuthenticated }: ShowroomContentProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const hasFilters = FILTER_KEYS.some((key) => searchParams?.get(key));
   const [bestVouchers, setBestVouchers] = useState<{ percent?: VoucherItem; fixed?: VoucherItem }>({});
 
   // Fetch vouchers for authenticated users to show discount preview
@@ -72,6 +77,10 @@ function ShowroomContentInner({ initialData, isAuthenticated }: ShowroomContentP
     refetch,
   } = useGarments(initialData);
 
+  // Kho trống thật (không phải do lọc) → ẩn bộ lọc, chỉ hiện lời mời nhắn Zalo.
+  const catalogEmpty =
+    !hasFilters && !isLoading && !isFetching && !isError && garments.length === 0;
+
   const handleClearFilters = useCallback(() => {
     router.push("/showroom");
   }, [router]);
@@ -79,17 +88,21 @@ function ShowroomContentInner({ initialData, isAuthenticated }: ShowroomContentP
   return (
     <>
       {/* Mobile Filter - horizontal, shown only on small screens */}
-      <div className="md:hidden mb-4">
-        <ShowroomFilter />
-      </div>
+      {!catalogEmpty && (
+        <div className="md:hidden mb-4">
+          <ShowroomFilter />
+        </div>
+      )}
 
       <div className="flex gap-6">
       {/* Filter Sidebar - hidden on mobile, shown on md+ */}
-      <aside className="hidden md:block w-64 flex-shrink-0">
-        <div className="sticky top-8">
-          <ShowroomFilter />
-        </div>
-      </aside>
+      {!catalogEmpty && (
+        <aside className="hidden md:block w-64 flex-shrink-0">
+          <div className="sticky top-8">
+            <ShowroomFilter />
+          </div>
+        </aside>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 min-w-0">
@@ -144,6 +157,23 @@ function ShowroomContentInner({ initialData, isAuthenticated }: ShowroomContentP
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
+            {!hasFilters ? (
+              <>
+                <h3 className="text-xl font-semibold text-[#1A2B4C] mb-2">Bộ sưu tập đang cập nhật</h3>
+                <p className="text-gray-500 mb-8 max-w-xs mx-auto">
+                  Nhắn Zalo để tiệm gửi ảnh mẫu áo đang có sẵn để thuê hoặc mua.
+                </p>
+                <a
+                  href={zaloHref(STORE.zalo)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#0068FF] text-white font-semibold rounded-lg hover:bg-[#0055D4] transition-colors shadow-md min-h-[44px] focus-visible:outline-2 focus-visible:outline-[#D4AF37] focus-visible:outline-offset-2"
+                >
+                  Nhắn Zalo {STORE.zalo}
+                </a>
+              </>
+            ) : (
+            <>
             <h3 className="text-xl font-semibold text-[#1A2B4C] mb-2">Không tìm thấy áo dài phù hợp</h3>
             <p className="text-gray-500 mb-8 max-w-xs mx-auto">
               Thử bỏ bớt bộ lọc để xem thêm nhiều mẫu hơn nhé.
@@ -157,6 +187,8 @@ function ShowroomContentInner({ initialData, isAuthenticated }: ShowroomContentP
               </svg>
               Xóa bộ lọc
             </button>
+            </>
+            )}
           </div>
         )}
 

@@ -3,7 +3,7 @@
 /**
  * BookingForm - Story 3.4: Customer info form for appointment booking.
  *
- * Fields: Họ Tên, Số điện thoại, Email, Yêu cầu đặc biệt (optional).
+ * Fields: Họ Tên, Số điện thoại, Dịch vụ, Email (tuỳ chọn), Yêu cầu đặc biệt (tuỳ chọn).
  * Inline validation without Zod library (project rule from Story 3.1-3.3).
  * Real-time validation on blur + on submit.
  * Preserves form state on error (no reset).
@@ -11,12 +11,18 @@
 
 import { useState } from "react";
 
-import type { AppointmentSlot, CreateAppointmentInput } from "@/types/booking";
+import {
+  APPOINTMENT_SERVICE_OPTIONS,
+  type AppointmentService,
+  type AppointmentSlot,
+  type CreateAppointmentInput,
+} from "@/types/booking";
 
 interface FormValues {
   customer_name: string;
   customer_phone: string;
   customer_email: string;
+  service_type: AppointmentService | "";
   special_requests: string;
 }
 
@@ -51,7 +57,7 @@ function validateForm(values: FormValues): FormErrors {
       "Số điện thoại không hợp lệ (10 số, bắt đầu 03/05/07/08/09)";
   }
 
-  if (!EMAIL_REGEX.test(values.customer_email)) {
+  if (values.customer_email.trim() && !EMAIL_REGEX.test(values.customer_email.trim())) {
     errors.customer_email = "Email không hợp lệ";
   }
 
@@ -84,13 +90,14 @@ export default function BookingForm({
     customer_name: "",
     customer_phone: "",
     customer_email: "",
+    service_type: "",
     special_requests: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof FormValues, boolean>>>({});
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -102,7 +109,7 @@ export default function BookingForm({
   };
 
   const handleBlur = (
-    e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name } = e.target;
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -128,9 +135,10 @@ export default function BookingForm({
     await onSubmit({
       customer_name: values.customer_name.trim(),
       customer_phone: values.customer_phone.trim(),
-      customer_email: values.customer_email.trim(),
+      customer_email: values.customer_email.trim() || undefined,
       appointment_date: selectedDate,
       slot: selectedSlot,
+      service_type: values.service_type || undefined,
       special_requests: values.special_requests.trim() || undefined,
     });
   };
@@ -210,13 +218,39 @@ export default function BookingForm({
           )}
         </div>
 
+        {/* Dịch vụ */}
+        <div>
+          <label
+            htmlFor="service_type"
+            className="block text-sm font-medium text-[#1A1A2E] mb-1"
+          >
+            Bạn cần{" "}
+            <span className="text-[#6B7280] font-normal">(tuỳ chọn)</span>
+          </label>
+          <select
+            id="service_type"
+            name="service_type"
+            value={values.service_type}
+            onChange={handleChange}
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-[#1A1A2E] bg-white transition-colors outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[rgba(212,175,55,0.2)]"
+          >
+            <option value="">— Chọn dịch vụ —</option>
+            {APPOINTMENT_SERVICE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Email */}
         <div>
           <label
             htmlFor="customer_email"
             className="block text-sm font-medium text-[#1A1A2E] mb-1"
           >
-            Email <span className="text-[#DC2626]">*</span>
+            Email{" "}
+            <span className="text-[#6B7280] font-normal">(tuỳ chọn, để nhận xác nhận)</span>
           </label>
           <input
             id="customer_email"

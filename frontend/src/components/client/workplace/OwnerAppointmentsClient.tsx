@@ -328,9 +328,11 @@ function AppointmentCard({
         <p>
           <span className="text-gray-400">SĐT:</span> {appointment.customer_phone}
         </p>
-        <p>
-          <span className="text-gray-400">Email:</span> {appointment.customer_email}
-        </p>
+        {appointment.customer_email && (
+          <p>
+            <span className="text-gray-400">Email:</span> {appointment.customer_email}
+          </p>
+        )}
       </div>
 
       {/* Special requests */}

@@ -14,7 +14,12 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.appointment import AppointmentCreate, AppointmentResponse, SlotAvailability
+from src.models.appointment import (
+    SERVICE_LABELS,
+    AppointmentCreate,
+    AppointmentResponse,
+    SlotAvailability,
+)
 from src.models.db_models import AppointmentDB
 
 logger = logging.getLogger(__name__)
@@ -165,15 +170,26 @@ async def create_appointment(
             },
         )
 
+    # Dịch vụ khách chọn được ghi đầu "Yêu cầu đặc biệt" để chủ tiệm thấy ngay
+    # (không thêm cột mới).
+    special_requests = appointment_data.special_requests
+    if appointment_data.service_type:
+        label = SERVICE_LABELS[appointment_data.service_type]
+        special_requests = f"[Dịch vụ: {label}]" + (f" {special_requests}" if special_requests else "")
+
+    customer_email = (
+        appointment_data.customer_email.lower() if appointment_data.customer_email else None
+    )
+
     # Create the appointment record
     new_appointment = AppointmentDB(
         tenant_id=tenant_id,
         customer_name=appointment_data.customer_name,
         customer_phone=appointment_data.customer_phone,
-        customer_email=appointment_data.customer_email.lower(),
+        customer_email=customer_email,
         appointment_date=appointment_data.appointment_date,
         slot=appointment_data.slot,
-        special_requests=appointment_data.special_requests,
+        special_requests=special_requests,
         status="pending",
         reminder_sent=False,
     )
@@ -182,7 +198,9 @@ async def create_appointment(
     await db.commit()
     await db.refresh(new_appointment)
 
-    # Trigger confirmation email (non-blocking)
+    # Trigger confirmation email (non-blocking) — chỉ khi khách có nhập email
+    if not customer_email:
+        return AppointmentResponse.model_validate(new_appointment)
     try:
         from src.services.email_service import send_booking_confirmation_email
         await send_booking_confirmation_email(
@@ -221,6 +239,8 @@ async def send_booking_reminders(db: AsyncSession, tenant_id: UUID) -> int:
 
     sent_count = 0
     for appt in appointments:
+        if not appt.customer_email:
+            continue  # Khách không để lại email → tiệm nhắc qua điện thoại/Zalo
         try:
             success = await send_booking_reminder_email(
                 email=appt.customer_email,

@@ -12,6 +12,7 @@ import {
   GarmentStatus,
 } from "@/types/garment";
 import { auth } from "@/auth";
+import { SHOWROOM_ENABLED } from "@/lib/store-info";
 
 /**
  * Story 5.1 + 2.3: Digital Showroom Catalog with Multi-Dimensional Filtering
@@ -25,6 +26,8 @@ export const metadata: Metadata = {
   description:
     "Xem bộ sưu tập áo dài của Áo Dài Thanh Lộc ở Buôn Ma Thuột: áo dài cưới, áo dài truyền thống, may riêng theo số đo hoặc thuê cho ngày lễ.",
   alternates: { canonical: "/showroom" },
+  // Chưa có hàng thật → không cho Google lập chỉ mục trang trống.
+  ...(SHOWROOM_ENABLED ? {} : { robots: { index: false, follow: true } }),
 };
 
 interface ShowroomPageProps {

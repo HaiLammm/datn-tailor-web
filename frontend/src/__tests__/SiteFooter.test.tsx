@@ -24,9 +24,10 @@ describe("SiteFooter", () => {
     expect(screen.getByRole("heading", { name: "Khám phá" })).toBeInTheDocument();
   });
 
-  it("links Khám phá column to /showroom and /booking", () => {
+  it("links Khám phá column to /blog and /booking (Showroom hidden while disabled)", () => {
     render(<SiteFooter />);
-    expect(screen.getByRole("link", { name: "Showroom" })).toHaveAttribute("href", "/showroom");
+    expect(screen.queryByRole("link", { name: "Showroom" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Bài viết" })).toHaveAttribute("href", "/blog");
     expect(screen.getByRole("link", { name: "Đặt lịch" })).toHaveAttribute("href", "/booking");
   });
 
@@ -39,13 +40,12 @@ describe("SiteFooter", () => {
     expect(screen.getByRole("link", { name: "Giới thiệu" })).toHaveAttribute("href", "/about");
   });
 
-  it("exposes tap-to-call and mailto links", () => {
+  it("exposes tap-to-call and hides the email while STORE.email is empty", () => {
     const { container } = render(<SiteFooter />);
     const telLink = screen.getByRole("link", { name: /ĐT:/ });
     expect(telLink.getAttribute("href")).toMatch(/^tel:/);
-    const mailLink = container.querySelector('a[href^="mailto:"]');
-    expect(mailLink).not.toBeNull();
-    expect(mailLink?.getAttribute("href")).toMatch(/^mailto:.+@.+/);
+    // Email cũ (nhamaythanhloc.vn) là domain chết → không hiện mailto nào.
+    expect(container.querySelector('a[href^="mailto:"]')).toBeNull();
   });
 
   it("links Zalo entries to a zalo.me deep link, not tel:", () => {
@@ -63,8 +63,11 @@ describe("SiteFooter", () => {
 
   it("renders social links with accessible labels", () => {
     render(<SiteFooter />);
-    expect(screen.getByRole("link", { name: "Facebook" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Instagram" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Facebook" })).toHaveAttribute(
+      "href",
+      "https://facebook.com/dangloc"
+    );
+    expect(screen.queryByRole("link", { name: "Instagram" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Zalo" })).toBeInTheDocument();
   });
 

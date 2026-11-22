@@ -9,9 +9,13 @@ import "@testing-library/jest-dom";
 
 const pushMock = jest.fn();
 
+let mockSearch: Record<string, string> = {};
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
-  useSearchParams: () => ({ get: () => null, toString: () => "" }),
+  useSearchParams: () => ({
+    get: (key: string) => mockSearch[key] ?? null,
+    toString: () => new URLSearchParams(mockSearch).toString(),
+  }),
 }));
 
 jest.mock("@/app/actions/profile-actions", () => ({
@@ -51,10 +55,24 @@ const baseState = {
 
 beforeEach(() => {
   pushMock.mockClear();
+  mockSearch = {};
 });
 
 describe("ShowroomContent states (Story 15.2)", () => {
+  it("invites a Zalo message (no filters) when the catalog itself is empty", () => {
+    useGarmentsMock.mockReturnValue({ ...baseState });
+    render(<ShowroomContent />);
+    expect(screen.getByText("Bộ sưu tập đang cập nhật")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Nhắn Zalo/ })).toHaveAttribute(
+      "href",
+      "https://zalo.me/0947516881"
+    );
+    expect(screen.queryByText("Không tìm thấy áo dài phù hợp")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("showroom-filter")).not.toBeInTheDocument();
+  });
+
   it("shows the purposeful empty state with AC copy when no products match", () => {
+    mockSearch = { color: "do" };
     useGarmentsMock.mockReturnValue({ ...baseState });
     render(<ShowroomContent />);
 

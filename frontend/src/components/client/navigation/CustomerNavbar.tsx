@@ -19,6 +19,7 @@ import { CartBadge } from "@/components/client/cart/CartBadge";
 import { ProfileIcon } from "@/components/client/profile/ProfileIcon";
 import { LogoutButton } from "@/components/client/profile/LogoutButton";
 import { NotificationBell } from "@/components/client/profile/NotificationBell";
+import { SHOWROOM_ENABLED, STORE, telHref, zaloHref } from "@/lib/store-info";
 
 interface CustomerNavbarProps {
   userName?: string | null;
@@ -26,7 +27,7 @@ interface CustomerNavbarProps {
 
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/", label: "Trang chủ" },
-  { href: "/showroom", label: "Showroom" },
+  ...(SHOWROOM_ENABLED ? [{ href: "/showroom", label: "Showroom" }] : []),
   { href: "/about", label: "Giới thiệu" },
   { href: "/blog", label: "Bài viết" },
   { href: "/contact", label: "Liên hệ" },
@@ -55,7 +56,7 @@ export function CustomerNavbar({ userName }: CustomerNavbarProps) {
             href="/"
             className={`flex items-center gap-2 hover:opacity-80 transition-opacity ${focusRing}`}
           >
-            <span className="text-xl font-serif font-bold text-[#1A2B4C]">
+            <span className="text-lg sm:text-xl font-serif font-bold text-[#1A2B4C] whitespace-nowrap">
               Áo Dài Thanh Lộc
             </span>
           </Link>
@@ -85,8 +86,23 @@ export function CustomerNavbar({ userName }: CustomerNavbarProps) {
           </nav>
 
           {/* Action cluster (reused components) */}
-          <div className="flex items-center gap-2">
-            <CartBadge />
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Số điện thoại trên desktop (điện thoại đã có thanh Gọi/Zalo ở đáy) */}
+            <a
+              href={telHref(STORE.phone)}
+              className={`hidden lg:inline-flex items-center gap-1.5 px-3 min-h-[44px] font-semibold text-[#1A2B4C] hover:text-[#D4AF37] whitespace-nowrap transition-colors ${focusRing}`}
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                />
+              </svg>
+              {STORE.phone}
+            </a>
+            {SHOWROOM_ENABLED && <CartBadge />}
             {userName && <NotificationBell />}
             <ProfileIcon userName={userName} />
             {userName && <LogoutButton />}
@@ -168,6 +184,22 @@ export function CustomerNavbar({ userName }: CustomerNavbarProps) {
                       );
                     })}
                   </nav>
+                  <div className="mt-auto pt-6 border-t border-gray-100 flex flex-col gap-2">
+                    <a
+                      href={telHref(STORE.phone)}
+                      className={`min-h-[44px] flex items-center justify-center rounded-lg bg-[#1A2B4C] text-white font-semibold ${focusRing}`}
+                    >
+                      Gọi {STORE.phone}
+                    </a>
+                    <a
+                      href={zaloHref(STORE.zalo)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`min-h-[44px] flex items-center justify-center rounded-lg bg-[#0068FF] text-white font-semibold ${focusRing}`}
+                    >
+                      Nhắn Zalo
+                    </a>
+                  </div>
                 </Dialog.Content>
               </Dialog.Portal>
             </Dialog.Root>

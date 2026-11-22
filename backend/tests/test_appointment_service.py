@@ -313,3 +313,82 @@ async def test_send_booking_reminders_skips_already_sent(db, monkeypatch):
     # Should not send to already-reminded appointment
     assert "reminded@test.com" not in called
     assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# Email tuỳ chọn + dịch vụ (aodaithanhloc giai đoạn 1, 22/11/2026)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_create_appointment_without_email_skips_confirmation(db, monkeypatch):
+    """Khách chỉ để tên + SĐT → lịch vẫn tạo được, không gửi mail xác nhận."""
+    sent = []
+
+    async def mock_confirm(**kwargs):
+        sent.append(kwargs)
+        return True
+
+    import src.services.email_service as email_svc
+    monkeypatch.setattr(email_svc, "send_booking_confirmation_email", mock_confirm)
+
+    data = AppointmentCreate(
+        customer_name="Trần Thị Mai",
+        customer_phone="0947516881",
+        customer_email="  ",
+        appointment_date=FUTURE_DATE,
+        slot="afternoon",
+    )
+    assert data.customer_email is None
+
+    result = await create_appointment(db, data, TENANT_ID)
+    assert result.customer_email is None
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_create_appointment_service_type_prefixes_requests(db):
+    """Dịch vụ khách chọn được ghi đầu yêu cầu đặc biệt cho chủ tiệm."""
+    data = AppointmentCreate(
+        customer_name="Trần Thị Mai",
+        customer_phone="0947516881",
+        appointment_date=FUTURE_DATE,
+        slot="morning",
+        service_type="thue",
+        special_requests="Cần áo cho lễ tốt nghiệp",
+    )
+    result = await create_appointment(db, data, TENANT_ID)
+    assert result.special_requests == "[Dịch vụ: Thuê áo] Cần áo cho lễ tốt nghiệp"
+
+    only_service = AppointmentCreate(
+        customer_name="Lê Văn An",
+        customer_phone="0912345678",
+        appointment_date=FUTURE_DATE,
+        slot="morning",
+        service_type="ao_cuoi",
+    )
+    result2 = await create_appointment(db, only_service, TENANT_ID)
+    assert result2.special_requests == "[Dịch vụ: Áo dài cưới]"
+
+
+@pytest.mark.asyncio
+async def test_send_booking_reminders_skips_appointments_without_email(db, monkeypatch):
+    """Lịch hẹn không có email không được tính là đã nhắc (tiệm nhắc qua điện thoại)."""
+    db.add(AppointmentDB(
+        tenant_id=TENANT_ID,
+        customer_name="Không Email",
+        customer_phone="0912345678",
+        customer_email=None,
+        appointment_date=TOMORROW,
+        slot="morning",
+        status="pending",
+        reminder_sent=False,
+    ))
+    await db.commit()
+
+    async def mock_send_reminder(email, customer_name, appointment_date, slot):
+        raise AssertionError("không được gửi mail khi không có email")
+
+    import src.services.email_service as email_svc
+    monkeypatch.setattr(email_svc, "send_booking_reminder_email", mock_send_reminder)
+
+    assert await send_booking_reminders(db, TENANT_ID) == 0

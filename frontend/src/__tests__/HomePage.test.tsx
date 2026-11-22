@@ -51,7 +51,7 @@ function withFeatured(items: { id: string; name: string }[]) {
 describe("HomePage (Story 15.5)", () => {
   beforeEach(() => mockFetch.mockReset());
 
-  it("renders the hero, all sections, featured cards and key CTAs", async () => {
+  it("renders the hero, all sections and contact-first CTAs (showroom disabled)", async () => {
     withFeatured([
       { id: "1", name: "Hồng Hạc" },
       { id: "2", name: "Liên Hoa" },
@@ -65,7 +65,6 @@ describe("HomePage (Story 15.5)", () => {
 
     // Section headings in order
     expect(screen.getByRole("heading", { name: "Vì sao chọn chúng tôi" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Bộ sưu tập nổi bật" })).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /Hơn một tà áo/ })
     ).toBeInTheDocument();
@@ -74,21 +73,26 @@ describe("HomePage (Story 15.5)", () => {
       screen.getByRole("heading", { name: "Tà áo của riêng bạn đang chờ được may." })
     ).toBeInTheDocument();
 
-    // Featured cards
-    const cards = screen.getAllByTestId("garment-card");
-    expect(cards).toHaveLength(3);
-    expect(screen.getByText("Hồng Hạc")).toBeInTheDocument();
+    // SHOWROOM_ENABLED=false → không gọi API sản phẩm, không có khối nổi bật,
+    // không còn link nào dẫn tới /showroom trống.
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Bộ sưu tập nổi bật" })).toBeNull();
+    expect(screen.queryAllByTestId("garment-card")).toHaveLength(0);
+    screen.getAllByRole("link").forEach((l) =>
+      expect(l.getAttribute("href")).not.toBe("/showroom")
+    );
 
-    // "Xem tất cả →" → /showroom
-    expect(screen.getByRole("link", { name: /Xem tất cả/ })).toHaveAttribute("href", "/showroom");
     // Brand story → /about
     expect(screen.getByRole("link", { name: /Nghe trọn câu chuyện/ })).toHaveAttribute(
       "href",
       "/about"
     );
-    // Both "Hẹn một buổi trò chuyện" CTAs (hero + closing band) → /booking
-    const bookingLinks = screen.getAllByRole("link", { name: "Hẹn một buổi trò chuyện" });
-    expect(bookingLinks.length).toBeGreaterThanOrEqual(1);
+    // Hero + closing band: "Nhắn Zalo cho tiệm" (zalo.me) và "Đặt lịch đo may" (/booking)
+    const zaloLinks = screen.getAllByRole("link", { name: "Nhắn Zalo cho tiệm" });
+    expect(zaloLinks).toHaveLength(2);
+    zaloLinks.forEach((l) => expect(l).toHaveAttribute("href", "https://zalo.me/0947516881"));
+    const bookingLinks = screen.getAllByRole("link", { name: "Đặt lịch đo may" });
+    expect(bookingLinks).toHaveLength(2);
     bookingLinks.forEach((l) => expect(l).toHaveAttribute("href", "/booking"));
   });
 

@@ -95,8 +95,17 @@ export default function BookingConfirmationModal({
           Đặt Lịch Thành Công!
         </h2>
         <p className="text-sm text-[#6B7280] mb-6">
-          Email xác nhận đã được gửi đến{" "}
-          <strong className="text-[#1A1A2E]">{appointment.customer_email}</strong>
+          {appointment.customer_email ? (
+            <>
+              Email xác nhận đã được gửi đến{" "}
+              <strong className="text-[#1A1A2E]">{appointment.customer_email}</strong>
+            </>
+          ) : (
+            <>
+              Tiệm sẽ gọi lại số{" "}
+              <strong className="text-[#1A1A2E]">{appointment.customer_phone}</strong> để xác nhận lịch.
+            </>
+          )}
         </p>
 
         {/* Appointment details */}

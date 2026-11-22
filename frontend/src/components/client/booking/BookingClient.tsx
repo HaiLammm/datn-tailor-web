@@ -17,6 +17,7 @@ import SlotSelector from "./SlotSelector";
 import BookingForm from "./BookingForm";
 import BookingConfirmationModal from "./BookingConfirmationModal";
 import { createAppointment, getMonthAvailability } from "@/app/actions/booking-actions";
+import { STORE, telHref } from "@/lib/store-info";
 import type {
   AppointmentResponse,
   AppointmentSlot,
@@ -130,13 +131,22 @@ export default function BookingClient({
               Trang Chủ
             </a>
             {" › "}
-            <span className="text-[#1A1A2E]">Đặt Lịch Tư Vấn</span>
+            <span className="text-[#1A1A2E]">Đặt lịch</span>
           </nav>
           <h1 className="font-cormorant text-3xl md:text-4xl font-semibold text-[#1A1A2E]">
-            Đặt Lịch Tư Vấn Bespoke
+            Đặt lịch đo may / thử áo
           </h1>
           <p className="mt-2 text-sm text-[#6B7280] max-w-sm mx-auto">
-            Chọn ngày và khung giờ phù hợp để gặp nghệ nhân tại tiệm
+            Chọn ngày và buổi ghé tiệm — chỉ cần tên và số điện thoại.
+          </p>
+          <p className="mt-2 text-sm text-[#1A1A2E]">
+            Cần gấp?{" "}
+            <a
+              href={telHref(STORE.phone)}
+              className="font-semibold text-[#B8962E] underline underline-offset-2 hover:text-[#D4AF37]"
+            >
+              Gọi {STORE.phone}
+            </a>
           </p>
         </div>
 

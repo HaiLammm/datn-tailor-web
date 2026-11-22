@@ -13,7 +13,7 @@ jest.mock("@/components/client/brand/ContactForm", () => ({
 }));
 
 describe("ContactPage", () => {
-  it("renders a titled map iframe, tel/mailto links, and the contact form", () => {
+  it("renders a titled map iframe, tel link (no dead mailto), and the contact form", () => {
     render(<ContactPage />);
 
     const iframe = screen.getByTitle("Bản đồ tới Áo Dài Thanh Lộc");
@@ -23,8 +23,11 @@ describe("ContactPage", () => {
     const tel = screen.getByRole("link", { name: /Điện thoại:/ });
     expect(tel).toHaveAttribute("href", expect.stringMatching(/^tel:/));
 
-    const email = screen.getByRole("link", { name: /Email:/ });
-    expect(email).toHaveAttribute("href", expect.stringMatching(/^mailto:/));
+    expect(screen.queryByRole("link", { name: /Email:/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Facebook" })).toHaveAttribute(
+      "href",
+      "https://facebook.com/dangloc"
+    );
 
     expect(screen.getByTestId("contact-form")).toBeInTheDocument();
   });

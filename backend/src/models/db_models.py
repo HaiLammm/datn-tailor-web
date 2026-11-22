@@ -553,7 +553,7 @@ class AppointmentDB(Base):
     )
     customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     customer_phone: Mapped[str] = mapped_column(String(20), nullable=False)
-    customer_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    customer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     appointment_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     slot: Mapped[str] = mapped_column(String(20), nullable=False, default="morning")
     special_requests: Mapped[str | None] = mapped_column(Text, nullable=True)

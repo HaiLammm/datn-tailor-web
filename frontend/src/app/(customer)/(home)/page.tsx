@@ -15,6 +15,7 @@ import { fetchGarments } from "@/app/actions/garment-actions";
 import { GarmentStatus } from "@/types/garment";
 import { getAllPosts } from "@/lib/blog";
 import { jsonLdString, storeJsonLd } from "@/lib/seo";
+import { SHOWROOM_ENABLED, STORE, zaloHref } from "@/lib/store-info";
 
 /**
  * Story 15.5: Homepage Landing "CV" — the boutique's persuasive front door.
@@ -98,7 +99,9 @@ const TESTIMONIALS: TestimonialItem[] = [
 
 export default async function HomePage() {
   // Featured = newest available garments (no curation field exists in the model).
-  const res = await fetchGarments({ status: GarmentStatus.AVAILABLE, page_size: 4 });
+  const res = SHOWROOM_ENABLED
+    ? await fetchGarments({ status: GarmentStatus.AVAILABLE, page_size: 4 })
+    : null;
   const featured = Array.isArray(res?.data?.items) ? res.data.items : [];
 
   // Latest blog posts (file-based, read at build time); section hidden when empty.
@@ -124,11 +127,17 @@ export default async function HomePage() {
         }
         subline="Mỗi đường kim kể một câu chuyện — Mỗi tà áo kể tiếp ước mơ"
       >
-        <Link href="/showroom" className={ctaPrimary}>
-          Dạo xem bộ sưu tập
-        </Link>
+        {/* Showroom online chưa có hàng → nút chính là liên hệ trực tiếp */}
+        <a
+          href={zaloHref(STORE.zalo)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={ctaPrimary}
+        >
+          Nhắn Zalo cho tiệm
+        </a>
         <Link href="/booking" className={ctaOutline}>
-          Hẹn một buổi trò chuyện
+          Đặt lịch đo may
         </Link>
       </HeroBanner>
 
@@ -272,14 +281,19 @@ export default async function HomePage() {
             Tà áo của riêng bạn đang chờ được may.
           </h2>
           <p className="text-[#F9F7F2]/80 mb-8 max-w-xl mx-auto">
-            Hẹn một buổi trò chuyện cùng chúng tôi, hoặc thong thả dạo xem bộ sưu tập ngay hôm nay.
+            Nhắn Zalo để xem mẫu và hỏi giá, hoặc đặt lịch ghé tiệm đo may.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/booking" className={ctaPrimary}>
-              Hẹn một buổi trò chuyện
-            </Link>
-            <Link href="/showroom" className={ctaOutline}>
-              Dạo xem bộ sưu tập
+            <a
+              href={zaloHref(STORE.zalo)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={ctaPrimary}
+            >
+              Nhắn Zalo cho tiệm
+            </a>
+            <Link href="/booking" className={ctaOutline}>
+              Đặt lịch đo may
             </Link>
           </div>
         </div>
