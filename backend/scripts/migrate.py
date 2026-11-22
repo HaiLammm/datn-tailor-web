@@ -83,8 +83,13 @@ async def run_migrations():
                     "filename TEXT PRIMARY KEY, "
                     "applied_at TIMESTAMPTZ NOT NULL DEFAULT now())"
                 ))
-            result = await conn.execute(text("SELECT filename FROM schema_migrations"))
-            applied = {row[0] for row in result}
+            # Đọc trong transaction tường minh: execute() trần sẽ autobegin một
+            # transaction không bao giờ đóng → conn.begin() ở migration mới đầu tiên
+            # báo "already initialized a Transaction" và backend kẹt vòng restart
+            # (sự cố deploy migration 046 ngày 22/11/2026).
+            async with conn.begin():
+                result = await conn.execute(text("SELECT filename FROM schema_migrations"))
+                applied = {row[0] for row in result}
 
             for sql_file in sql_files:
                 if sql_file.name in applied:
