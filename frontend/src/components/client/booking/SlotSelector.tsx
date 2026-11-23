@@ -4,8 +4,8 @@
  * SlotSelector - Story 3.4: Time slot selection (Sáng / Chiều).
  *
  * Displays 2 booking sessions for the selected date:
- *  - Buổi Sáng (9:00 - 12:00)
- *  - Buổi Chiều (13:00 - 17:00)
+ *  - Buổi sáng (9:00 - 12:00)
+ *  - Buổi chiều (13:00 - 17:00)
  *
  * Animates in when date is selected via Framer Motion.
  */
@@ -28,13 +28,13 @@ const SLOTS: {
 }[] = [
   {
     key: "morning",
-    label: "Buổi Sáng",
+    label: "Buổi sáng",
     time: "9:00 - 12:00",
     icon: "🌅",
   },
   {
     key: "afternoon",
-    label: "Buổi Chiều",
+    label: "Buổi chiều",
     time: "13:00 - 17:00",
     icon: "🌤",
   },
@@ -58,7 +58,7 @@ export default function SlotSelector({
   return (
     <div>
       <h3 className="font-cormorant text-base font-semibold text-[#1A1A2E] mb-3">
-        Chọn Khung Giờ
+        Chọn khung giờ
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {SLOTS.map((slot, index) => {

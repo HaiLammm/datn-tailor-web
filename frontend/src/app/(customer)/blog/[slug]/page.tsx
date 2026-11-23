@@ -90,7 +90,7 @@ export default async function BlogPostPage(
               href="/blog"
               className="inline-flex items-center gap-1 text-sm text-[#F9F7F2]/70 hover:text-[#D4AF37] transition-colors mb-6 focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             >
-              ← Nhật ký áo dài
+              ← Cẩm nang áo dài
             </Link>
             <div className="flex items-center justify-center gap-2 mb-4 text-xs">
               <span className="font-semibold uppercase tracking-[0.16em] text-[#D4AF37]">

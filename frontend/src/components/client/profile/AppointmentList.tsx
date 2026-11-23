@@ -137,7 +137,7 @@ function AppointmentCard({ appointment, onCancel, cancellingId }: AppointmentCar
   const canCancel = appointment.status !== "cancelled" && !within24h;
   const isCancelling = cancellingId === appointment.id;
 
-  const slotLabel = appointment.slot === "morning" ? "Buổi Sáng" : "Buổi Chiều";
+  const slotLabel = appointment.slot === "morning" ? "Buổi sáng" : "Buổi chiều";
   const isPast = !upcoming;
 
   const handleConfirmCancel = async () => {

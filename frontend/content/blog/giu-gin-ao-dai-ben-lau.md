@@ -14,7 +14,7 @@ author: "Áo Dài Thanh Lộc"
 draft: false
 ---
 
-Áo dài may riêng không chỉ là một bộ trang phục, mà là tâm tình của người thợ gửi vào từng đường kim. Giữ gìn áo đúng cách là cách bạn trân trọng công sức ấy — và để tà áo theo bạn qua nhiều mùa.
+Áo dài may riêng là công sức của người thợ gửi vào từng đường kim. Giữ gìn áo đúng cách là cách bạn trân trọng công sức ấy — và để tà áo theo bạn qua nhiều mùa.
 
 ## Giặt nhẹ tay
 

@@ -12,6 +12,12 @@
  */
 export const SHOWROOM_ENABLED = false;
 
+/**
+ * Khối lời khách (trang chủ + /about). Tắt khi chưa có lời khách thật có nguồn
+ * (Facebook, Zalo đã xin phép, đánh giá Google). Bật lại khi đã thay TESTIMONIALS.
+ */
+export const TESTIMONIALS_ENABLED = false;
+
 export const STORE = {
   name: "Áo Dài Thanh Lộc",
   address: "187B/1 Mai Hắc Đế, Phường Tân Thành, TP. Buôn Ma Thuột, tỉnh Đắk Lắk",

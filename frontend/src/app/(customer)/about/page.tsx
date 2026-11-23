@@ -5,6 +5,7 @@ import Image from "next/image";
 import { HeroBanner } from "@/components/client/brand/HeroBanner";
 import { FeatureTriad, type FeatureItem } from "@/components/client/brand/FeatureTriad";
 import { TestimonialStrip, type TestimonialItem } from "@/components/client/brand/TestimonialStrip";
+import { TESTIMONIALS_ENABLED } from "@/lib/store-info";
 
 /**
  * Story 15.3: About page — editorial Brand CV (4 pillars + closing CTA).
@@ -22,10 +23,10 @@ const CORMORANT = { fontFamily: "Cormorant Garamond, serif" } as const;
 
 const PROCESS_STEPS: { title: string; description: string }[] = [
   { title: "Tư vấn", description: "Lắng nghe phong cách và mong muốn của bạn." },
-  { title: "Đo", description: "Số đo cá nhân hoá, lưu vào hồ sơ riêng." },
+  { title: "Đo", description: "Thợ đo trực tiếp, số đo được lưu vào hồ sơ của bạn ở tiệm." },
   { title: "Lên mẫu", description: "Tạo mẫu áo chính xác theo số đo của bạn." },
   { title: "May tay", description: "Thợ may lành nghề chăm chút từng đường kim." },
-  { title: "Vừa lần đầu", description: "Vừa vặn ngay lần thử đầu tiên." },
+  { title: "Thử áo và nhận áo", description: "Bạn thử áo tại tiệm, chỗ nào chưa vừa thợ chỉnh lại ngay." },
 ];
 
 const GALLERY: { src: string; alt: string }[] = [
@@ -46,7 +47,7 @@ const FEATURES: FeatureItem[] = [
     ),
     title: "Yêu ngay lần thử đầu",
     description:
-      "Hơn 9 trên 10 người vừa in ngay lần đầu — đỡ mất công đi lại, chỉ còn lại niềm vui trọn vẹn.",
+      "Thợ đo kỹ và cho bạn thử áo trước khi nhận, đỡ mất công đi lại nhiều lần.",
   },
   {
     icon: (
@@ -105,12 +106,10 @@ export default function AboutPage() {
         eyebrow="Về chúng tôi"
         title={
           <>
-            Giữ hồn áo dài,
-            <br />
-            qua bao mùa thương.
+            Chúng tôi may áo dài theo số đo riêng của từng khách.
           </>
         }
-        subline="Một tiệm may nặng lòng với áo dài — nơi mỗi tà áo lớn lên từ đôi tay người thợ và sự nâng niu trong từng số đo."
+        subline="Nhà may Thanh Lộc ở 187B/1 Mai Hắc Đế, Buôn Ma Thuột, nhận may đo, bán và cho thuê áo dài, kể cả áo dài cưới."
       />
 
       {/* Pillar 1 — Brand story */}
@@ -128,8 +127,8 @@ export default function AboutPage() {
                 Khởi đầu từ một điều giản dị.
               </h2>
               <p className="text-[#6B7280] text-base leading-relaxed mb-4">
-                Chúng tôi tin mỗi người phụ nữ Việt xứng đáng có một tà áo của riêng mình — vừa vóc
-                dáng, vừa nết duyên, chứ không phải một chiếc áo may sẵn giống hệt trăm người.
+                Chúng tôi tin mỗi người phụ nữ Việt nên có một tà áo vừa với vóc dáng và hợp với nét
+                riêng của mình.
               </p>
               <p className="text-[#6B7280] text-base leading-relaxed">
                 Vì lẽ đó, chúng tôi vừa giữ lấy nghề may thủ công của cha ông, vừa đo may thật tỉ mỉ
@@ -160,7 +159,7 @@ export default function AboutPage() {
               className="text-3xl md:text-4xl font-serif font-semibold text-[#1A2B4C]"
               style={CORMORANT}
             >
-              Từ cảm hứng đến tà áo hoàn thiện
+              May một chiếc áo dài ở tiệm gồm những bước nào?
             </h2>
           </div>
           <ol className="grid grid-cols-1 md:grid-cols-5 gap-10 md:gap-4">
@@ -195,14 +194,16 @@ export default function AboutPage() {
         />
       </section>
 
-      {/* Pillar 4 — Testimonials */}
-      <section className="py-20 bg-white">
-        <TestimonialStrip
-          eyebrow="Khách thương"
-          heading="Được hàng trăm khách thương gửi trọn niềm tin"
-          items={TESTIMONIALS}
-        />
-      </section>
+      {/* Pillar 4 — Testimonials (ẩn tới khi có lời khách thật, xem TESTIMONIALS_ENABLED) */}
+      {TESTIMONIALS_ENABLED && (
+        <section className="py-20 bg-white">
+          <TestimonialStrip
+            eyebrow="Lời khách"
+            heading="Khách nói gì sau khi may áo ở tiệm?"
+            items={TESTIMONIALS}
+          />
+        </section>
+      )}
 
       {/* Pillar 5 — Cửa tiệm & sản phẩm (gallery) */}
       <section className="py-20">
@@ -245,10 +246,10 @@ export default function AboutPage() {
         />
         <div className="relative container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-serif font-semibold mb-4" style={CORMORANT}>
-            Hãy để chúng tôi kể câu chuyện của bạn, bằng một tà áo.
+            Bạn cần may, mua hay thuê áo dài cho dịp sắp tới?
           </h2>
           <p className="text-[#F9F7F2]/80 mb-8 max-w-xl mx-auto">
-            Hẹn một buổi trò chuyện, hay chỉ đơn giản là nhắn cho chúng tôi đôi dòng.
+            Đặt lịch ghé tiệm để thợ đo và tư vấn, hoặc nhắn tiệm vài dòng qua Zalo.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/booking" className={ctaPrimary}>

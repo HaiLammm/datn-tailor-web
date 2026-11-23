@@ -61,14 +61,15 @@ describe("HomePage (Story 15.5)", () => {
     render(await HomePage());
 
     // Hero (two-line headline)
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Một tà áo,vẹn cả dáng hình.");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Nhà may Thanh Lộc may đo, bán và cho thuê áo dài ở Buôn Ma Thuột.");
 
     // Section headings in order
-    expect(screen.getByRole("heading", { name: "Vì sao chọn chúng tôi" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Vì sao lại chọn chúng tôi?" })).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /Hơn một tà áo/ })
+      screen.getByRole("heading", { name: /Thanh Lộc bắt đầu từ một tiệm may nhỏ/ })
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Niềm tin được dệt nên" })).toBeInTheDocument();
+    // TESTIMONIALS_ENABLED=false → khối lời khách ẩn
+    expect(screen.queryByRole("heading", { name: "Khách nói gì sau khi may áo ở tiệm?" })).toBeNull();
     expect(
       screen.getByRole("heading", { name: "Tà áo của riêng bạn đang chờ được may." })
     ).toBeInTheDocument();
@@ -83,7 +84,7 @@ describe("HomePage (Story 15.5)", () => {
     );
 
     // Brand story → /about
-    expect(screen.getByRole("link", { name: /Nghe trọn câu chuyện/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Xem thêm về tiệm/ })).toHaveAttribute(
       "href",
       "/about"
     );
@@ -107,7 +108,7 @@ describe("HomePage (Story 15.5)", () => {
 
     // The rest of the page still renders.
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Niềm tin được dệt nên" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Vì sao lại chọn chúng tôi?" })).toBeInTheDocument();
   });
 
   it("tolerates a null fetch result (treats it as empty)", async () => {

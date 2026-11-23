@@ -3,7 +3,7 @@
 /**
  * BookingForm - Story 3.4: Customer info form for appointment booking.
  *
- * Fields: Họ Tên, Số điện thoại, Dịch vụ, Email (tuỳ chọn), Yêu cầu đặc biệt (tuỳ chọn).
+ * Fields: Họ Tên, Số điện thoại, Dịch vụ, Email (tùy chọn), Yêu cầu đặc biệt (tùy chọn).
  * Inline validation without Zod library (project rule from Story 3.1-3.3).
  * Real-time validation on blur + on submit.
  * Preserves form state on error (no reset).
@@ -70,8 +70,8 @@ function validateForm(values: FormValues): FormErrors {
 
 function formatSlotLabel(slot: AppointmentSlot): string {
   return slot === "morning"
-    ? "Buổi Sáng (9:00 - 12:00)"
-    : "Buổi Chiều (13:00 - 17:00)";
+    ? "Buổi sáng (9:00 - 12:00)"
+    : "Buổi chiều (13:00 - 17:00)";
 }
 
 function formatDisplayDate(dateStr: string): string {
@@ -146,7 +146,7 @@ export default function BookingForm({
   return (
     <form onSubmit={handleSubmit} noValidate>
       <h3 className="font-cormorant text-base font-semibold text-[#1A1A2E] mb-1">
-        Thông Tin Đặt Lịch
+        Thông tin đặt lịch
       </h3>
       {/* Summary of selection */}
       <p className="text-xs text-[#6B7280] mb-4">
@@ -160,7 +160,7 @@ export default function BookingForm({
             htmlFor="customer_name"
             className="block text-sm font-medium text-[#1A1A2E] mb-1"
           >
-            Họ và Tên <span className="text-[#DC2626]">*</span>
+            Họ và tên <span className="text-[#DC2626]">*</span>
           </label>
           <input
             id="customer_name"
@@ -225,7 +225,7 @@ export default function BookingForm({
             className="block text-sm font-medium text-[#1A1A2E] mb-1"
           >
             Bạn cần{" "}
-            <span className="text-[#6B7280] font-normal">(tuỳ chọn)</span>
+            <span className="text-[#6B7280] font-normal">(tùy chọn)</span>
           </label>
           <select
             id="service_type"
@@ -250,7 +250,7 @@ export default function BookingForm({
             className="block text-sm font-medium text-[#1A1A2E] mb-1"
           >
             Email{" "}
-            <span className="text-[#6B7280] font-normal">(tuỳ chọn, để nhận xác nhận)</span>
+            <span className="text-[#6B7280] font-normal">(tùy chọn, để nhận xác nhận)</span>
           </label>
           <input
             id="customer_email"
@@ -283,7 +283,7 @@ export default function BookingForm({
             className="block text-sm font-medium text-[#1A1A2E] mb-1"
           >
             Yêu cầu đặc biệt{" "}
-            <span className="text-[#6B7280] font-normal">(tuỳ chọn)</span>
+            <span className="text-[#6B7280] font-normal">(tùy chọn)</span>
           </label>
           <textarea
             id="special_requests"
@@ -333,7 +333,7 @@ export default function BookingForm({
             Đang xử lý...
           </>
         ) : (
-          "Xác Nhận Đặt Lịch"
+          "Xác nhận đặt lịch"
         )}
       </button>
     </form>

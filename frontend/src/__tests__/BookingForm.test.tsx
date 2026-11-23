@@ -31,7 +31,7 @@ describe("BookingForm", () => {
 
   it("renders all form fields", () => {
     render(<BookingForm {...defaultProps} />);
-    expect(screen.getByLabelText(/Họ và Tên/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Họ và tên/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Số điện thoại/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Yêu cầu đặc biệt/)).toBeInTheDocument();
@@ -40,13 +40,13 @@ describe("BookingForm", () => {
   it("shows appointment summary with selected date and slot", () => {
     render(<BookingForm {...defaultProps} />);
     expect(screen.getByText(/15\/06\/2026/)).toBeInTheDocument();
-    expect(screen.getByText(/Buổi Sáng/)).toBeInTheDocument();
+    expect(screen.getByText(/Buổi sáng/)).toBeInTheDocument();
   });
 
   it("renders submit button with correct label", () => {
     render(<BookingForm {...defaultProps} />);
     expect(
-      screen.getByRole("button", { name: "Xác Nhận Đặt Lịch" })
+      screen.getByRole("button", { name: "Xác nhận đặt lịch" })
     ).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe("BookingForm", () => {
 
   it("validates required name field on blur", async () => {
     render(<BookingForm {...defaultProps} />);
-    const nameInput = screen.getByLabelText(/Họ và Tên/);
+    const nameInput = screen.getByLabelText(/Họ và tên/);
     fireEvent.blur(nameInput);
     await waitFor(() => {
       expect(
@@ -119,7 +119,7 @@ describe("BookingForm", () => {
   it("does not submit form when validation fails", async () => {
     const onSubmit = jest.fn();
     render(<BookingForm {...defaultProps} onSubmit={onSubmit} />);
-    const submitBtn = screen.getByRole("button", { name: "Xác Nhận Đặt Lịch" });
+    const submitBtn = screen.getByRole("button", { name: "Xác nhận đặt lịch" });
     fireEvent.click(submitBtn);
     await waitFor(() => {
       expect(onSubmit).not.toHaveBeenCalled();
@@ -130,11 +130,11 @@ describe("BookingForm", () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
     render(<BookingForm {...defaultProps} onSubmit={onSubmit} />);
 
-    await userEvent.type(screen.getByLabelText(/Họ và Tên/), "Nguyễn Thị Lan");
+    await userEvent.type(screen.getByLabelText(/Họ và tên/), "Nguyễn Thị Lan");
     await userEvent.type(screen.getByLabelText(/Số điện thoại/), "0912345678");
     await userEvent.type(screen.getByLabelText(/Email/), "lan@test.com");
 
-    fireEvent.click(screen.getByRole("button", { name: "Xác Nhận Đặt Lịch" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận đặt lịch" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(
@@ -156,7 +156,7 @@ describe("BookingForm", () => {
         submitError="Lỗi từ server"
       />
     );
-    const nameInput = screen.getByLabelText(/Họ và Tên/);
+    const nameInput = screen.getByLabelText(/Họ và tên/);
     // Input should still be accessible and not reset
     expect(nameInput).toBeInTheDocument();
     expect(nameInput).not.toBeDisabled();
@@ -166,6 +166,6 @@ describe("BookingForm", () => {
     render(
       <BookingForm {...defaultProps} selectedSlot="afternoon" />
     );
-    expect(screen.getByText(/Buổi Chiều/)).toBeInTheDocument();
+    expect(screen.getByText(/Buổi chiều/)).toBeInTheDocument();
   });
 });

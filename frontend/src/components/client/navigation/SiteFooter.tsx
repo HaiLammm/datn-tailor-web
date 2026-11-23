@@ -112,7 +112,7 @@ export function SiteFooter() {
                   href="/blog"
                   className={`inline-flex items-center min-h-[44px] hover:text-[#D4AF37] transition-colors ${focusRing}`}
                 >
-                  Bài viết
+                  Cẩm nang
                 </Link>
               </li>
               <li>

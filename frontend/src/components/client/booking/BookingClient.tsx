@@ -128,7 +128,7 @@ export default function BookingClient({
         <div className="mb-8 text-center">
           <nav className="text-xs text-[#6B7280] mb-3">
             <a href="/" className="hover:text-[#D4AF37] transition-colors">
-              Trang Chủ
+              Trang chủ
             </a>
             {" › "}
             <span className="text-[#1A1A2E]">Đặt lịch</span>
@@ -156,7 +156,7 @@ export default function BookingClient({
           <div className="lg:col-span-3">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
               <h2 className="font-cormorant text-lg font-semibold text-[#1A1A2E] mb-4">
-                Chọn Ngày Hẹn
+                Chọn ngày hẹn
               </h2>
               {isLoadingMonth ? (
                 <div className="h-64 flex items-center justify-center">

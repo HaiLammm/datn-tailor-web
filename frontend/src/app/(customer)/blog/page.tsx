@@ -31,9 +31,9 @@ export default function BlogIndexPage() {
     <div className="bg-[#F9F7F2] min-h-screen">
       <HeroBanner
         variant="showroom-compact"
-        eyebrow="Nhật ký · Áo Dài Thanh Lộc"
-        title="Chuyện tà áo dài"
-        subline="Cẩm nang chọn vải, giữ dáng áo, và những câu chuyện nghề được góp nhặt qua bao mùa."
+        eyebrow="Cẩm nang · Áo Dài Thanh Lộc"
+        title="Cẩm nang áo dài"
+        subline="Hướng dẫn chọn vải, giặt và cất giữ áo dài do thợ tiệm Thanh Lộc chia sẻ từ việc may hằng ngày."
       />
 
       <section className="py-16">

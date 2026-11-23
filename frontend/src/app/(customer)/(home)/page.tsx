@@ -15,7 +15,7 @@ import { fetchGarments } from "@/app/actions/garment-actions";
 import { GarmentStatus } from "@/types/garment";
 import { getAllPosts } from "@/lib/blog";
 import { jsonLdString, storeJsonLd } from "@/lib/seo";
-import { SHOWROOM_ENABLED, STORE, zaloHref } from "@/lib/store-info";
+import { SHOWROOM_ENABLED, STORE, TESTIMONIALS_ENABLED, zaloHref } from "@/lib/store-info";
 
 /**
  * Story 15.5: Homepage Landing "CV" — the boutique's persuasive front door.
@@ -49,7 +49,7 @@ const FEATURES: FeatureItem[] = [
     ),
     title: "Yêu ngay lần thử đầu",
     description:
-      "Vừa vặn cả dáng hình lẫn nét duyên ngay lần đầu khoác lên — chẳng phải sửa tới sửa lui, chẳng phải chờ mong.",
+      "Thợ đo trực tiếp tại tiệm và may theo đúng số đo của bạn, để áo vừa ngay lần thử đầu, đỡ phải sửa đi sửa lại.",
   },
   {
     icon: (
@@ -57,9 +57,9 @@ const FEATURES: FeatureItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
       </svg>
     ),
-    title: "Đường kim có hồn",
+    title: "May tay từng chiếc",
     description:
-      "Mỗi mũi chỉ là một chút tâm tình người thợ gửi vào — để hồn áo dài Việt sống mãi trong từng tà áo.",
+      "Thợ trong tiệm tự cắt và may từng chiếc áo theo số đo riêng, không may hàng loạt.",
   },
   {
     icon: (
@@ -67,9 +67,9 @@ const FEATURES: FeatureItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
       </svg>
     ),
-    title: "Riêng một mình bạn",
+    title: "Chọn vải và kiểu cùng thợ",
     description:
-      "Đồng điệu từ dáng hình đến tâm hồn — để bạn yêu tà áo ngay từ cái nhìn đầu tiên.",
+      "Bạn cùng thợ chọn vải, màu và kiểu áo hợp với dáng người và dịp mặc, để chiếc áo là của riêng bạn.",
   },
 ];
 
@@ -117,15 +117,9 @@ export default async function HomePage() {
       <HeroBanner
         variant="home"
         imageSrc="/shop/interior-wide.jpg"
-        eyebrow="Áo dài may riêng · Giữ trọn nét Việt"
-        title={
-          <>
-            Một tà áo,
-            <br />
-            vẹn cả dáng hình.
-          </>
-        }
-        subline="Mỗi đường kim kể một câu chuyện — Mỗi tà áo kể tiếp ước mơ"
+        eyebrow="Nhà may Thanh Lộc · Buôn Ma Thuột"
+        title="Nhà may Thanh Lộc may đo, bán và cho thuê áo dài ở Buôn Ma Thuột."
+        subline="Ghé tiệm ở 187B/1 Mai Hắc Đế để chọn vải và đo, hoặc nhắn Zalo gửi mẫu bạn thích để tiệm báo giá."
       >
         {/* Showroom online chưa có hàng → nút chính là liên hệ trực tiếp */}
         <a
@@ -146,7 +140,7 @@ export default async function HomePage() {
         <RevealOnScroll>
           <FeatureTriad
             eyebrow="Lời chúng tôi gửi bạn"
-            heading="Vì sao chọn chúng tôi"
+            heading="Vì sao lại chọn chúng tôi?"
             items={FEATURES}
           />
         </RevealOnScroll>
@@ -196,20 +190,17 @@ export default async function HomePage() {
                   className="text-3xl md:text-4xl font-serif font-semibold text-[#1A2B4C] mb-5"
                   style={CORMORANT}
                 >
-                  Hơn một tà áo —
-                  <br />
-                  là cả một tấm lòng.
+                  Thanh Lộc bắt đầu từ một tiệm may nhỏ ở Buôn Ma Thuột.
                 </h2>
                 <p className="text-[#6B7280] text-base leading-relaxed mb-4">
-                  Từ một tiệm may nhỏ, chúng tôi lớn lên cùng tình yêu dành cho áo dài Việt — mong
-                  giữ lại nét duyên ấy cho mọi người, qua bao mùa.
+                  Tiệm mở từ năm 1999. Cô Thanh Lộc là thợ chính, đến nay vẫn tự tay đo và may áo
+                  cho khách.
                 </p>
                 <p className="text-[#6B7280] text-base leading-relaxed mb-6">
-                  Không vội vàng, không đại trà. Chỉ có những tà áo được may bằng cả sự nâng niu, cho
-                  riêng một người.
+                  Mỗi chiếc áo được may theo số đo của một người, không may sẵn hàng loạt.
                 </p>
                 <Link href="/about" className={linkDark}>
-                  Nghe trọn câu chuyện →
+                  Xem thêm về tiệm →
                 </Link>
               </div>
               <div className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-lg">
@@ -226,16 +217,18 @@ export default async function HomePage() {
         </RevealOnScroll>
       </section>
 
-      {/* Section 5 — Testimonials */}
-      <section className="py-20 bg-white">
-        <RevealOnScroll>
-          <TestimonialStrip
-            eyebrow="Lời thương từ khách"
-            heading="Niềm tin được dệt nên"
-            items={TESTIMONIALS}
-          />
-        </RevealOnScroll>
-      </section>
+      {/* Section 5 — Testimonials (ẩn tới khi có lời khách thật, xem TESTIMONIALS_ENABLED) */}
+      {TESTIMONIALS_ENABLED && (
+        <section className="py-20 bg-white">
+          <RevealOnScroll>
+            <TestimonialStrip
+              eyebrow="Lời khách"
+              heading="Khách nói gì sau khi may áo ở tiệm?"
+              items={TESTIMONIALS}
+            />
+          </RevealOnScroll>
+        </section>
+      )}
 
       {/* Section 5.5 — Latest journal posts (hidden when empty) */}
       {latestPosts.length > 0 && (

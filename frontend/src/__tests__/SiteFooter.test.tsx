@@ -27,7 +27,7 @@ describe("SiteFooter", () => {
   it("links Khám phá column to /blog and /booking (Showroom hidden while disabled)", () => {
     render(<SiteFooter />);
     expect(screen.queryByRole("link", { name: "Showroom" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Bài viết" })).toHaveAttribute("href", "/blog");
+    expect(screen.getByRole("link", { name: "Cẩm nang" })).toHaveAttribute("href", "/blog");
     expect(screen.getByRole("link", { name: "Đặt lịch" })).toHaveAttribute("href", "/booking");
   });
 

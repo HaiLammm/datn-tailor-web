@@ -268,7 +268,7 @@ export default function BookingCalendar({
       <div className="mt-4 flex flex-wrap gap-3 text-xs text-[#6B7280]">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full border border-[#059669]" />
-          Còn slot
+          Còn chỗ
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full border-2 border-[#D4AF37]" />
@@ -280,7 +280,7 @@ export default function BookingCalendar({
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-gray-200" />
-          Đã đầy / Quá khứ
+          Đã kín / Ngày đã qua
         </span>
       </div>
     </div>

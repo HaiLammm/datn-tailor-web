@@ -114,7 +114,7 @@ describe("AppointmentList", () => {
     expect(screen.getByText("Đã xác nhận")).toBeInTheDocument();
     expect(screen.getByText("Tư vấn áo dài cưới")).toBeInTheDocument();
     // Slot label
-    expect(screen.getByText("Buổi Sáng")).toBeInTheDocument();
+    expect(screen.getByText("Buổi sáng")).toBeInTheDocument();
   });
 
   it("renders past appointments section", () => {

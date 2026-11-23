@@ -29,8 +29,8 @@ export default function ContactPage() {
       <HeroBanner
         variant="showroom-compact"
         eyebrow="Liên hệ"
-        title="Gặp gỡ & trò chuyện cùng chúng tôi"
-        subline="Hẹn một buổi trò chuyện, hay chỉ đơn giản là nhắn cho chúng tôi đôi dòng — chúng tôi luôn sẵn lòng."
+        title="Bạn có thể ghé tiệm, gọi điện hoặc nhắn Zalo cho chúng tôi."
+        subline="Tiệm mở cửa từ 7:00 đến 19:00 tất cả các ngày trong tuần."
       />
 
       <section className="bg-[#F9F7F2] py-14 md:py-20">

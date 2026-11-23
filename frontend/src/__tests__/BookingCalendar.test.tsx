@@ -200,7 +200,7 @@ describe("BookingCalendar", () => {
   describe("Legend & Indicators", () => {
     it("renders legend items", () => {
       render(<BookingCalendar {...defaultProps} />);
-      expect(screen.getByText("Còn slot")).toBeInTheDocument();
+      expect(screen.getByText("Còn chỗ")).toBeInTheDocument();
       expect(screen.getByText("Đang chọn")).toBeInTheDocument();
       expect(screen.getByText("Hôm nay")).toBeInTheDocument();
     });

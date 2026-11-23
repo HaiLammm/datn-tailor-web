@@ -58,7 +58,7 @@ describe("BookingConfirmationModal", () => {
     render(
       <BookingConfirmationModal appointment={MOCK_APPOINTMENT} onClose={onClose} />
     );
-    expect(screen.getByText("Đặt Lịch Thành Công!")).toBeInTheDocument();
+    expect(screen.getByText("Đặt lịch thành công!")).toBeInTheDocument();
   });
 
   it("displays customer name in appointment details", () => {
@@ -79,7 +79,7 @@ describe("BookingConfirmationModal", () => {
     render(
       <BookingConfirmationModal appointment={MOCK_APPOINTMENT} onClose={onClose} />
     );
-    expect(screen.getByText("Buổi Sáng (9:00 - 12:00)")).toBeInTheDocument();
+    expect(screen.getByText("Buổi sáng (9:00 - 12:00)")).toBeInTheDocument();
   });
 
   it("displays afternoon slot label when slot is afternoon", () => {
@@ -87,7 +87,7 @@ describe("BookingConfirmationModal", () => {
     render(
       <BookingConfirmationModal appointment={afternoonAppt} onClose={onClose} />
     );
-    expect(screen.getByText("Buổi Chiều (13:00 - 17:00)")).toBeInTheDocument();
+    expect(screen.getByText("Buổi chiều (13:00 - 17:00)")).toBeInTheDocument();
   });
 
   it("displays customer email confirmation message", () => {
@@ -97,23 +97,23 @@ describe("BookingConfirmationModal", () => {
     expect(screen.getByText("lan@test.com")).toBeInTheDocument();
   });
 
-  it("renders 'Về Trang Chủ' and 'Xem Lịch Hẹn' CTAs", () => {
+  it("renders 'Về trang chủ' and 'Xem lịch hẹn' CTAs", () => {
     render(
       <BookingConfirmationModal appointment={MOCK_APPOINTMENT} onClose={onClose} />
     );
-    expect(screen.getByText("Về Trang Chủ")).toBeInTheDocument();
-    expect(screen.getByText("Xem Lịch Hẹn")).toBeInTheDocument();
+    expect(screen.getByText("Về trang chủ")).toBeInTheDocument();
+    expect(screen.getByText("Xem lịch hẹn")).toBeInTheDocument();
   });
 
   it("has correct href for CTAs", () => {
     render(
       <BookingConfirmationModal appointment={MOCK_APPOINTMENT} onClose={onClose} />
     );
-    expect(screen.getByText("Về Trang Chủ").closest("a")).toHaveAttribute(
+    expect(screen.getByText("Về trang chủ").closest("a")).toHaveAttribute(
       "href",
       "/"
     );
-    expect(screen.getByText("Xem Lịch Hẹn").closest("a")).toHaveAttribute(
+    expect(screen.getByText("Xem lịch hẹn").closest("a")).toHaveAttribute(
       "href",
       "/profile/appointments"
     );

@@ -29,7 +29,7 @@ const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/", label: "Trang chủ" },
   ...(SHOWROOM_ENABLED ? [{ href: "/showroom", label: "Showroom" }] : []),
   { href: "/about", label: "Giới thiệu" },
-  { href: "/blog", label: "Bài viết" },
+  { href: "/blog", label: "Cẩm nang" },
   { href: "/contact", label: "Liên hệ" },
   { href: "/booking", label: "Đặt lịch" },
 ];

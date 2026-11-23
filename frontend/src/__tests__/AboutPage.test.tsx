@@ -20,16 +20,17 @@ describe("AboutPage", () => {
   it("renders the 4 pillar section headings in order", () => {
     render(<AboutPage />);
     expect(screen.getByRole("heading", { name: "Khởi đầu từ một điều giản dị." })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Từ cảm hứng đến tà áo hoàn thiện" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "May một chiếc áo dài ở tiệm gồm những bước nào?" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Điều khiến bạn muốn quay lại" })).toBeInTheDocument();
+    // TESTIMONIALS_ENABLED=false → khối lời khách ẩn
     expect(
-      screen.getByRole("heading", { name: "Được hàng trăm khách thương gửi trọn niềm tin" })
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: "Khách nói gì sau khi may áo ở tiệm?" })
+    ).toBeNull();
   });
 
   it("renders the 5-step craft process timeline", () => {
     render(<AboutPage />);
-    ["Tư vấn", "Đo", "Lên mẫu", "May tay", "Vừa lần đầu"].forEach((step) => {
+    ["Tư vấn", "Đo", "Lên mẫu", "May tay", "Thử áo và nhận áo"].forEach((step) => {
       expect(screen.getByRole("heading", { name: step })).toBeInTheDocument();
     });
   });

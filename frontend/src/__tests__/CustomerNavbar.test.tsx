@@ -100,7 +100,7 @@ describe("CustomerNavbar", () => {
     expect(within(nav).getByRole("link", { name: "Trang chủ" })).toHaveAttribute("href", "/");
     expect(within(nav).queryByRole("link", { name: "Showroom" })).not.toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Giới thiệu" })).toHaveAttribute("href", "/about");
-    expect(within(nav).getByRole("link", { name: "Bài viết" })).toHaveAttribute("href", "/blog");
+    expect(within(nav).getByRole("link", { name: "Cẩm nang" })).toHaveAttribute("href", "/blog");
     expect(within(nav).getByRole("link", { name: "Liên hệ" })).toHaveAttribute("href", "/contact");
     expect(within(nav).getByRole("link", { name: "Đặt lịch" })).toHaveAttribute("href", "/booking");
   });
@@ -123,7 +123,7 @@ describe("CustomerNavbar", () => {
     mockPathname = "/blog/cach-chon-vai";
     render(<CustomerNavbar userName={null} />);
     const nav = screen.getByRole("navigation", { name: "Điều hướng chính" });
-    expect(within(nav).getByRole("link", { name: "Bài viết" })).toHaveAttribute(
+    expect(within(nav).getByRole("link", { name: "Cẩm nang" })).toHaveAttribute(
       "aria-current",
       "page"
     );
@@ -170,7 +170,7 @@ describe("CustomerNavbar", () => {
     render(<CustomerNavbar userName={null} />);
     fireEvent.click(screen.getByRole("button", { name: "Mở menu" }));
     const drawerNav = screen.getByRole("navigation", { name: "Menu di động" });
-    fireEvent.click(within(drawerNav).getByRole("link", { name: "Bài viết" }));
+    fireEvent.click(within(drawerNav).getByRole("link", { name: "Cẩm nang" }));
     expect(screen.queryByRole("navigation", { name: "Menu di động" })).not.toBeInTheDocument();
   });
 

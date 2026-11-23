@@ -27,8 +27,8 @@ function formatDisplayDate(dateStr: string): string {
 
 function formatSlotLabel(slot: string): string {
   return slot === "morning"
-    ? "Buổi Sáng (9:00 - 12:00)"
-    : "Buổi Chiều (13:00 - 17:00)";
+    ? "Buổi sáng (9:00 - 12:00)"
+    : "Buổi chiều (13:00 - 17:00)";
 }
 
 export default function BookingConfirmationModal({
@@ -92,7 +92,7 @@ export default function BookingConfirmationModal({
           id="booking-confirm-title"
           className="font-cormorant text-2xl font-semibold text-[#1A1A2E] mb-2"
         >
-          Đặt Lịch Thành Công!
+          Đặt lịch thành công!
         </h2>
         <p className="text-sm text-[#6B7280] mb-6">
           {appointment.customer_email ? (
@@ -144,13 +144,13 @@ export default function BookingConfirmationModal({
             href="/"
             className="flex-1 min-h-[44px] px-4 py-3 rounded-lg border-2 border-[#D4AF37] text-[#D4AF37] font-semibold text-sm text-center hover:bg-[rgba(212,175,55,0.05)] transition-colors"
           >
-            Về Trang Chủ
+            Về trang chủ
           </Link>
           <Link
             href="/profile/appointments"
             className="flex-1 min-h-[44px] px-4 py-3 rounded-lg bg-[#D4AF37] text-white font-semibold text-sm text-center hover:bg-[#B8962E] transition-colors"
           >
-            Xem Lịch Hẹn
+            Xem lịch hẹn
           </Link>
         </div>
       </motion.div>

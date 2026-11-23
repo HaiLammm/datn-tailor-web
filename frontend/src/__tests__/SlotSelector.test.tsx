@@ -52,8 +52,8 @@ describe("SlotSelector", () => {
         onSlotSelect={jest.fn()}
       />
     );
-    expect(screen.getByText("Buổi Sáng")).toBeInTheDocument();
-    expect(screen.getByText("Buổi Chiều")).toBeInTheDocument();
+    expect(screen.getByText("Buổi sáng")).toBeInTheDocument();
+    expect(screen.getByText("Buổi chiều")).toBeInTheDocument();
   });
 
   it("displays time range for each slot", () => {
@@ -100,7 +100,7 @@ describe("SlotSelector", () => {
         onSlotSelect={onSlotSelect}
       />
     );
-    fireEvent.click(screen.getByLabelText(/Buổi Sáng/));
+    fireEvent.click(screen.getByLabelText(/Buổi sáng/));
     expect(onSlotSelect).toHaveBeenCalledWith("morning");
   });
 
@@ -113,7 +113,7 @@ describe("SlotSelector", () => {
         onSlotSelect={onSlotSelect}
       />
     );
-    fireEvent.click(screen.getByLabelText(/Buổi Chiều/));
+    fireEvent.click(screen.getByLabelText(/Buổi chiều/));
     expect(onSlotSelect).toHaveBeenCalledWith("afternoon");
   });
 
@@ -126,7 +126,7 @@ describe("SlotSelector", () => {
         onSlotSelect={onSlotSelect}
       />
     );
-    fireEvent.click(screen.getByLabelText(/Buổi Sáng.*Đã đầy/));
+    fireEvent.click(screen.getByLabelText(/Buổi sáng.*Đã đầy/));
     expect(onSlotSelect).not.toHaveBeenCalled();
   });
 
@@ -138,11 +138,11 @@ describe("SlotSelector", () => {
         onSlotSelect={jest.fn()}
       />
     );
-    expect(screen.getByLabelText(/Buổi Sáng/)).toHaveAttribute(
+    expect(screen.getByLabelText(/Buổi sáng/)).toHaveAttribute(
       "aria-pressed",
       "true"
     );
-    expect(screen.getByLabelText(/Buổi Chiều/)).toHaveAttribute(
+    expect(screen.getByLabelText(/Buổi chiều/)).toHaveAttribute(
       "aria-pressed",
       "false"
     );
