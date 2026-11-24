@@ -6,7 +6,7 @@ import SessionProvider from "@/components/providers/SessionProvider";
 
 const cormorant = Cormorant_Garamond({
   weight: ['300', '400', '500', '600', '700'],
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"],
   variable: "--font-cormorant",
   display: 'swap',
 });
