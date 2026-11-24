@@ -127,9 +127,9 @@ describe("HeroBanner — home variant (Story 15.5)", () => {
     expect(header).toHaveClass("text-[#F9F7F2]");
   });
 
-  it("shows a decorative scroll cue", () => {
+  it("has no scroll cue (phone users already know to swipe)", () => {
     render(<HeroBanner variant="home" title="Một tà áo" />);
-    expect(screen.getByText("Cuộn xuống")).toBeInTheDocument();
+    expect(screen.queryByText("Cuộn xuống")).not.toBeInTheDocument();
   });
 
   it("renders a background image when imageSrc is provided", () => {

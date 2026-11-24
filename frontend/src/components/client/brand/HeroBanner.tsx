@@ -5,7 +5,7 @@ import Image from "next/image";
  * HeroBanner — shared brand-presence hero (Phase 5).
  * Story 15.2: `showroom-compact` variant.
  * Story 15.3: `about` full-bleed variant + optional `eyebrow`.
- * Story 15.5: `home` full-bleed variant + optional `imageSrc` + scroll cue.
+ * Story 15.5: `home` full-bleed variant + optional `imageSrc`.
  */
 
 type HeroVariant = "home" | "about" | "showroom-compact";
@@ -119,17 +119,6 @@ export function HeroBanner({ variant, title, subline, eyebrow, children, imageSr
             {children}
           </div>
         )}
-      </div>
-
-      {/* Scroll cue (decorative; inert under reduced motion) */}
-      <div
-        aria-hidden="true"
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-[#F9F7F2]/70"
-      >
-        <span className="text-[11px] uppercase tracking-[0.2em]">Cuộn xuống</span>
-        <span className="h-9 w-5 rounded-full border border-[#F9F7F2]/40 grid place-items-start p-1">
-          <span className="h-2 w-1 rounded-full bg-[#D4AF37] animate-bounce motion-reduce:animate-none" />
-        </span>
       </div>
     </header>
   );
