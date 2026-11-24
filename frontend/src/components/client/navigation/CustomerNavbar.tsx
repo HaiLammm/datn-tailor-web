@@ -75,7 +75,7 @@ export function CustomerNavbar({ userName }: CustomerNavbarProps) {
                   aria-current={active ? "page" : undefined}
                   className={`px-3 py-2 min-h-[44px] flex items-center transition-colors ${focusRing} ${
                     active
-                      ? "text-[#D4AF37] font-semibold border-b-2 border-[#D4AF37]"
+                      ? "text-[#1A2B4C] font-semibold border-b-2 border-[#D4AF37]"
                       : "text-gray-600 hover:text-[#1A2B4C]"
                   }`}
                 >
@@ -90,7 +90,7 @@ export function CustomerNavbar({ userName }: CustomerNavbarProps) {
             {/* Số điện thoại trên desktop (điện thoại đã có thanh Gọi/Zalo ở đáy) */}
             <a
               href={telHref(STORE.phone)}
-              className={`hidden lg:inline-flex items-center gap-1.5 px-3 min-h-[44px] font-semibold text-[#1A2B4C] hover:text-[#D4AF37] whitespace-nowrap transition-colors ${focusRing}`}
+              className={`hidden lg:inline-flex items-center gap-1.5 px-3 min-h-[44px] font-semibold text-[#1A2B4C] hover:text-[#7A5C0E] whitespace-nowrap transition-colors ${focusRing}`}
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -113,7 +113,7 @@ export function CustomerNavbar({ userName }: CustomerNavbarProps) {
                 <button
                   type="button"
                   aria-label="Mở menu"
-                  className={`md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-[#1A2B4C] hover:text-[#D4AF37] transition-colors ${focusRing}`}
+                  className={`md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-[#1A2B4C] hover:text-[#7A5C0E] transition-colors ${focusRing}`}
                 >
                   <svg
                     className="w-6 h-6"
@@ -175,7 +175,7 @@ export function CustomerNavbar({ userName }: CustomerNavbarProps) {
                           onClick={() => setDrawerOpen(false)}
                           className={`px-3 py-2 min-h-[44px] flex items-center rounded transition-colors ${focusRing} ${
                             active
-                              ? "text-[#D4AF37] font-semibold bg-[#1A2B4C]/5"
+                              ? "text-[#1A2B4C] font-semibold bg-[#1A2B4C]/5"
                               : "text-gray-700 hover:text-[#1A2B4C] hover:bg-gray-50"
                           }`}
                         >

@@ -38,7 +38,7 @@ const ctaPrimary =
 const ctaOutline =
   "inline-flex items-center justify-center min-h-[44px] px-6 py-3 rounded-full border-2 border-[#F9F7F2] text-[#F9F7F2] font-semibold hover:bg-[#F9F7F2]/10 transition-colors focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]";
 const linkDark =
-  "inline-flex items-center gap-1 min-h-[44px] font-semibold text-[#1A2B4C] hover:text-[#D4AF37] transition-colors focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]";
+  "inline-flex items-center gap-1 min-h-[44px] font-semibold text-[#1A2B4C] hover:text-[#7A5C0E] transition-colors focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]";
 
 const FEATURES: FeatureItem[] = [
   {

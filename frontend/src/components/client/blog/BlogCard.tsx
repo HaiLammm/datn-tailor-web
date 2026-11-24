@@ -37,7 +37,7 @@ export function BlogCard({ post }: { post: BlogPostMeta }) {
 
       <div className="flex flex-col flex-1 p-6">
         <div className="flex items-center gap-2 mb-3 text-xs">
-          <span className="font-semibold uppercase tracking-[0.16em] text-[#D4AF37]">
+          <span className="font-semibold uppercase tracking-[0.16em] text-[#7A5C0E]">
             {post.categoryLabel}
           </span>
           <span aria-hidden="true" className="text-[#d8cdb6]">·</span>
@@ -47,7 +47,7 @@ export function BlogCard({ post }: { post: BlogPostMeta }) {
         <h3 className="text-2xl font-serif font-semibold text-[#1A2B4C] mb-2 leading-snug" style={CORMORANT}>
           <Link
             href={`/blog/${post.slug}`}
-            className="hover:text-[#9c7b1f] transition-colors focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+            className="hover:text-[#7A5C0E] transition-colors focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
           >
             {post.title}
           </Link>

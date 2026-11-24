@@ -24,7 +24,7 @@ export function FeatureTriad({ items, eyebrow, heading }: FeatureTriadProps) {
       {(eyebrow || heading) && (
         <div className="text-center max-w-2xl mx-auto mb-12">
           {eyebrow && (
-            <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37] mb-2">
+            <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#7A5C0E] mb-2">
               {eyebrow}
             </span>
           )}
