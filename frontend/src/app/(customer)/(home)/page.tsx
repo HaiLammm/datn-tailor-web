@@ -169,11 +169,11 @@ export default async function HomePage() {
                 >
                   Thanh Lộc bắt đầu từ một tiệm may nhỏ ở Buôn Ma Thuột.
                 </h2>
-                <p className="text-[#6B7280] text-base leading-relaxed mb-4">
+                <p className="text-[#4A4540] text-lg leading-relaxed mb-4">
                   Tiệm mở từ năm 1999. Cô Thanh Lộc là thợ chính, đến nay vẫn tự tay đo và may áo
                   cho khách.
                 </p>
-                <p className="text-[#6B7280] text-base leading-relaxed mb-6">
+                <p className="text-[#4A4540] text-lg leading-relaxed mb-6">
                   Mỗi chiếc áo được may theo số đo của một người, không may sẵn hàng loạt.
                 </p>
                 <Link href="/about" className={linkDark}>

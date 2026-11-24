@@ -54,7 +54,7 @@ export function BlogCard({ post }: { post: BlogPostMeta }) {
         </h3>
 
         {post.excerpt && (
-          <p className="text-[#6B7280] text-[15px] leading-relaxed line-clamp-3 flex-1">
+          <p className="text-[#4A4540] text-[17px] leading-relaxed line-clamp-3 flex-1">
             {post.excerpt}
           </p>
         )}

@@ -49,7 +49,7 @@ export function FeatureTriad({ items, eyebrow, heading }: FeatureTriadProps) {
               <h3 className="text-2xl font-serif font-semibold text-[#1A2B4C] mb-2" style={CORMORANT}>
                 {item.title}
               </h3>
-              <p className="text-[#6B7280] text-[15px] leading-relaxed">{item.description}</p>
+              <p className="text-[#4A4540] text-lg leading-relaxed">{item.description}</p>
             </div>
           </li>
         ))}
