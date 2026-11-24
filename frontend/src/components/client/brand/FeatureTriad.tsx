@@ -1,14 +1,11 @@
-import type { ReactNode } from "react";
-
 /**
  * FeatureTriad — Story 15.3: reusable 3-pillar "Why-Choose-Us" block (Phase 5).
- * Icon + title + short description, Heritage Gold icons, equal-height cards,
- * responsive 1 → 3 columns. Reused by About (15.3) and Homepage (15.5).
+ * Numbered list (large Cormorant numerals, no cards or icon tiles) — title +
+ * short description, responsive 1 → 3 columns. Reused by About (15.3) and Homepage (15.5).
  * Server Component (static).
  */
 
 export interface FeatureItem {
-  icon: ReactNode;
   title: string;
   description: string;
 }
@@ -38,25 +35,25 @@ export function FeatureTriad({ items, eyebrow, heading }: FeatureTriadProps) {
           )}
         </div>
       )}
-      <ul className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <ol className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12 border-t border-[#1A2B4C]/15 pt-10">
         {items.map((item, i) => (
-          <li
-            key={`${item.title}-${i}`}
-            className="h-full flex flex-col bg-white border border-[#ece7da] rounded-2xl p-8 shadow-sm transition-transform hover:-translate-y-1 hover:shadow-md"
-          >
+          <li key={`${item.title}-${i}`} className="flex gap-5 md:block">
             <span
               aria-hidden="true"
-              className="w-14 h-14 rounded-xl bg-[#D4AF37]/15 text-[#D4AF37] grid place-items-center mb-5"
+              className="shrink-0 block text-5xl md:text-6xl leading-none font-serif font-semibold text-[#7A5C0E] md:mb-4"
+              style={CORMORANT}
             >
-              {item.icon}
+              {i + 1}.
             </span>
-            <h3 className="text-2xl font-serif font-semibold text-[#1A2B4C] mb-2" style={CORMORANT}>
-              {item.title}
-            </h3>
-            <p className="text-[#6B7280] text-[15px] leading-relaxed">{item.description}</p>
+            <div>
+              <h3 className="text-2xl font-serif font-semibold text-[#1A2B4C] mb-2" style={CORMORANT}>
+                {item.title}
+              </h3>
+              <p className="text-[#6B7280] text-[15px] leading-relaxed">{item.description}</p>
+            </div>
           </li>
         ))}
-      </ul>
+      </ol>
     </div>
   );
 }

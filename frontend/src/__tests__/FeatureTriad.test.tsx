@@ -9,9 +9,9 @@ import "@testing-library/jest-dom";
 import { FeatureTriad, type FeatureItem } from "@/components/client/brand/FeatureTriad";
 
 const items: FeatureItem[] = [
-  { icon: <svg data-testid="ico-1" />, title: "Yêu ngay lần thử đầu", description: "Vừa in ngay lần đầu." },
-  { icon: <svg data-testid="ico-2" />, title: "Riêng một mình bạn", description: "Chọn từng chi tiết." },
-  { icon: <svg data-testid="ico-3" />, title: "Nâng niu đến từng chút", description: "Chu đáo, ấm áp." },
+  { title: "Yêu ngay lần thử đầu", description: "Vừa in ngay lần đầu." },
+  { title: "Riêng một mình bạn", description: "Chọn từng chi tiết." },
+  { title: "Nâng niu đến từng chút", description: "Chu đáo, ấm áp." },
 ];
 
 describe("FeatureTriad", () => {
@@ -33,8 +33,10 @@ describe("FeatureTriad", () => {
     expect(screen.getByText("Chu đáo, ấm áp.")).toBeInTheDocument();
   });
 
-  it("renders one list item per feature", () => {
-    render(<FeatureTriad items={items} />);
+  it("renders one numbered list item per feature, without icon tiles", () => {
+    const { container } = render(<FeatureTriad items={items} />);
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(container.querySelector("ol")).toBeInTheDocument();
+    expect(container.querySelector("svg")).not.toBeInTheDocument();
   });
 });

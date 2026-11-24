@@ -40,31 +40,16 @@ const GALLERY: { src: string; alt: string }[] = [
 
 const FEATURES: FeatureItem[] = [
   {
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-      </svg>
-    ),
     title: "Yêu ngay lần thử đầu",
     description:
       "Thợ đo kỹ và cho bạn thử áo trước khi nhận, đỡ mất công đi lại nhiều lần.",
   },
   {
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-      </svg>
-    ),
     title: "Riêng một mình bạn",
     description:
       "Từ dáng hình đến sở thích, bạn được cùng chúng tôi chọn từng chi tiết — để tà áo thật sự là của bạn.",
   },
   {
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-      </svg>
-    ),
     title: "Nâng niu đến từng chút",
     description:
       "Lụa, gấm tuyển chọn cùng lời tư vấn dành riêng cho bạn — chu đáo, ấm áp từ đầu đến cuối.",
