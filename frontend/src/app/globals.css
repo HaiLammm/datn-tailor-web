@@ -69,3 +69,25 @@ body {
   color: var(--foreground);
   font-family: var(--font-cormorant), Georgia, serif;
 }
+
+/* RevealOnScroll: chỉ trình duyệt hỗ trợ scroll-driven animation và người dùng
+   không giảm chuyển động mới có hiệu ứng; còn lại nội dung luôn hiện sẵn. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal-on-scroll {
+      animation: reveal-on-scroll linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+
+@keyframes reveal-on-scroll {
+  /* Chỉ trồi lên, không làm mờ: chữ không bao giờ bị ẩn, kể cả trong ảnh chụp cả trang. */
+  from {
+    transform: translateY(24px);
+  }
+  to {
+    transform: none;
+  }
+}
