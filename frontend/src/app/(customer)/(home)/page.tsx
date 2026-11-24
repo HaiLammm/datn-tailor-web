@@ -117,7 +117,6 @@ export default async function HomePage() {
       <HeroBanner
         variant="home"
         imageSrc="/shop/interior-wide.jpg"
-        eyebrow="Nhà may Thanh Lộc · Buôn Ma Thuột"
         title="Nhà may Thanh Lộc may đo, bán và cho thuê áo dài ở Buôn Ma Thuột."
         subline="Ghé tiệm ở 187B/1 Mai Hắc Đế để chọn vải và đo, hoặc nhắn Zalo gửi mẫu bạn thích để tiệm báo giá."
       >
@@ -139,7 +138,6 @@ export default async function HomePage() {
       <section className="py-20">
         <RevealOnScroll>
           <FeatureTriad
-            eyebrow="Lời chúng tôi gửi bạn"
             heading="Vì sao lại chọn chúng tôi?"
             items={FEATURES}
           />
@@ -153,9 +151,6 @@ export default async function HomePage() {
             <div className="container mx-auto px-4">
               <div className="flex items-end justify-between flex-wrap gap-3 mb-10">
                 <div>
-                  <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37] mb-2">
-                    Tuyển chọn
-                  </span>
                   <h2
                     className="text-3xl md:text-4xl font-serif font-semibold text-[#1A2B4C]"
                     style={CORMORANT}
@@ -183,9 +178,6 @@ export default async function HomePage() {
           <div className="container mx-auto px-4">
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>
-                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37] mb-3">
-                  Câu chuyện của chúng tôi
-                </span>
                 <h2
                   className="text-3xl md:text-4xl font-serif font-semibold text-[#1A2B4C] mb-5"
                   style={CORMORANT}
@@ -222,7 +214,6 @@ export default async function HomePage() {
         <section className="py-20 bg-white">
           <RevealOnScroll>
             <TestimonialStrip
-              eyebrow="Lời khách"
               heading="Khách nói gì sau khi may áo ở tiệm?"
               items={TESTIMONIALS}
             />
@@ -237,9 +228,6 @@ export default async function HomePage() {
             <div className="container mx-auto px-4">
               <div className="flex items-end justify-between flex-wrap gap-3 mb-10">
                 <div>
-                  <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37] mb-2">
-                    Nhật ký
-                  </span>
                   <h2
                     className="text-3xl md:text-4xl font-serif font-semibold text-[#1A2B4C]"
                     style={CORMORANT}
