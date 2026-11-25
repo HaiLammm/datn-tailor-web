@@ -19,7 +19,7 @@ import { CartBadge } from "@/components/client/cart/CartBadge";
 import { ProfileIcon } from "@/components/client/profile/ProfileIcon";
 import { LogoutButton } from "@/components/client/profile/LogoutButton";
 import { NotificationBell } from "@/components/client/profile/NotificationBell";
-import { SHOWROOM_ENABLED, STORE, telHref, zaloHref } from "@/lib/store-info";
+import { CART_ENABLED, SHOWROOM_ENABLED, STORE, telHref, zaloHref } from "@/lib/store-info";
 
 interface CustomerNavbarProps {
   userName?: string | null;
@@ -102,7 +102,7 @@ export function CustomerNavbar({ userName }: CustomerNavbarProps) {
               </svg>
               {STORE.phone}
             </a>
-            {SHOWROOM_ENABLED && <CartBadge />}
+            {SHOWROOM_ENABLED && CART_ENABLED && <CartBadge />}
             {userName && <NotificationBell />}
             <ProfileIcon userName={userName} />
             {userName && <LogoutButton />}

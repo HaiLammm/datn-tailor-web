@@ -15,6 +15,11 @@ import { ReturnTimeline } from "./ReturnTimeline";
 import { ProductImageGallery } from "./ProductImageGallery";
 import { SizeChartAccordion } from "./SizeChartAccordion";
 import { BuyRentToggle } from "./BuyRentToggle";
+import { ShowroomContactButtons } from "./ShowroomContactButtons";
+import { CART_ENABLED } from "@/lib/store-info";
+
+const formatVnd = (raw: string) =>
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(parseFloat(raw));
 import { CATEGORY_LABEL } from "./garmentConstants";
 
 const OCCASION_LABEL: Record<string, string> = {
@@ -68,15 +73,33 @@ export function ProductDetailClient({ garment }: ProductDetailClientProps) {
             {/* Return Timeline (Story 5.2 — tái dùng) */}
             <ReturnTimeline garment={garment} />
 
-            {/* Buy/Rent Toggle + CTA */}
-            <BuyRentToggle
-              garment={garment}
-              productName={garment.name}
-              rentalPrice={garment.rental_price}
-              salePrice={garment.sale_price}
-              isAvailable={isAvailable}
-              supportsBespoke={garment.sale_price !== null}
-            />
+            {/* Buy/Rent Toggle + CTA (giỏ hàng) hoặc giá + Zalo/Gọi khi giỏ hàng tắt */}
+            {CART_ENABLED ? (
+              <BuyRentToggle
+                garment={garment}
+                productName={garment.name}
+                rentalPrice={garment.rental_price}
+                salePrice={garment.sale_price}
+                isAvailable={isAvailable}
+                supportsBespoke={garment.sale_price !== null}
+              />
+            ) : (
+              <div className="flex flex-col gap-4">
+                <dl className="flex flex-wrap gap-x-8 gap-y-2">
+                  <div>
+                    <dt className="text-sm text-[#4A4540]">Giá thuê</dt>
+                    <dd className="text-2xl font-bold text-[#1A2B4C]">{formatVnd(garment.rental_price)}</dd>
+                  </div>
+                  {garment.sale_price && (
+                    <div>
+                      <dt className="text-sm text-[#4A4540]">Giá bán</dt>
+                      <dd className="text-2xl font-bold text-[#1A2B4C]">{formatVnd(garment.sale_price)}</dd>
+                    </div>
+                  )}
+                </dl>
+                <ShowroomContactButtons garmentName={garment.name} isAvailable={isAvailable} />
+              </div>
+            )}
 
             {/* Mô tả */}
             {garment.description && (

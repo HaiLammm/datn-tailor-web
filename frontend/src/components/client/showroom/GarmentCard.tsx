@@ -13,6 +13,8 @@ import Link from "next/link";
 import { Garment } from "@/types/garment";
 import { StatusBadge } from "./StatusBadge";
 import { AddToCartButton } from "./AddToCartButton";
+import { ShowroomContactButtons } from "./ShowroomContactButtons";
+import { CART_ENABLED } from "@/lib/store-info";
 import type { VoucherItem } from "@/types/voucher";
 
 interface GarmentCardProps {
@@ -209,7 +211,10 @@ export function GarmentCard({ garment, bestVouchers }: GarmentCardProps) {
             </Link>
           </div>
           {/* Cart action buttons - compact for card grid */}
-          {garment.status === "available" && (
+          {!CART_ENABLED && garment.status === "available" && (
+            <ShowroomContactButtons garmentName={garment.name} isAvailable compact />
+          )}
+          {CART_ENABLED && garment.status === "available" && (
             <div className="flex gap-1">
               <AddToCartButton garment={garment} mode="rent" className="flex-1 text-xs py-1" />
               {garment.sale_price && (

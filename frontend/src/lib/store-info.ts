@@ -16,6 +16,14 @@ export const SHOWROOM_ENABLED = false;
  * Khối lời khách (trang chủ + /about). Tắt khi chưa có lời khách thật có nguồn
  * (Facebook, Zalo đã xin phép, đánh giá Google). Bật lại khi đã thay TESTIMONIALS.
  */
+/**
+ * Giỏ hàng + thanh toán online. Tắt (25/11/2026): showroom chỉ trưng áo kèm giá,
+ * khách giữ áo / hẹn thử qua Zalo hoặc gọi tiệm. Lý do: áo dài cần mặc thử,
+ * tiệm chỉ nhận tiền mặt, giao COD dễ bị trả lại. Bật lại (true) khi muốn bán
+ * online áo may sẵn. Chỉ có tác dụng khi SHOWROOM_ENABLED = true.
+ */
+export const CART_ENABLED = false;
+
 export const TESTIMONIALS_ENABLED = false;
 
 export const STORE = {
